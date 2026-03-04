@@ -190,19 +190,27 @@ watch(() => props.profile.id, reset);
         >
           {{ t('INFLUENCER.MESSAGING.CANCEL') }}
         </button>
-        <button
-          class="flex items-center gap-1 rounded-lg bg-n-brand px-4 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
-          :disabled="sending || !canSend"
-          @click="handleSend"
-        >
-          <span v-if="sending" class="i-lucide-loader-2 size-3 animate-spin" />
-          <span v-else class="i-lucide-send size-3" />
-          {{
-            sending
-              ? t('INFLUENCER.MESSAGING.SENDING')
-              : t('INFLUENCER.MESSAGING.SEND')
-          }}
-        </button>
+        <div class="flex items-center gap-2">
+          <span v-if="profile.language" class="text-[11px] text-n-slate-10">
+            → {{ profile.language.toUpperCase() }}
+          </span>
+          <button
+            class="flex items-center gap-1 rounded-lg bg-n-brand px-4 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+            :disabled="sending || !canSend"
+            @click="handleSend"
+          >
+            <span
+              v-if="sending"
+              class="i-lucide-loader-2 size-3 animate-spin"
+            />
+            <span v-else class="i-lucide-send size-3" />
+            {{
+              sending
+                ? t('INFLUENCER.MESSAGING.SENDING')
+                : t('INFLUENCER.MESSAGING.SEND')
+            }}
+          </button>
+        </div>
       </div>
       <p v-if="sendError" class="mt-2 text-xs text-red-600">
         {{ sendError }}

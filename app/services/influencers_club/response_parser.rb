@@ -140,6 +140,7 @@ class InfluencersClub::ResponseParser
           views: engagement['view_count'] || engagement['views'] || engagement['plays'],
           likes: engagement['likes'],
           comments: engagement['comments'],
+          caption: reel['caption'],
           timestamp: reel['created_at']
         }
       end

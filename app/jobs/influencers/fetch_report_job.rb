@@ -24,6 +24,7 @@ class Influencers::FetchReportJob < ApplicationJob
     profile.contact.update!(email: contact_email) if contact_email.present? && profile.contact.email.blank?
 
     Avatar::AvatarFromUrlJob.perform_later(profile.contact, profile.profile_picture_url) if profile.profile_picture_url.present?
+    Influencers::LanguageDetector.detect_and_set(profile)
     Influencers::ScoreProfileJob.perform_later(profile.id)
   rescue InfluencersClub::Client::ApiError => e
     handle_api_failure(profile, e)

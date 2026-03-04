@@ -77,6 +77,7 @@ class Apify::ResponseParser
         'views' => reel['videoViewCount'],
         'likes' => reel['likesCount'],
         'comments' => reel['commentsCount'],
+        'caption' => reel['caption'],
         'timestamp' => reel['timestamp']
       }
     end
@@ -91,6 +92,7 @@ class Apify::ResponseParser
         'type' => post['type'],
         'likes' => post['likesCount'],
         'comments' => post['commentsCount'],
+        'caption' => post['caption'],
         'timestamp' => post['timestamp']
       }
     end
