@@ -180,7 +180,10 @@
       "CANCEL": "Cancel",
       "LOADING": "Loading conversations...",
       "NO_CONVERSATIONS": "No conversations yet. Send the first message.",
-      "NO_INBOXES": "No email or Instagram inboxes configured."
+      "NO_INBOXES": "No email or Instagram inboxes configured.",
+      "SEND_TRANSLATED": "Send → %{lang}",
+      "TRANSLATED_TO": "Translated to %{lang}",
+      "TRANSLATION_UNAVAILABLE": "Not translated — check Google Translate integration"
     },
     "VOUCHER": {
       "TITLE": "Voucher Valuation",

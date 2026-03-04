@@ -15,6 +15,7 @@ const channels = ref({});
 const loading = ref(false);
 const sending = ref(false);
 const sendError = ref('');
+const translationFeedback = ref('');
 const messageContent = ref('');
 const selectedInboxId = ref(null);
 const showCompose = ref(false);
@@ -68,14 +69,31 @@ async function handleSend() {
   if (!canSend.value) return;
   sending.value = true;
   sendError.value = '';
+  translationFeedback.value = '';
   try {
-    await store.dispatch('influencerProfiles/sendMessage', {
+    const result = await store.dispatch('influencerProfiles/sendMessage', {
       profileId: props.profile.id,
       inboxId: selectedInboxId.value,
       content: messageContent.value.trim(),
     });
     messageContent.value = '';
     showCompose.value = false;
+
+    if (result.translated_to) {
+      translationFeedback.value = t('INFLUENCER.MESSAGING.TRANSLATED_TO', {
+        lang: result.translated_to.toUpperCase(),
+      });
+    } else if (props.profile.language) {
+      translationFeedback.value = t(
+        'INFLUENCER.MESSAGING.TRANSLATION_UNAVAILABLE'
+      );
+    }
+    if (translationFeedback.value) {
+      setTimeout(() => {
+        translationFeedback.value = '';
+      }, 5000);
+    }
+
     await fetchConversations();
   } catch (err) {
     sendError.value =
@@ -191,9 +209,6 @@ watch(() => props.profile.id, reset);
           {{ t('INFLUENCER.MESSAGING.CANCEL') }}
         </button>
         <div class="flex items-center gap-2">
-          <span v-if="profile.language" class="text-[11px] text-n-slate-10">
-            → {{ profile.language.toUpperCase() }}
-          </span>
           <button
             class="flex items-center gap-1 rounded-lg bg-n-brand px-4 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
             :disabled="sending || !canSend"
@@ -207,7 +222,11 @@ watch(() => props.profile.id, reset);
             {{
               sending
                 ? t('INFLUENCER.MESSAGING.SENDING')
-                : t('INFLUENCER.MESSAGING.SEND')
+                : profile.language
+                  ? t('INFLUENCER.MESSAGING.SEND_TRANSLATED', {
+                      lang: profile.language.toUpperCase(),
+                    })
+                  : t('INFLUENCER.MESSAGING.SEND')
             }}
           </button>
         </div>
@@ -216,6 +235,14 @@ watch(() => props.profile.id, reset);
         {{ sendError }}
       </p>
     </div>
+
+    <!-- Translation feedback -->
+    <p
+      v-if="translationFeedback"
+      class="mb-3 rounded-lg bg-n-teal-2 px-3 py-2 text-xs text-n-teal-11"
+    >
+      {{ translationFeedback }}
+    </p>
 
     <!-- Conversations list -->
     <div v-if="loading" class="py-4 text-center text-xs text-n-slate-10">

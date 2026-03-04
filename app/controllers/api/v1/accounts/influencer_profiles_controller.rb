@@ -148,7 +148,12 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       { content: params[:content], message_type: 'outgoing' }
     ).perform
 
-    render json: { conversation_id: conversation.display_id, message_id: message.id }
+    translations = message.content_attributes&.dig('translations')
+    render json: {
+      conversation_id: conversation.display_id,
+      message_id: message.id,
+      translated_to: translations.present? ? @profile.contact&.additional_attributes&.dig('locale') : nil
+    }
   rescue Influencers::ConversationService::ChannelUnavailableError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
