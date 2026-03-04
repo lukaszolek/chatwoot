@@ -14,6 +14,7 @@ class Influencers::ApifyEnrichJob < ApplicationJob
     Avatar::AvatarFromUrlJob.perform_later(profile.contact, attrs[:profile_picture_url]) if attrs[:profile_picture_url].present?
     Influencers::LanguageDetector.detect_and_set(profile)
     Influencers::DownloadMediaJob.perform_now(profile.id) # sync — CDN URLs expire quickly
+    Influencers::HashtagExtractor.extract(profile.reload)
     Influencers::ScoreProfileJob.perform_later(profile.id)
   rescue Apify::Client::ApiError => e
     mark_failed(profile, e.message.truncate(255))

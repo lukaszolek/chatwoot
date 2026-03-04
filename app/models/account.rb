@@ -104,6 +104,7 @@ class Account < ApplicationRecord
   has_many :categories, dependent: :destroy_async, class_name: '::Category'
   has_many :contacts, dependent: :destroy_async
   has_many :conversations, dependent: :destroy_async
+  has_many :influencer_hashtags, dependent: :destroy_async
   has_many :influencer_profiles, dependent: :destroy_async
   has_many :influencer_searches, dependent: :destroy_async
   has_many :csat_survey_responses, dependent: :destroy_async

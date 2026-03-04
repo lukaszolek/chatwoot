@@ -8,6 +8,7 @@ import InfluencerSearchPanel from 'dashboard/components-next/Influencers/Influen
 import InfluencerSearchResults from 'dashboard/components-next/Influencers/InfluencerSearchResults.vue';
 import InfluencerKanbanBoard from 'dashboard/components-next/Influencers/InfluencerKanbanBoard.vue';
 import InfluencerProfileDetail from 'dashboard/components-next/Influencers/InfluencerProfileDetail.vue';
+import InfluencerHashtagsTab from 'dashboard/components-next/Influencers/InfluencerHashtagsTab.vue';
 
 const store = useStore();
 const route = useRoute();
@@ -17,6 +18,7 @@ const activeTab = computed(() => {
   const name = route.name;
   if (name === 'influencers_review') return 'review';
   if (name === 'influencers_pipeline') return 'pipeline';
+  if (name === 'influencers_hashtags') return 'hashtags';
   return 'search';
 });
 
@@ -45,6 +47,11 @@ const tabs = computed(() => [
     key: 'pipeline',
     label: t('INFLUENCER.TABS.PIPELINE'),
     route: 'influencers_pipeline',
+  },
+  {
+    key: 'hashtags',
+    label: t('INFLUENCER.TABS.HASHTAGS'),
+    route: 'influencers_hashtags',
   },
 ]);
 
@@ -193,6 +200,8 @@ async function handleDelete() {
         :statuses="['contacted', 'confirmed']"
         @select="openProfile"
       />
+
+      <InfluencerHashtagsTab v-else-if="activeTab === 'hashtags'" />
     </div>
 
     <InfluencerProfileDetail

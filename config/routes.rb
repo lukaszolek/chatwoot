@@ -194,6 +194,17 @@ Rails.application.routes.draw do
               post :call, on: :member, to: 'calls#create' if ChatwootApp.enterprise?
             end
           end
+          resources :influencer_hashtags, only: [:index] do
+            member do
+              patch :toggle_star
+              post :fetch_stats
+            end
+            collection do
+              get :starred_for_language
+              post :bulk_fetch_stats
+              post :fetch_all_missing_stats
+            end
+          end
           resources :influencer_profiles, only: %i[index show destroy] do
             collection do
               post :search

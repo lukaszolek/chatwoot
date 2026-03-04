@@ -29,10 +29,19 @@ class Apify::Client
     fetch_dataset_items(dataset_id)
   end
 
+  # Run an arbitrary Apify actor with the given input and return dataset items.
+  def run_actor(actor_id, input)
+    run = start_run(input, actor_id: actor_id)
+    dataset_id = run['defaultDatasetId']
+    raise ApiError.new('No dataset returned from Apify run', nil, run) if dataset_id.blank?
+
+    fetch_dataset_items(dataset_id)
+  end
+
   private
 
-  def start_run(input)
-    url = "#{BASE_URI}/acts/#{ACTOR_ID}/runs"
+  def start_run(input, actor_id: ACTOR_ID)
+    url = "#{BASE_URI}/acts/#{actor_id}/runs"
     response = self.class.post(
       url,
       query: { token: @api_token, waitForFinish: DEFAULT_TIMEOUT },

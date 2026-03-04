@@ -32,6 +32,7 @@ import customViews from './modules/customViews';
 import dashboardApps from './modules/dashboardApps';
 import draftMessages from './modules/draftMessages';
 import globalConfig from 'shared/store/globalConfig';
+import influencerHashtags from './modules/influencerHashtags';
 import influencerProfiles from './modules/influencerProfiles';
 import inboxAssignableAgents from './modules/inboxAssignableAgents';
 import inboxes from './modules/inboxes';
@@ -97,6 +98,7 @@ export default createStore({
     dashboardApps,
     draftMessages,
     globalConfig,
+    influencerHashtags,
     influencerProfiles,
     inboxAssignableAgents,
     inboxes,

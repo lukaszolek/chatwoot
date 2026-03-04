@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_04_140000) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_04_163000) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -894,6 +894,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_04_140000) do
     t.index ["portal_id"], name: "index_inboxes_on_portal_id"
   end
 
+  create_table "influencer_hashtags", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "tag", null: false
+    t.string "language", null: false
+    t.integer "profiles_count", default: 1
+    t.boolean "starred", default: false
+    t.integer "posts_count"
+    t.jsonb "apify_stats", default: {}
+    t.datetime "stats_fetched_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "language", "starred"], name: "idx_hashtags_lang_starred"
+    t.index ["account_id", "tag", "language"], name: "idx_hashtags_account_tag_lang", unique: true
+    t.index ["account_id"], name: "index_influencer_hashtags_on_account_id"
+  end
+
   create_table "influencer_offers", force: :cascade do |t|
     t.bigint "influencer_profile_id", null: false
     t.bigint "account_id", null: false
@@ -1411,6 +1427,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_04_140000) do
   add_foreign_key "contact_pipeline_stages", "contacts"
   add_foreign_key "contact_pipeline_stages", "pipeline_stages"
   add_foreign_key "inboxes", "portals"
+  add_foreign_key "influencer_hashtags", "accounts"
   add_foreign_key "influencer_offers", "accounts"
   add_foreign_key "influencer_offers", "influencer_profiles"
   add_foreign_key "influencer_offers", "users", column: "created_by_id"

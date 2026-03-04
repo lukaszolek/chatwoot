@@ -201,6 +201,8 @@
       "STATS_DATE": "Stats fetched",
       "ACTIONS_HEADER": "Actions",
       "FETCH_STATS": "Fetch stats",
+      "FETCH_ALL_MISSING": "Fetch all missing ({count})",
+      "MISSING_STATS_ONLY": "Missing stats only",
       "STATS_QUEUED": "Stats fetch queued",
       "BULK_STATS_QUEUED": "Stats fetch queued for {count} hashtags",
       "LOADING": "Loading hashtags...",
