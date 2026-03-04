@@ -21,6 +21,13 @@ class EmailHistoryImporter
   GMAIL_SENT_FOLDER = '[Gmail]/Sent Mail'.freeze
   GMAIL_INBOX_FOLDER = 'INBOX'.freeze
 
+  # System/transactional email domains to skip — these are automated emails
+  # sent via external services, not human correspondence
+  SKIP_SOURCE_DOMAINS = %w[
+    server.framky.com
+    prod.frami.app
+  ].freeze
+
   attr_reader :channel, :days_back, :inbox, :account, :stats
 
   def initialize(channel:, days_back: 180)
@@ -28,7 +35,7 @@ class EmailHistoryImporter
     @days_back = days_back
     @inbox = channel.inbox
     @account = channel.account
-    @stats = { inbox_fetched: 0, sent_fetched: 0, created: 0, skipped: 0, errors: 0 }
+    @stats = { inbox_fetched: 0, sent_fetched: 0, created: 0, skipped: 0, skipped_system: 0, errors: 0 }
   end
 
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -101,6 +108,18 @@ class EmailHistoryImporter
       headers_data.each do |data|
         mail_header = Mail.read_from_string(data.attr['BODY[HEADER]'])
         message_id = mail_header.message_id
+
+        # Skip system/transactional emails by message-id domain
+        if system_email?(message_id)
+          stats[:skipped_system] += 1
+          next
+        end
+
+        # Skip emails already sent by Chatwoot (Message-ID matches its pattern)
+        if chatwoot_sent_email?(message_id)
+          stats[:skipped] += 1
+          next
+        end
 
         # Skip if already in the system
         if message_id.present? && inbox.messages.exists?(source_id: message_id)
@@ -208,8 +227,10 @@ class EmailHistoryImporter
     contact, contact_inbox = find_or_create_contact(recipient_email, recipient_name(mail))
     conversation = find_or_create_conversation(mail, processed_mail, contact, contact_inbox)
 
-    # Find the agent user who sent this (match by email)
-    sender_user = account.users.from_email(channel.email) || account.users.from_email(processed_mail.original_sender)
+    # Find the agent user who sent this — try channel email, original sender, or fall back to first admin
+    sender_user = account.users.from_email(channel.email) \
+      || account.users.from_email(processed_mail.original_sender) \
+      || account.account_users.find_by(role: :administrator)&.user
 
     create_message(
       conversation: conversation,
@@ -243,9 +264,12 @@ class EmailHistoryImporter
   end
 
   def find_or_create_conversation(mail, processed_mail, contact, contact_inbox)
-    # Try to find existing conversation by threading headers
+    # Try to find existing conversation by threading headers (forward: this mail references existing ones)
     conversation = find_conversation_by_in_reply_to(processed_mail)
     conversation ||= find_conversation_by_references(mail)
+    # Reverse lookup: find existing messages that reference THIS mail's message_id
+    # (handles importing older emails whose replies were already imported)
+    conversation ||= find_conversation_by_reverse_references(processed_mail.message_id)
 
     return conversation if conversation.present?
 
@@ -254,6 +278,7 @@ class EmailHistoryImporter
       inbox_id: inbox.id,
       contact_id: contact.id,
       contact_inbox_id: contact_inbox&.id,
+      status: :resolved,
       additional_attributes: {
         source: 'email',
         in_reply_to: processed_mail.in_reply_to,
@@ -286,6 +311,24 @@ class EmailHistoryImporter
     nil
   end
 
+  # Find a conversation where an existing message has In-Reply-To or References
+  # pointing to the current email's message_id. This handles the case where
+  # newer replies were imported first and we're now importing the original.
+  def find_conversation_by_reverse_references(message_id)
+    return if message_id.blank?
+
+    # Check if any existing message was a reply to this one
+    reply = inbox.messages.find_by("content_attributes->'email'->>'in_reply_to' = ?", message_id)
+    return inbox.conversations.find_by(id: reply.conversation_id) if reply.present?
+
+    # Check if any existing message has this in its references (content_attributes is json, not jsonb)
+    ref_match = inbox.messages.where("content_attributes->'email'->'references' IS NOT NULL")
+                              .where("content_attributes->'email'->>'references' LIKE ?", "%#{message_id}%").first
+    return inbox.conversations.find_by(id: ref_match.conversation_id) if ref_match.present?
+
+    nil
+  end
+
   # rubocop:disable Metrics/MethodLength
   def create_message(conversation:, processed_mail:, message_type:, sender:, created_at:)
     content = mail_content(processed_mail)
@@ -313,6 +356,35 @@ class EmailHistoryImporter
       attachment.file.attach(mail_attachment[:blob])
     end
     message.save! if all_attachments.any?
+
+    translate_message(message)
+  end
+
+  def translate_message(message)
+    return if message.content.blank?
+
+    target_locales = agent_locales
+    translations = message.translations || {}
+
+    target_locales.each do |lang|
+      next if translations[lang].present?
+
+      translated = Integrations::GoogleTranslate::ProcessorService.new(
+        message: message, target_language: lang
+      ).perform
+      translations[lang] = translated if translated.present?
+    end
+
+    message.update!(translations: translations) if translations.present?
+  rescue StandardError => e
+    log "Translation failed for message #{message.id}: #{e.message}"
+  end
+
+  def agent_locales
+    @agent_locales ||= begin
+      locales = account.users.filter_map { |u| u.ui_settings&.dig('locale') }.uniq
+      locales.presence || ['en']
+    end
   end
   # rubocop:enable Metrics/MethodLength
 
@@ -347,6 +419,21 @@ class EmailHistoryImporter
     rescue StandardError
       mail.to&.first&.split('@')&.first
     end
+  end
+
+  CHATWOOT_MESSAGE_ID_PATTERN = %r{conversation/[a-zA-Z0-9-]+/messages/\d+@}
+
+  def system_email?(message_id)
+    return false if message_id.blank?
+
+    domain = message_id.split('@').last
+    SKIP_SOURCE_DOMAINS.any? { |skip_domain| domain == skip_domain }
+  end
+
+  def chatwoot_sent_email?(message_id)
+    return false if message_id.blank?
+
+    CHATWOOT_MESSAGE_ID_PATTERN.match?(message_id)
   end
 
   def since_date
