@@ -126,7 +126,8 @@ class Influencers::SearchRegistry::FetchPageService
   end
 
   def target_market
-    COUNTRY_NAME_TO_CODE[Array(@filter_params[:location] || @filter_params['location']).first]
+    code = Array(@filter_params[:location] || @filter_params['location']).first
+    COUNTRY_NAME_TO_CODE.value?(code) ? code : COUNTRY_NAME_TO_CODE[code]
   end
 
   def total_pages(search)

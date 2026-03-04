@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
@@ -7,6 +7,7 @@ import { useAlert } from 'dashboard/composables';
 const store = useStore();
 const { t } = useI18n();
 const uiFlags = useMapGetter('influencerProfiles/getUIFlags');
+const starredHashtags = useMapGetter('influencerHashtags/getStarredHashtags');
 const searchError = ref('');
 
 const showAdvanced = ref(false);
@@ -100,8 +101,39 @@ const DEFAULT_FILTERS = {
   keywords_in_bio: '',
 };
 
+const COUNTRY_TO_LANGUAGE = {
+  DE: 'de',
+  AT: 'de',
+  CH: 'de',
+  PL: 'pl',
+  FR: 'fr',
+  BE: 'fr',
+  NL: 'nl',
+  GB: 'en',
+  US: 'en',
+  IT: 'it',
+  ES: 'es',
+  DK: 'da',
+  SE: 'sv',
+};
+
 const selectedPreset = ref('');
 const filters = reactive({ ...DEFAULT_FILTERS });
+
+const selectedLanguages = computed(() => {
+  const langs = new Set();
+  filters.location.forEach(code => {
+    const lang = COUNTRY_TO_LANGUAGE[code];
+    if (lang) langs.add(lang);
+  });
+  return [...langs];
+});
+
+watch(selectedLanguages, langs => {
+  if (langs.length === 1) {
+    store.dispatch('influencerHashtags/fetchStarredForLanguage', langs[0]);
+  }
+});
 
 function applyPreset() {
   if (!selectedPreset.value) return;
@@ -136,11 +168,7 @@ async function handleSearch() {
   const payload = {
     ai_search: filters.ai_search || undefined,
     followers: { min: filters.followers_min, max: filters.followers_max },
-    location: filters.location.length
-      ? filters.location
-          .map(code => EU_COUNTRIES.find(c => c.code === code)?.name)
-          .filter(Boolean)
-      : undefined,
+    location: filters.location.length ? [...filters.location] : undefined,
   };
 
   if (filters.engagement_percent_min)
@@ -173,6 +201,20 @@ async function handleSearch() {
     searchError.value = message;
     useAlert(message);
   }
+}
+
+function toggleHashtagChip(tag) {
+  const current = filters.hashtags
+    .split(',')
+    .map(h => h.trim())
+    .filter(Boolean);
+  const idx = current.indexOf(tag);
+  if (idx >= 0) {
+    current.splice(idx, 1);
+  } else {
+    current.push(tag);
+  }
+  filters.hashtags = current.join(', ');
 }
 
 function toggleCountry(code) {
@@ -275,6 +317,29 @@ function toggleCountry(code) {
         @click="toggleCountry(country.code)"
       >
         {{ country.code }}
+      </button>
+    </div>
+
+    <!-- Starred hashtag chips -->
+    <div
+      v-if="selectedLanguages.length === 1 && starredHashtags.length"
+      class="mt-2 flex flex-wrap gap-1.5"
+    >
+      <button
+        v-for="h in starredHashtags"
+        :key="h.id"
+        class="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors"
+        :class="
+          filters.hashtags
+            .split(',')
+            .map(s => s.trim())
+            .includes(h.tag)
+            ? 'bg-n-brand text-white'
+            : 'bg-n-alpha-1 text-n-slate-11 hover:bg-n-weak'
+        "
+        @click="toggleHashtagChip(h.tag)"
+      >
+        #{{ h.tag }}
       </button>
     </div>
 
