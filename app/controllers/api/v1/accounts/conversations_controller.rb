@@ -3,7 +3,7 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   include DateRangeHelper
   include HmacConcern
 
-  before_action :conversation, except: [:index, :meta, :search, :create, :filter]
+  before_action :conversation, except: [:index, :meta, :search, :create, :filter, :sync_mailbox]
   before_action :inbox, :contact, :contact_inbox, only: [:create]
 
   ATTACHMENT_RESULTS_PER_PAGE = 100
@@ -134,6 +134,15 @@ class Api::V1::Accounts::ConversationsController < Api::V1::Accounts::BaseContro
   def custom_attributes
     @conversation.custom_attributes = params.permit(custom_attributes: {})[:custom_attributes]
     @conversation.save!
+  end
+
+  def sync_mailbox
+    Channel::Email.where(provider: 'google', imap_enabled: true)
+                  .joins(:inbox).where(inboxes: { account_id: Current.account.id })
+                  .find_each { |ch| Inboxes::FetchImapEmailsJob.perform_later(ch) }
+
+    result = Conversations::MailboxSyncService.new(account: Current.account).perform
+    render json: { message: 'Mailbox sync started', **result }
   end
 
   def destroy

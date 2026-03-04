@@ -1,8 +1,9 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { formatNumber } from '@chatwoot/utils';
 import wootConstants from 'dashboard/constants/globals';
+import ConversationApi from 'dashboard/api/conversations';
 
 import ConversationBasicFilter from './widgets/conversation/ConversationBasicFilter.vue';
 import SwitchLayout from 'dashboard/routes/dashboard/conversation/search/SwitchLayout.vue';
@@ -27,6 +28,25 @@ const emit = defineEmits([
 ]);
 
 const { uiSettings, updateUISettings } = useUISettings();
+
+const isSyncing = ref(false);
+const syncResult = ref(null);
+
+async function handleSyncMailbox() {
+  isSyncing.value = true;
+  syncResult.value = null;
+  try {
+    const { data } = await ConversationApi.syncMailbox();
+    syncResult.value = data;
+    setTimeout(() => {
+      syncResult.value = null;
+    }, 4000);
+  } catch {
+    // silently fail
+  } finally {
+    isSyncing.value = false;
+  }
+}
 
 const onBasicFilterChange = (value, type) => {
   emit('basicFilterChange', value, type);
@@ -162,6 +182,24 @@ const toggleConversationLayout = () => {
       <SwitchLayout
         :is-on-expanded-layout="isOnExpandedLayout"
         @toggle="toggleConversationLayout"
+      />
+      <span
+        v-if="syncResult"
+        class="text-xxs text-n-slate-11 whitespace-nowrap"
+      >
+        {{
+          $t('CHAT_LIST.SYNC_MAILBOX_DONE', { resolved: syncResult.resolved })
+        }}
+      </span>
+      <NextButton
+        v-tooltip.right="$t('CHAT_LIST.SYNC_MAILBOX')"
+        icon="i-lucide-refresh-cw"
+        slate
+        xs
+        faded
+        :disabled="isSyncing"
+        :class="{ 'animate-spin': isSyncing }"
+        @click="handleSyncMailbox"
       />
     </div>
   </div>
