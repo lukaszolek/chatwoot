@@ -10,9 +10,16 @@ const props = defineProps({
   count: { type: Number, default: 0 },
   hasMore: { type: Boolean, default: false },
   loading: { type: Boolean, default: false },
+  collapsed: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(['select', 'loadMore', 'retryApify']);
+const emit = defineEmits([
+  'select',
+  'loadMore',
+  'retryApify',
+  'expand',
+  'collapse',
+]);
 
 const { t } = useI18n();
 
@@ -38,7 +45,32 @@ const statusColors = {
 </script>
 
 <template>
-  <div class="flex flex-col min-w-[280px] max-w-[320px] flex-1 h-full">
+  <!-- Collapsed state -->
+  <div
+    v-if="collapsed"
+    class="flex flex-col items-center min-w-[48px] max-w-[48px] h-full cursor-pointer group"
+    @click="emit('expand')"
+  >
+    <div
+      class="flex flex-col items-center gap-2 px-2 py-3 rounded-lg bg-n-solid-3 hover:bg-n-solid-4 transition-colors w-full"
+    >
+      <span class="text-xs font-medium text-n-slate-10">
+        {{ count }}
+      </span>
+      <span
+        class="px-1.5 py-0.5 text-[10px] font-medium rounded-full whitespace-nowrap [writing-mode:vertical-rl]"
+        :class="statusColors[status] || 'bg-n-solid-3'"
+      >
+        {{ label }}
+      </span>
+      <span
+        class="i-lucide-chevron-right size-3 text-n-slate-10 group-hover:text-n-slate-12 transition-colors"
+      />
+    </div>
+  </div>
+
+  <!-- Expanded state -->
+  <div v-else class="flex flex-col min-w-[280px] max-w-[320px] flex-1 h-full">
     <!-- Column header -->
     <div
       class="flex items-center justify-between px-3 py-2 mb-3 rounded-lg bg-n-solid-3"
@@ -51,9 +83,18 @@ const statusColors = {
           {{ label }}
         </span>
       </div>
-      <span class="text-xs font-medium text-n-slate-10">
-        {{ count }}
-      </span>
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-medium text-n-slate-10">
+          {{ count }}
+        </span>
+        <button
+          class="text-n-slate-10 hover:text-n-slate-12 transition-colors"
+          :title="t('INFLUENCER.KANBAN.COLLAPSE')"
+          @click="emit('collapse')"
+        >
+          <span class="i-lucide-chevron-left size-3.5" />
+        </button>
+      </div>
     </div>
 
     <!-- Apify credits warning -->

@@ -164,6 +164,10 @@ export const mutations = {
     }
   },
 
+  [types.SET_KANBAN_COLUMN_META_COUNT]($state, { status, count }) {
+    $state.kanban[status].meta.count = count;
+  },
+
   [types.UPDATE_KANBAN_ITEM]($state, { oldStatus, newProfile }) {
     // Remove from old column
     if (oldStatus && $state.kanban[oldStatus]) {

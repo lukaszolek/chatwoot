@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted } from 'vue';
+import { onMounted, reactive } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'dashboard/composables/store';
 import InfluencerKanbanColumn from './InfluencerKanbanColumn.vue';
@@ -21,6 +21,8 @@ const emit = defineEmits(['select']);
 
 const { t } = useI18n();
 const store = useStore();
+
+const collapsedColumns = reactive({ rejected: true });
 
 const statusLabels = {
   discovered: t('INFLUENCER.KANBAN.STATUS_DISCOVERED'),
@@ -51,6 +53,21 @@ const handleSelect = profile => {
 const handleRetryApify = profileId => {
   store.dispatch('influencerProfiles/retryApify', { id: profileId });
 };
+
+const handleExpand = status => {
+  collapsedColumns[status] = false;
+  const column = getColumn(status);
+  if (column.records.length === 0) {
+    store.dispatch('influencerProfiles/fetchKanbanColumn', {
+      status,
+      page: 1,
+    });
+  }
+};
+
+const handleCollapse = status => {
+  collapsedColumns[status] = true;
+};
 </script>
 
 <template>
@@ -65,9 +82,12 @@ const handleRetryApify = profileId => {
         :count="getColumn(status).meta.count"
         :has-more="getColumn(status).meta.hasMore"
         :loading="getColumn(status).loading"
+        :collapsed="!!collapsedColumns[status]"
         @select="handleSelect"
         @load-more="loadMore(status)"
         @retry-apify="handleRetryApify"
+        @expand="handleExpand(status)"
+        @collapse="handleCollapse(status)"
       />
     </div>
   </div>

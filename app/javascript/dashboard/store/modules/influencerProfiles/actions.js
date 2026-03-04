@@ -250,8 +250,10 @@ export const actions = {
       } else {
         commit(types.APPEND_KANBAN_COLUMN, { status, records: payload, meta });
       }
+      return { perStatusCounts: meta.per_status_counts };
     } catch (error) {
       commit(types.SET_KANBAN_COLUMN_LOADING, { status, loading: false });
+      return null;
     }
   },
 
@@ -271,18 +273,34 @@ export const actions = {
     }
   },
 
-  refreshAllKanbanColumns: async ({ dispatch }) => {
-    const statuses = [
+  refreshAllKanbanColumns: async ({ commit, dispatch }) => {
+    const collapsedStatuses = ['rejected'];
+    const activeStatuses = [
       'discovered',
       'preselected',
       'enriched',
       'approved',
-      'rejected',
       'contacted',
       'confirmed',
     ];
-    await Promise.all(
-      statuses.map(status => dispatch('fetchKanbanColumn', { status, page: 1 }))
+    const results = await Promise.all(
+      activeStatuses.map(status =>
+        dispatch('fetchKanbanColumn', { status, page: 1 })
+      )
     );
+    // Set counts for collapsed columns from per_status_counts
+    const perStatusCounts = results.find(
+      r => r?.perStatusCounts
+    )?.perStatusCounts;
+    if (perStatusCounts) {
+      collapsedStatuses.forEach(status => {
+        if (perStatusCounts[status] !== undefined) {
+          commit(types.SET_KANBAN_COLUMN_META_COUNT, {
+            status,
+            count: perStatusCounts[status],
+          });
+        }
+      });
+    }
   },
 };

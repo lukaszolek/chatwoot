@@ -10,7 +10,8 @@
       "SEARCH": "Search",
       "REVIEW": "Review",
       "PIPELINE": "Pipeline",
-      "REJECTED": "Rejected"
+      "REJECTED": "Rejected",
+      "HASHTAGS": "Hashtags"
     },
     "SEARCH": {
       "PRESET": "Preset",
@@ -159,7 +160,8 @@
       "REJECT_TITLE": "Reject Profile",
       "REJECT_PLACEHOLDER": "Why are you rejecting this profile?",
       "CANCEL": "Cancel",
-      "CONFIRM_REJECT": "Reject"
+      "CONFIRM_REJECT": "Reject",
+      "COLLAPSE": "Collapse column"
     },
     "OFFERS": {
       "TITLE": "Collaboration Offers",
@@ -189,6 +191,21 @@
       "SEND_TRANSLATED": "Send → %{lang}",
       "TRANSLATED_TO": "Translated to %{lang}",
       "TRANSLATION_UNAVAILABLE": "Not translated — check Google Translate integration"
+    },
+    "HASHTAGS": {
+      "TAG": "Tag",
+      "LANGUAGE": "Language",
+      "PROFILES": "Profiles",
+      "POSTS": "Posts",
+      "STAR": "★",
+      "STATS_DATE": "Stats fetched",
+      "ACTIONS_HEADER": "Actions",
+      "FETCH_STATS": "Fetch stats",
+      "STATS_QUEUED": "Stats fetch queued",
+      "BULK_STATS_QUEUED": "Stats fetch queued for {count} hashtags",
+      "LOADING": "Loading hashtags...",
+      "EMPTY": "No hashtags discovered yet. Enrich influencer profiles to extract hashtags from their posts.",
+      "SHOWING": "Showing {from}–{to} of {total}"
     },
     "VOUCHER": {
       "TITLE": "Voucher Valuation",
