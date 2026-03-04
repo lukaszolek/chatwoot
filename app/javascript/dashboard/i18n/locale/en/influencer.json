@@ -71,6 +71,7 @@
       "REJECT": "Reject",
       "APPROVED": "Profile approved",
       "REJECTED": "Profile rejected",
+      "PRESELECTED": "Profile preselected",
       "REPORT_REQUESTED": "Enrichment queued",
       "ERROR": "Action failed",
       "LOAD_MORE": "Load more"
@@ -121,6 +122,7 @@
       "REJECT_REASON_PLACEHOLDER": "Enter reason for rejection...",
       "APPROVE": "Approve",
       "REJECT": "Reject",
+      "PRESELECT": "Preselect",
       "RAW_DATA": "All data in DB",
       "SET_LANGUAGE": "language",
       "EDIT_LANGUAGE": "Change language"
@@ -139,6 +141,7 @@
     },
     "KANBAN": {
       "STATUS_DISCOVERED": "Discovered",
+      "STATUS_PRESELECTED": "Preselected",
       "STATUS_ENRICHED": "Enriched",
       "STATUS_APPROVED": "Approved",
       "STATUS_REJECTED": "Rejected",

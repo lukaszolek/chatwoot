@@ -19,6 +19,7 @@ const state = {
   sortOrder: [],
   kanban: {
     discovered: defaultColumnState(),
+    preselected: defaultColumnState(),
     enriched: defaultColumnState(),
     approved: defaultColumnState(),
     rejected: defaultColumnState(),

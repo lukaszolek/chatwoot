@@ -70,6 +70,11 @@ async function handleRequestReport(profileId) {
   closeDetail();
 }
 
+async function handlePreselect(profileId) {
+  await store.dispatch('influencerProfiles/preselect', { id: profileId });
+  closeDetail();
+}
+
 async function handleReject(profileId, reason) {
   const previousStatus = selectedProfile.value?.status;
   await store.dispatch('influencerProfiles/reject', {
@@ -196,6 +201,7 @@ async function handleDelete() {
       @close="closeDetail"
       @approve="handleApprove"
       @reject="handleReject"
+      @preselect="handlePreselect"
       @request-report="handleRequestReport"
       @delete="handleDelete"
       @update:profile="p => (selectedProfile = p)"

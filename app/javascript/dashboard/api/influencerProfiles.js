@@ -48,6 +48,10 @@ class InfluencerProfilesAPI extends ApiClient {
     });
   }
 
+  preselect(id) {
+    return axios.post(`${this.url}/${id}/preselect`);
+  }
+
   approve(id) {
     return axios.post(`${this.url}/${id}/approve`);
   }

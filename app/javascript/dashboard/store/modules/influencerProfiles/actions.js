@@ -96,6 +96,15 @@ export const actions = {
     await InfluencerProfilesAPI.bulkRequestReport(profileIds);
   },
 
+  preselect: async ({ commit }, { id }) => {
+    const { data } = await InfluencerProfilesAPI.preselect(id);
+    commit(types.EDIT_INFLUENCER, data.payload);
+    commit(types.UPDATE_KANBAN_ITEM, {
+      oldStatus: 'discovered',
+      newProfile: data.payload,
+    });
+  },
+
   approve: async ({ commit }, { id }) => {
     commit(types.SET_INFLUENCER_UI_FLAG, { isApproving: true });
     try {
@@ -265,6 +274,7 @@ export const actions = {
   refreshAllKanbanColumns: async ({ dispatch }) => {
     const statuses = [
       'discovered',
+      'preselected',
       'enriched',
       'approved',
       'rejected',

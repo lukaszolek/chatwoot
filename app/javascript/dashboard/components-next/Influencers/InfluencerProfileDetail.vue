@@ -19,6 +19,7 @@ const emit = defineEmits([
   'approve',
   'reject',
   'requestReport',
+  'preselect',
   'delete',
   'update:profile',
 ]);
@@ -229,12 +230,12 @@ const fqsFactors = computed(() => {
     {
       label: t('INFLUENCER.DETAIL.FQS_GEO_FACTOR'),
       value: breakdown.value.geo_factor,
-      detail: `EU ${formatCountryPct(breakdown.value.eu_audience_ratio * 100)}`,
+      detail: `EU ${formatCountryPct((breakdown.value.eu_audience_ratio ?? 0) * 100)}`,
     },
     {
       label: t('INFLUENCER.DETAIL.FQS_AQ_FACTOR'),
       value: breakdown.value.aq_factor,
-      detail: `Credibility ${formatCountryPct(breakdown.value.audience_credibility * 100)}`,
+      detail: `Credibility ${formatCountryPct((breakdown.value.audience_credibility ?? 0) * 100)}`,
     },
     {
       label: t('INFLUENCER.DETAIL.FQS_AF_FACTOR'),
@@ -461,7 +462,7 @@ function formatPct(val) {
 }
 
 function formatCountryPct(val) {
-  if (val == null) return '-';
+  if (val == null || Number.isNaN(val)) return '-';
   return `${val.toFixed(1)}%`;
 }
 
@@ -747,7 +748,7 @@ function handleReject() {
       </div>
 
       <!-- FQS Formula breakdown -->
-      <div v-if="isEnriched && fqsFactors.length" class="mb-6">
+      <div v-if="showFqs && fqsFactors.length" class="mb-6">
         <div class="mb-2">
           <p class="font-mono text-xs text-n-slate-11">
             FQS = √(ER × Views) × Geo × AQ × AF × 100
@@ -773,8 +774,9 @@ function handleReject() {
         </div>
       </div>
 
-      <!-- Voucher Calculator -->
+      <!-- Voucher Calculator (only for enriched+) -->
       <VoucherCalculator
+        v-if="isEnriched"
         :profile="profile"
         class="mb-6"
         @profile-updated="p => emit('update:profile', p)"
@@ -1055,6 +1057,53 @@ function handleReject() {
     <!-- Actions for discovered profiles -->
     <div
       v-else-if="profile.status === 'discovered'"
+      class="border-t border-n-weak p-4"
+    >
+      <div class="mb-3">
+        <input
+          v-model="rejectReason"
+          type="text"
+          class="w-full rounded-lg border bg-n-solid-1 px-3 py-1.5 text-sm transition-colors"
+          :class="
+            rejectReasonMissing
+              ? 'animate-shake border-2 border-red-500 ring-2 ring-red-300'
+              : 'border-n-weak'
+          "
+          :placeholder="t('INFLUENCER.DETAIL.REJECT_REASON_PLACEHOLDER')"
+          @input="rejectReasonMissing = false"
+        />
+      </div>
+      <div class="flex gap-2">
+        <button
+          class="flex-1 rounded-lg bg-n-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          @click="emit('requestReport', profile.id)"
+        >
+          {{ t('INFLUENCER.REVIEW.FETCH_REPORT') }}
+        </button>
+        <button
+          class="flex-1 rounded-lg bg-yellow-500 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-600"
+          @click="emit('preselect', profile.id)"
+        >
+          {{ t('INFLUENCER.DETAIL.PRESELECT') }}
+        </button>
+        <button
+          class="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          @click="handleReject"
+        >
+          {{ t('INFLUENCER.DETAIL.REJECT') }}
+        </button>
+      </div>
+      <button
+        class="mt-2 w-full rounded-lg border border-n-weak px-4 py-1.5 text-sm text-n-slate-11 hover:bg-n-background"
+        @click="emit('delete')"
+      >
+        {{ t('INFLUENCER.DELETE.BUTTON') }}
+      </button>
+    </div>
+
+    <!-- Actions for preselected profiles -->
+    <div
+      v-else-if="profile.status === 'preselected'"
       class="border-t border-n-weak p-4"
     >
       <div class="mb-3">

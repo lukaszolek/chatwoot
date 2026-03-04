@@ -205,6 +205,7 @@ Rails.application.routes.draw do
             end
             member do
               post :request_report
+              post :preselect
               post :approve
               post :reject
               post :recalculate

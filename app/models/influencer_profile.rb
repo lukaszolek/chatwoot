@@ -2,7 +2,8 @@ class InfluencerProfile < ApplicationRecord
   class InvalidTransitionError < StandardError; end
 
   VALID_TRANSITIONS = {
-    discovered: %i[enriched rejected],
+    discovered: %i[preselected enriched rejected],
+    preselected: %i[enriched rejected],
     enriched: %i[approved rejected],
     approved: %i[contacted rejected],
     rejected: %i[discovered],
@@ -14,7 +15,7 @@ class InfluencerProfile < ApplicationRecord
   belongs_to :account
   has_many :influencer_offers, dependent: :destroy
 
-  enum :status, { discovered: 0, enriched: 2, approved: 3, rejected: 4, contacted: 5, confirmed: 6 }
+  enum :status, { discovered: 0, preselected: 1, enriched: 2, approved: 3, rejected: 4, contacted: 5, confirmed: 6 }
   enum :apify_status, { apify_none: 0, apify_pending: 1, apify_done: 2, apify_failed: 3 }, prefix: :apify
 
   validates :username, presence: true, uniqueness: { scope: %i[account_id platform] }

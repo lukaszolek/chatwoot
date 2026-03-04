@@ -5,8 +5,8 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
 
   skip_before_action :authenticate_user!, only: [:proxy_image]
   skip_before_action :current_account, only: [:proxy_image]
-  before_action :set_profile, only: %i[show destroy request_report approve reject recalculate retry_apify conversations send_message
-                                       create_offer offers update_email update_language update_multiplier]
+  before_action :set_profile, only: %i[show destroy request_report preselect approve reject recalculate retry_apify conversations
+                                       send_message create_offer offers update_email update_language update_multiplier]
   rescue_from InfluencersClub::Client::ApiError, with: :handle_api_error
 
   def index
@@ -101,6 +101,11 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
     Influencers::BulkFetchReportsJob.perform_later(profile_ids)
 
     render json: { message: "Queued #{profile_ids.size} report(s)" }
+  end
+
+  def preselect
+    @profile.transition_to!(:preselected)
+    render json: { payload: profile_json(@profile) }
   end
 
   def approve

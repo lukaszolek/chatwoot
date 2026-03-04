@@ -143,6 +143,7 @@ export const mutations = {
     });
     $state.kanban = {
       discovered: defaultCol(),
+      preselected: defaultCol(),
       enriched: defaultCol(),
       approved: defaultCol(),
       rejected: defaultCol(),
