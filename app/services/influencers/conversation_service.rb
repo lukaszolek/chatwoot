@@ -12,29 +12,10 @@ class Influencers::ConversationService
   def find_or_create_conversation
     validate_channel!
 
-    existing = @contact.conversations
-                       .where(inbox: @inbox, status: %i[open pending])
-                       .order(created_at: :desc)
-                       .first
+    existing = find_existing_conversation
+    return apply_subject!(existing) if existing
 
-    if existing
-      update_mail_subject!(existing) if @subject
-      return existing
-    end
-
-    contact_inbox = find_or_create_contact_inbox
-    attrs = {}
-    attrs['mail_subject'] = @subject if @subject
-
-    Conversation.create!(
-      account: @profile.account,
-      inbox: @inbox,
-      contact: @contact,
-      contact_inbox: contact_inbox,
-      assignee: @user,
-      status: :open,
-      additional_attributes: attrs.presence || {}
-    )
+    create_conversation
   end
 
   # Returns hash of { inbox_id => reason } for unavailable inboxes
@@ -60,6 +41,24 @@ class Influencers::ConversationService
   end
 
   private
+
+  def find_existing_conversation
+    @contact.conversations.where(inbox: @inbox, status: %i[open pending]).order(created_at: :desc).first
+  end
+
+  def apply_subject!(conversation)
+    update_mail_subject!(conversation) if @subject
+    conversation
+  end
+
+  def create_conversation
+    additional = @subject ? { 'mail_subject' => @subject } : {}
+    Conversation.create!(
+      account: @profile.account, inbox: @inbox, contact: @contact,
+      contact_inbox: find_or_create_contact_inbox, assignee: @user,
+      status: :open, additional_attributes: additional
+    )
+  end
 
   def update_mail_subject!(conversation)
     conversation.update!(additional_attributes: (conversation.additional_attributes || {}).merge('mail_subject' => @subject))
