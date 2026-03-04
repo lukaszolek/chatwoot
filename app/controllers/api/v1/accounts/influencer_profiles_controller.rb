@@ -140,8 +140,10 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   def send_message
     inbox = Current.account.inboxes.find(params[:inbox_id])
     conversation = Influencers::ConversationService.new(
-      profile: @profile, inbox: inbox, user: Current.user
+      profile: @profile, inbox: inbox, user: Current.user, subject: params[:subject]
     ).find_or_create_conversation
+
+    translate_mail_subject!(conversation) if conversation.additional_attributes&.dig('mail_subject').present?
 
     message = Messages::MessageBuilder.new(
       Current.user, conversation,
@@ -245,6 +247,38 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   end
 
   private
+
+  def translate_mail_subject!(conversation)
+    hook = Current.account.hooks.find_by(app_id: 'google_translate')
+    return if hook.blank? || hook.disabled?
+
+    target = @profile.contact&.additional_attributes&.dig('locale')
+    return if target.blank?
+
+    subject = conversation.additional_attributes['mail_subject']
+    return if subject.blank?
+
+    begin
+      client = ::Google::Cloud::Translate::V3::TranslationService::Client.new do |config|
+        config.credentials = hook.settings['credentials']
+      end
+      detected = client.detect_language(content: subject, parent: "projects/#{hook.settings['project_id']}")
+      source = detected&.languages&.first&.language_code
+      return if source == target
+
+      response = client.translate_text(
+        contents: [subject],
+        target_language_code: target,
+        parent: "projects/#{hook.settings['project_id']}"
+      )
+      translated = response.translations&.first&.translated_text
+      return if translated.blank?
+
+      conversation.update!(additional_attributes: conversation.additional_attributes.merge('mail_subject' => translated))
+    rescue StandardError => e
+      Rails.logger.error "Subject translation failed for conversation #{conversation.id}: #{e.message}"
+    end
+  end
 
   def set_profile
     @profile = Current.account.influencer_profiles.find(params[:id])

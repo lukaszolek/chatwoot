@@ -17,8 +17,19 @@ const sending = ref(false);
 const sendError = ref('');
 const translationFeedback = ref('');
 const messageContent = ref('');
+const messageSubject = ref(t('INFLUENCER.MESSAGING.DEFAULT_SUBJECT'));
 const selectedInboxId = ref(null);
 const showCompose = ref(false);
+
+const selectedChannelType = computed(() => {
+  if (!selectedInboxId.value) return null;
+  const ch = channels.value[selectedInboxId.value];
+  return ch?.channel_type || null;
+});
+
+const isEmailChannel = computed(
+  () => selectedChannelType.value === 'Channel::Email'
+);
 
 const availableChannels = computed(() =>
   Object.entries(channels.value)
@@ -75,6 +86,7 @@ async function handleSend() {
       profileId: props.profile.id,
       inboxId: selectedInboxId.value,
       content: messageContent.value.trim(),
+      subject: isEmailChannel.value ? messageSubject.value.trim() : undefined,
     });
     messageContent.value = '';
     showCompose.value = false;
@@ -192,6 +204,15 @@ watch(() => props.profile.id, reset);
           </button>
         </div>
       </div>
+
+      <!-- Subject (email only) -->
+      <input
+        v-if="isEmailChannel"
+        v-model="messageSubject"
+        type="text"
+        class="mb-2 w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-2 text-sm text-n-slate-12 placeholder:text-n-slate-9 focus:border-n-brand focus:outline-none"
+        :placeholder="t('INFLUENCER.MESSAGING.SUBJECT_PLACEHOLDER')"
+      />
 
       <!-- Message textarea -->
       <textarea

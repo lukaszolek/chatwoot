@@ -1,11 +1,12 @@
 class Influencers::ConversationService
   class ChannelUnavailableError < StandardError; end
 
-  def initialize(profile:, inbox:, user:)
+  def initialize(profile:, inbox:, user:, subject: nil)
     @profile = profile
     @contact = profile.contact
     @inbox = inbox
     @user = user
+    @subject = subject.presence
   end
 
   def find_or_create_conversation
@@ -15,16 +16,24 @@ class Influencers::ConversationService
                        .where(inbox: @inbox, status: %i[open pending])
                        .order(created_at: :desc)
                        .first
-    return existing if existing
+
+    if existing
+      update_mail_subject!(existing) if @subject
+      return existing
+    end
 
     contact_inbox = find_or_create_contact_inbox
+    attrs = {}
+    attrs['mail_subject'] = @subject if @subject
+
     Conversation.create!(
       account: @profile.account,
       inbox: @inbox,
       contact: @contact,
       contact_inbox: contact_inbox,
       assignee: @user,
-      status: :open
+      status: :open,
+      additional_attributes: attrs.presence || {}
     )
   end
 
@@ -51,6 +60,10 @@ class Influencers::ConversationService
   end
 
   private
+
+  def update_mail_subject!(conversation)
+    conversation.update!(additional_attributes: (conversation.additional_attributes || {}).merge('mail_subject' => @subject))
+  end
 
   def validate_channel!
     source = resolve_source_id

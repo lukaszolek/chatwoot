@@ -183,10 +183,11 @@ export const actions = {
     return data.payload;
   },
 
-  sendMessage: async (_, { profileId, inboxId, content }) => {
+  sendMessage: async (_, { profileId, inboxId, content, subject }) => {
     const { data } = await InfluencerProfilesAPI.sendMessage(profileId, {
       inboxId,
       content,
+      subject,
     });
     return data;
   },

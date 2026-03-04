@@ -68,10 +68,11 @@ class InfluencerProfilesAPI extends ApiClient {
     return axios.get(`${this.url}/${profileId}/conversations`);
   }
 
-  sendMessage(profileId, { inboxId, content }) {
+  sendMessage(profileId, { inboxId, content, subject }) {
     return axios.post(`${this.url}/${profileId}/send_message`, {
       inbox_id: inboxId,
       content,
+      subject,
     });
   }
 
