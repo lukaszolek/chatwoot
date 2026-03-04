@@ -22,6 +22,32 @@ const emit = defineEmits([
   'delete',
   'update:profile',
 ]);
+const EU_LANGUAGES = [
+  'bg',
+  'cs',
+  'da',
+  'de',
+  'el',
+  'en',
+  'es',
+  'et',
+  'fi',
+  'fr',
+  'ga',
+  'hr',
+  'hu',
+  'it',
+  'lt',
+  'lv',
+  'mt',
+  'nl',
+  'pl',
+  'pt',
+  'ro',
+  'sk',
+  'sl',
+  'sv',
+];
 const { t } = useI18n();
 const store = useStore();
 const rejectReason = ref('');
@@ -30,6 +56,36 @@ const editingEmail = ref(false);
 const emailInput = ref('');
 const savingEmail = ref(false);
 const emailError = ref('');
+
+const editingLanguage = ref(false);
+const languageInput = ref('');
+const savingLanguage = ref(false);
+
+const languageCode = computed(() => {
+  const code = props.profile.language;
+  return code ? code.toUpperCase() : null;
+});
+
+function startEditLanguage() {
+  languageInput.value = props.profile.language || '';
+  editingLanguage.value = true;
+}
+
+async function saveLanguage() {
+  savingLanguage.value = true;
+  try {
+    const updated = await store.dispatch('influencerProfiles/updateLanguage', {
+      profileId: props.profile.id,
+      language: languageInput.value || null,
+    });
+    emit('update:profile', updated);
+    editingLanguage.value = false;
+  } catch {
+    // silent
+  } finally {
+    savingLanguage.value = false;
+  }
+}
 
 function startEditEmail() {
   emailInput.value = props.profile.email || '';
@@ -516,7 +572,38 @@ function handleReject() {
               class="i-lucide-badge-check text-n-brand"
             />
           </div>
-          <p class="text-sm text-n-slate-11">@{{ profile.username }}</p>
+          <div class="flex items-center gap-2">
+            <p class="text-sm text-n-slate-11">@{{ profile.username }}</p>
+            <!-- Language badge / selector -->
+            <template v-if="editingLanguage">
+              <select
+                v-model="languageInput"
+                class="h-5 rounded border border-n-weak bg-n-solid-1 px-1 text-[11px] text-n-slate-12"
+                @change="saveLanguage"
+                @keyup.escape="editingLanguage = false"
+              >
+                <option value="">—</option>
+                <option v-for="code in EU_LANGUAGES" :key="code" :value="code">
+                  {{ code.toUpperCase() }}
+                </option>
+              </select>
+              <button
+                class="text-n-slate-10 hover:text-n-slate-12"
+                @click="editingLanguage = false"
+              >
+                <span class="i-lucide-x size-3" />
+              </button>
+            </template>
+            <button
+              v-else
+              class="flex items-center gap-0.5 rounded bg-n-background px-1.5 py-0.5 text-[11px] text-n-slate-11 hover:bg-n-slate-3"
+              :title="t('INFLUENCER.DETAIL.EDIT_LANGUAGE')"
+              @click="startEditLanguage"
+            >
+              <span class="i-lucide-globe size-3" />
+              {{ languageCode || t('INFLUENCER.DETAIL.SET_LANGUAGE') }}
+            </button>
+          </div>
           <a
             :href="`https://www.instagram.com/${profile.username}/`"
             target="_blank"
@@ -687,7 +774,11 @@ function handleReject() {
       </div>
 
       <!-- Voucher Calculator -->
-      <VoucherCalculator :profile="profile" class="mb-6" />
+      <VoucherCalculator
+        :profile="profile"
+        class="mb-6"
+        @profile-updated="p => emit('update:profile', p)"
+      />
 
       <!-- Offers (accepted+ profiles) -->
       <InfluencerOffers :profile="profile" />

@@ -121,7 +121,9 @@
       "REJECT_REASON_PLACEHOLDER": "Enter reason for rejection...",
       "APPROVE": "Approve",
       "REJECT": "Reject",
-      "RAW_DATA": "All data in DB"
+      "RAW_DATA": "All data in DB",
+      "SET_LANGUAGE": "language",
+      "EDIT_LANGUAGE": "Change language"
     },
     "ADD": {
       "BUTTON": "Add",
@@ -190,7 +192,8 @@
       "STANDARD": "Standard",
       "EXTENDED": "Extended",
       "ESTIMATED_VALUE": "Estimated voucher value",
-      "FORMULA_HINT": "followers x (FQS/100) x 0.019 x {content} x {rights}",
+      "MULTIPLIER_LABEL": "Value multiplier",
+      "FORMULA_HINT": "followers x (FQS/100) x 0.019 x {content} x {rights} x {multiplier}",
       "ENRICH_HINT": "Enrich this profile to unlock voucher valuation."
     }
   }

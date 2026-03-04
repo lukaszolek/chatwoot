@@ -165,6 +165,24 @@ export const actions = {
     return data.payload;
   },
 
+  updateLanguage: async ({ commit }, { profileId, language }) => {
+    const { data } = await InfluencerProfilesAPI.updateLanguage(
+      profileId,
+      language
+    );
+    commit(types.EDIT_INFLUENCER, data.payload);
+    return data.payload;
+  },
+
+  updateMultiplier: async ({ commit }, { profileId, multiplier }) => {
+    const { data } = await InfluencerProfilesAPI.updateMultiplier(
+      profileId,
+      multiplier
+    );
+    commit(types.EDIT_INFLUENCER, data.payload);
+    return data.payload;
+  },
+
   sendMessage: async (_, { profileId, inboxId, content }) => {
     const { data } = await InfluencerProfilesAPI.sendMessage(profileId, {
       inboxId,

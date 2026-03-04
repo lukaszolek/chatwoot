@@ -1,11 +1,14 @@
 <script setup>
-import { computed, toRef } from 'vue';
+import { computed, ref, toRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useVoucherCalculator } from './composables/useVoucherCalculator';
+import InfluencerProfilesAPI from '../../api/influencerProfiles';
 
 const props = defineProps({
   profile: { type: Object, required: true },
 });
+
+const emit = defineEmits(['profileUpdated']);
 
 const { t } = useI18n();
 const profileRef = toRef(props, 'profile');
@@ -20,6 +23,26 @@ const {
   rightsMultiplier,
   voucherValue,
 } = useVoucherCalculator(profileRef);
+
+const localMultiplier = ref(
+  Number(props.profile.voucher_value_multiplier) || 1.0
+);
+const isSavingMultiplier = ref(false);
+
+async function onMultiplierChange(event) {
+  const value = parseFloat(event.target.value);
+  localMultiplier.value = value;
+  isSavingMultiplier.value = true;
+  try {
+    const { data } = await InfluencerProfilesAPI.updateMultiplier(
+      props.profile.id,
+      value
+    );
+    emit('profileUpdated', data.payload);
+  } finally {
+    isSavingMultiplier.value = false;
+  }
+}
 
 const canCalculate = computed(
   () => props.profile.fqs_score != null || props.profile.followers_count > 0
@@ -114,6 +137,31 @@ function formatVoucher(value) {
         </button>
       </div>
 
+      <!-- Multiplier slider -->
+      <p class="mb-1.5 text-xs text-n-slate-11">
+        {{ t('INFLUENCER.VOUCHER.MULTIPLIER_LABEL') }}
+      </p>
+      <div class="mb-4 flex items-center gap-3">
+        <input
+          type="range"
+          min="0.5"
+          max="2.0"
+          step="0.1"
+          :value="localMultiplier"
+          class="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-n-slate-4 accent-n-brand"
+          @change="onMultiplierChange"
+          @input="localMultiplier = parseFloat($event.target.value)"
+        />
+        <span
+          class="min-w-[3rem] text-right text-sm font-semibold text-n-slate-12"
+        >
+          {{ localMultiplier.toFixed(1) }}&times;
+          <span v-if="isSavingMultiplier" class="text-xs text-n-slate-10">
+            ...
+          </span>
+        </span>
+      </div>
+
       <!-- Result -->
       <div class="rounded-lg bg-n-background p-3">
         <p class="text-xs text-n-slate-11">
@@ -127,6 +175,7 @@ function formatVoucher(value) {
             t('INFLUENCER.VOUCHER.FORMULA_HINT', {
               content: contentMultiplier.toFixed(1),
               rights: rightsMultiplier.toFixed(1),
+              multiplier: localMultiplier.toFixed(1),
             })
           }}
         </p>

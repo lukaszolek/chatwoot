@@ -29,7 +29,8 @@ class InfluencerOffer < ApplicationRecord
       followers: influencer_profile.followers_count,
       fqs_score: influencer_profile.fqs_score,
       packages: packages,
-      rights: rights
+      rights: rights,
+      multiplier: influencer_profile.voucher_value_multiplier
     ).value
   end
 

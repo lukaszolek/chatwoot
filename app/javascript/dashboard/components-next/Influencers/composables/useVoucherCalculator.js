@@ -22,6 +22,10 @@ export function useVoucherCalculator(profile) {
   const includeStories = ref(CONTENT_ELEMENTS.stories.defaultOn);
   const rightsLevel = ref('standard');
 
+  const voucherMultiplier = computed(
+    () => Number(profile.value?.voucher_value_multiplier) || 1.0
+  );
+
   const contentMultiplier = computed(() => {
     let sum = 0;
     if (includeReel.value) sum += CONTENT_ELEMENTS.reel.weight;
@@ -43,7 +47,8 @@ export function useVoucherCalculator(profile) {
       (fqs / 100) *
       RATE *
       contentMultiplier.value *
-      rightsMultiplier.value
+      rightsMultiplier.value *
+      voucherMultiplier.value
     );
   });
 
@@ -57,6 +62,7 @@ export function useVoucherCalculator(profile) {
     rightsLevel,
     contentMultiplier,
     rightsMultiplier,
+    voucherMultiplier,
     voucherValue,
   };
 }

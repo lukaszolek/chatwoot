@@ -6,7 +6,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   skip_before_action :authenticate_user!, only: [:proxy_image]
   skip_before_action :current_account, only: [:proxy_image]
   before_action :set_profile, only: %i[show destroy request_report approve reject recalculate retry_apify conversations send_message
-                                       create_offer offers update_email]
+                                       create_offer offers update_email update_language update_multiplier]
   rescue_from InfluencersClub::Client::ApiError, with: :handle_api_error
 
   def index
@@ -188,6 +188,27 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       render json: { payload: profile_json(@profile.reload) }
     else
       render json: { error: contact.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
+  end
+
+  def update_language
+    language = params[:language].presence
+    contact = @profile.contact
+
+    attrs = (contact.additional_attributes || {}).merge('locale' => language)
+    if contact.update(additional_attributes: attrs)
+      render json: { payload: profile_json(@profile.reload) }
+    else
+      render json: { error: contact.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
+  end
+
+  def update_multiplier
+    multiplier = params[:multiplier].to_f.clamp(0.5, 2.0)
+    if @profile.update(voucher_value_multiplier: multiplier)
+      render json: { payload: profile_json(@profile.reload) }
+    else
+      render json: { error: @profile.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
   end
 
@@ -420,6 +441,8 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       enrichment_pending: profile.enrichment_pending,
       contact_id: profile.contact_id,
       email: profile.contact&.email,
+      language: profile.contact&.additional_attributes&.dig('locale'),
+      voucher_value_multiplier: profile.voucher_value_multiplier,
       created_at: profile.created_at,
       updated_at: profile.updated_at
     }

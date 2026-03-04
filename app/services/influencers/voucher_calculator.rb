@@ -4,11 +4,12 @@ class Influencers::VoucherCalculator
   RIGHTS_MULTIPLIERS = { 'standard' => 1.0, 'extended' => 1.5 }.freeze
   CONTENT_FLOOR = 0.1
 
-  def initialize(followers:, fqs_score:, packages:, rights: 'standard')
+  def initialize(followers:, fqs_score:, packages:, rights: 'standard', multiplier: 1.0)
     @followers = followers.to_f
     @fqs_score = fqs_score.present? ? fqs_score.to_f : 50.0
     @packages = packages || {}
     @rights = rights
+    @multiplier = multiplier.to_f
   end
 
   def value
@@ -16,6 +17,6 @@ class Influencers::VoucherCalculator
     content_mult = content_mult.positive? ? [content_mult, CONTENT_FLOOR].max : 0
     rights_mult = RIGHTS_MULTIPLIERS.fetch(@rights, 1.0)
 
-    (@followers * (@fqs_score / 100.0) * RATE * content_mult * rights_mult).round(2)
+    (@followers * (@fqs_score / 100.0) * RATE * content_mult * rights_mult * @multiplier).round(2)
   end
 end

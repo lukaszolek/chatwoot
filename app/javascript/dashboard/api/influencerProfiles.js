@@ -91,6 +91,18 @@ class InfluencerProfilesAPI extends ApiClient {
     return axios.patch(`${this.url}/${profileId}/update_email`, { email });
   }
 
+  updateLanguage(profileId, language) {
+    return axios.patch(`${this.url}/${profileId}/update_language`, {
+      language,
+    });
+  }
+
+  updateMultiplier(profileId, multiplier) {
+    return axios.patch(`${this.url}/${profileId}/update_multiplier`, {
+      multiplier,
+    });
+  }
+
   addByHandle(handle) {
     return axios.post(`${this.url}/add_by_handle`, { handle });
   }
