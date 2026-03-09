@@ -35,9 +35,7 @@ const formatER = er => {
 };
 
 const isApifyPending = computed(
-  () =>
-    props.profile.apify_status === 'apify_pending' ||
-    props.profile.apify_status === 'apify_none'
+  () => props.profile.apify_status === 'apify_pending'
 );
 const isApifyFailed = computed(
   () => props.profile.apify_status === 'apify_failed'
