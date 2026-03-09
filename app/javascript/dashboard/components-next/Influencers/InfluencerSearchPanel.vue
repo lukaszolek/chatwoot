@@ -5,6 +5,7 @@ import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 import InfluencerCreditsBadge from './InfluencerCreditsBadge.vue';
 import InfluencerSearchHistory from './InfluencerSearchHistory.vue';
+import Select from 'dashboard/components-next/select/Select.vue';
 
 const store = useStore();
 const { t } = useI18n();
@@ -28,16 +29,22 @@ const EU_COUNTRIES = [
 ];
 
 const LANGUAGES = [
-  { code: '', label: 'Any' },
-  { code: 'en', label: 'English' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'pl', label: 'Polski' },
-  { code: 'fr', label: 'Français' },
-  { code: 'nl', label: 'Nederlands' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'es', label: 'Español' },
-  { code: 'da', label: 'Dansk' },
-  { code: 'sv', label: 'Svenska' },
+  { value: '', label: 'Any' },
+  { value: 'en', label: 'English' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'pl', label: 'Polski' },
+  { value: 'fr', label: 'Français' },
+  { value: 'nl', label: 'Nederlands' },
+  { value: 'it', label: 'Italiano' },
+  { value: 'es', label: 'Español' },
+  { value: 'da', label: 'Dansk' },
+  { value: 'sv', label: 'Svenska' },
+];
+
+const GENDERS = [
+  { value: '', label: 'Any' },
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
 ];
 
 const DEFAULT_FILTERS = {
@@ -322,38 +329,18 @@ function toggleCountry(code) {
         />
       </div>
 
-      <div class="w-28">
+      <div>
         <label class="mb-1 block text-xs font-medium text-n-slate-11">
           {{ t('INFLUENCER.SEARCH.GENDER') }}
         </label>
-        <select
-          v-model="filters.gender"
-          class="h-[34px] w-full appearance-none rounded-lg border border-n-weak bg-n-solid-1 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat px-3 pr-7 text-sm"
-        >
-          <option value="">
-            {{ t('INFLUENCER.SEARCH.GENDER_ANY') }}
-          </option>
-          <option value="male">
-            {{ t('INFLUENCER.SEARCH.GENDER_MALE') }}
-          </option>
-          <option value="female">
-            {{ t('INFLUENCER.SEARCH.GENDER_FEMALE') }}
-          </option>
-        </select>
+        <Select v-model="filters.gender" :options="GENDERS" />
       </div>
 
-      <div class="w-36">
+      <div>
         <label class="mb-1 block text-xs font-medium text-n-slate-11">
           {{ t('INFLUENCER.SEARCH.LANGUAGE') }}
         </label>
-        <select
-          v-model="filters.profile_language"
-          class="h-[34px] w-full appearance-none rounded-lg border border-n-weak bg-n-solid-1 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat px-3 pr-7 text-sm"
-        >
-          <option v-for="lang in LANGUAGES" :key="lang.code" :value="lang.code">
-            {{ lang.label }}
-          </option>
-        </select>
+        <Select v-model="filters.profile_language" :options="LANGUAGES" />
       </div>
 
       <div class="min-w-[180px] flex-1">

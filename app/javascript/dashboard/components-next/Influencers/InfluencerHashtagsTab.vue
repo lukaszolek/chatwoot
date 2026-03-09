@@ -1,8 +1,9 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
+import Select from 'dashboard/components-next/select/Select.vue';
 
 const store = useStore();
 const { t } = useI18n();
@@ -20,16 +21,16 @@ const sortDirection = ref('desc');
 const selectedIds = ref([]);
 
 const LANGUAGES = [
-  { code: '', label: 'All' },
-  { code: 'en', label: 'English' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'pl', label: 'Polski' },
-  { code: 'fr', label: 'Français' },
-  { code: 'nl', label: 'Nederlands' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'es', label: 'Español' },
-  { code: 'da', label: 'Dansk' },
-  { code: 'sv', label: 'Svenska' },
+  { value: '', label: 'All' },
+  { value: 'en', label: 'English' },
+  { value: 'de', label: 'Deutsch' },
+  { value: 'pl', label: 'Polski' },
+  { value: 'fr', label: 'Français' },
+  { value: 'nl', label: 'Nederlands' },
+  { value: 'it', label: 'Italiano' },
+  { value: 'es', label: 'Español' },
+  { value: 'da', label: 'Dansk' },
+  { value: 'sv', label: 'Svenska' },
 ];
 
 const MIN_POSTS_OPTIONS = [
@@ -68,6 +69,9 @@ function fetchHashtags(page = 1) {
   store.dispatch('influencerHashtags/fetchHashtags', buildParams(page));
   selectedIds.value = [];
 }
+
+watch(languageFilter, () => fetchHashtags(1));
+watch(minPostsFilter, () => fetchHashtags(1));
 
 function handleSort(col) {
   if (sortColumn.value === col) {
@@ -142,29 +146,8 @@ onMounted(() => fetchHashtags());
   <div class="p-4">
     <!-- Filters row -->
     <div class="mb-4 flex flex-wrap items-center gap-3">
-      <select
-        v-model="languageFilter"
-        class="h-[34px] w-36 appearance-none rounded-lg border border-n-weak bg-n-solid-1 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat px-3 pr-7 text-sm"
-        @change="fetchHashtags(1)"
-      >
-        <option v-for="lang in LANGUAGES" :key="lang.code" :value="lang.code">
-          {{ lang.label }}
-        </option>
-      </select>
-
-      <select
-        v-model="minPostsFilter"
-        class="h-[34px] w-28 appearance-none rounded-lg border border-n-weak bg-n-solid-1 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat px-3 pr-7 text-sm"
-        @change="fetchHashtags(1)"
-      >
-        <option
-          v-for="opt in MIN_POSTS_OPTIONS"
-          :key="opt.value"
-          :value="opt.value"
-        >
-          {{ opt.label }}
-        </option>
-      </select>
+      <Select v-model="languageFilter" :options="LANGUAGES" />
+      <Select v-model="minPostsFilter" :options="MIN_POSTS_OPTIONS" />
 
       <label
         class="flex cursor-pointer items-center gap-1.5 text-sm text-n-slate-11"
