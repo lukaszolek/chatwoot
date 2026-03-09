@@ -14,15 +14,12 @@
       "HASHTAGS": "Hashtags"
     },
     "SEARCH": {
-      "PRESET": "Preset",
-      "SELECT_PRESET": "Select a preset...",
       "AI_SEARCH": "AI Search",
       "AI_SEARCH_PLACEHOLDER": "e.g. home decor interior design wall art",
       "FOLLOWERS_MIN": "Min followers",
       "FOLLOWERS_MAX": "Max followers",
       "BUTTON": "Discover Influencers",
       "SEARCHING": "Searching",
-      "ADVANCED_FILTERS": "Advanced filters",
       "MIN_ER": "Min ER %",
       "MIN_ER_PLACEHOLDER": "1.5",
       "MAX_ER": "Max ER %",
@@ -35,7 +32,7 @@
       "HASHTAGS": "Hashtags",
       "HASHTAGS_PLACEHOLDER": "e.g. homedecor, interior, wnetrza",
       "KEYWORDS_IN_BIO": "Keywords in bio",
-      "KEYWORDS_IN_BIO_PLACEHOLDER": "e.g. home, decor, interior",
+      "KEYWORDS_IN_BIO_PLACEHOLDER": "e.g. home, decor, interior (use to filter by bio terms)",
       "NO_RESULTS": "Use the search panel above to discover influencers.",
       "EMPTY_RESULTS": "No influencers found matching your filters.",
       "EMPTY_RESULTS_HINT": "Try broadening your search — remove country filters, increase the follower range, or simplify the AI search query.",
@@ -50,6 +47,12 @@
     },
     "SEARCH_RESULT": {
       "AVG_VIEWS": "avg views"
+    },
+    "HISTORY": {
+      "TITLE": "Recent searches",
+      "EMPTY": "No search history yet.",
+      "RESULTS_COUNT": "{count} results",
+      "PAGES_FETCHED": "{count} pages"
     },
     "CREDITS": {
       "REMAINING": "{count} credits remaining",
@@ -223,6 +226,33 @@
       "MULTIPLIER_LABEL": "Value multiplier",
       "FORMULA_HINT": "followers x (FQS/100) x 0.019 x {content} x {rights} x {multiplier}",
       "ENRICH_HINT": "Enrich this profile to unlock voucher valuation."
+    },
+    "MARK_CONTACTED": {
+      "TITLE": "Mark as Contacted",
+      "BUTTON": "Mark Contacted",
+      "DESCRIPTION": "Log the message you already sent to {name} and mark them as contacted.",
+      "CHANNEL_LABEL": "Which channel did you use?",
+      "MESSAGE_PLACEHOLDER": "Paste or describe the message you sent...",
+      "SUBMIT": "Mark Contacted",
+      "SUBMITTING": "Saving...",
+      "ERROR": "Failed to mark as contacted"
+    },
+    "COMMUNICATION": {
+      "TAB_PROFILE": "Profile",
+      "TAB_COMMUNICATION": "Communication",
+      "LOG_MESSAGE": "Log Manual Message",
+      "LOG_DESCRIPTION": "Record a message you sent outside Chatwoot (e.g. Instagram DM).",
+      "LOG_PLACEHOLDER": "Paste or describe the message you sent...",
+      "LOG_SUBMIT": "Log Message",
+      "MANUAL_BADGE": "Logged manually",
+      "OPEN_CONVERSATION": "Open conversation",
+      "TODAY": "Today",
+      "YESTERDAY": "Yesterday",
+      "LAST_CONTACT": "Last contact",
+      "SHOW_ORIGINAL": "Original",
+      "SHOW_TRANSLATED": "Translated",
+      "TOGGLE_TRANSLATION": "Toggle between original and translated messages",
+      "TRANSLATED_BADGE": "Translated"
     }
   }
 }

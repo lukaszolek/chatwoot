@@ -107,6 +107,10 @@ export const mutations = {
     $state.lastSearchParams = filters;
   },
 
+  [types.SET_INFLUENCER_SEARCH_HISTORY]($state, history) {
+    $state.searchHistory = history;
+  },
+
   // Kanban mutations
   [types.SET_KANBAN_COLUMN]($state, { status, records, meta }) {
     $state.kanban[status] = {

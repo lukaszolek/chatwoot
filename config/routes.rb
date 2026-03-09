@@ -208,6 +208,7 @@ Rails.application.routes.draw do
           resources :influencer_profiles, only: %i[index show destroy] do
             collection do
               post :search
+              get :search_history
               post :import
               post :bulk_import
               post :bulk_request_report
@@ -223,6 +224,9 @@ Rails.application.routes.draw do
               post :retry_apify
               get :conversations
               post :send_message
+              post :mark_contacted
+              post :log_message
+              get :conversation_messages
               post :create_offer
               get :offers
               patch :update_email

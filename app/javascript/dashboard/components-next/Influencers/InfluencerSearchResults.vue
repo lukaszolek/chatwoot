@@ -6,7 +6,6 @@ import { useStore, useMapGetter } from 'dashboard/composables/store';
 
 import PaginationFooter from 'dashboard/components-next/pagination/PaginationFooter.vue';
 import InfluencerSearchResultCard from './InfluencerSearchResultCard.vue';
-import InfluencerCreditsBadge from './InfluencerCreditsBadge.vue';
 
 const emit = defineEmits(['select']);
 const { t } = useI18n();
@@ -81,7 +80,6 @@ async function handlePageChange(page) {
             {{ t('INFLUENCER.SEARCH.CACHED_RESULTS') }}
           </span>
         </div>
-        <InfluencerCreditsBadge />
       </div>
 
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">

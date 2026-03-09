@@ -9,6 +9,8 @@ import InfluencerReelPreview from './InfluencerReelPreview.vue';
 import InfluencerPostPreview from './InfluencerPostPreview.vue';
 import InfluencerOffers from './InfluencerOffers.vue';
 import InfluencerMessaging from './InfluencerMessaging.vue';
+import InfluencerCommunicationTab from './InfluencerCommunicationTab.vue';
+import MarkContactedModal from './MarkContactedModal.vue';
 
 const props = defineProps({
   profile: { type: Object, required: true },
@@ -22,7 +24,11 @@ const emit = defineEmits([
   'preselect',
   'delete',
   'update:profile',
+  'contacted',
 ]);
+
+const activeTab = ref('profile');
+const showMarkContactedModal = ref(false);
 const EU_LANGUAGES = [
   'bg',
   'cs',
@@ -540,7 +546,50 @@ function handleReject() {
       </button>
     </div>
 
-    <div class="flex-1 overflow-auto p-6">
+    <!-- Tab bar -->
+    <div class="flex border-b border-n-weak px-6">
+      <button
+        class="relative px-4 py-2.5 text-sm font-medium transition-colors"
+        :class="
+          activeTab === 'profile'
+            ? 'text-n-brand'
+            : 'text-n-slate-11 hover:text-n-slate-12'
+        "
+        @click="activeTab = 'profile'"
+      >
+        {{ t('INFLUENCER.COMMUNICATION.TAB_PROFILE') }}
+        <span
+          v-if="activeTab === 'profile'"
+          class="absolute inset-x-0 bottom-0 h-0.5 bg-n-brand"
+        />
+      </button>
+      <button
+        class="relative px-4 py-2.5 text-sm font-medium transition-colors"
+        :class="
+          activeTab === 'communication'
+            ? 'text-n-brand'
+            : 'text-n-slate-11 hover:text-n-slate-12'
+        "
+        @click="activeTab = 'communication'"
+      >
+        {{ t('INFLUENCER.COMMUNICATION.TAB_COMMUNICATION') }}
+        <span
+          v-if="activeTab === 'communication'"
+          class="absolute inset-x-0 bottom-0 h-0.5 bg-n-brand"
+        />
+      </button>
+    </div>
+
+    <!-- Communication tab -->
+    <div v-if="activeTab === 'communication'" class="flex-1 overflow-auto p-6">
+      <InfluencerCommunicationTab
+        :profile="profile"
+        @update:profile="p => emit('update:profile', p)"
+      />
+    </div>
+
+    <!-- Profile tab -->
+    <div v-else class="flex-1 overflow-auto p-6">
       <!-- Warnings banner -->
       <div v-if="warnings.length" class="mb-4 space-y-1">
         <div
@@ -1142,7 +1191,29 @@ function handleReject() {
       </button>
     </div>
 
-    <!-- Actions for accepted/rejected profiles (delete only) -->
+    <!-- Actions for approved profiles -->
+    <div
+      v-else-if="profile.status === 'approved'"
+      class="border-t border-n-weak p-4"
+    >
+      <div class="flex gap-2">
+        <button
+          class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+          @click="showMarkContactedModal = true"
+        >
+          <span class="i-lucide-send size-3.5" />
+          {{ t('INFLUENCER.MARK_CONTACTED.BUTTON') }}
+        </button>
+      </div>
+      <button
+        class="mt-2 w-full rounded-lg border border-n-weak px-4 py-1.5 text-sm text-n-slate-11 hover:bg-n-background"
+        @click="emit('delete')"
+      >
+        {{ t('INFLUENCER.DELETE.BUTTON') }}
+      </button>
+    </div>
+
+    <!-- Actions for other profiles (delete only) -->
     <div v-else class="border-t border-n-weak p-4">
       <button
         class="w-full rounded-lg border border-n-weak px-4 py-1.5 text-sm text-n-slate-11 hover:bg-n-background"
@@ -1151,5 +1222,19 @@ function handleReject() {
         {{ t('INFLUENCER.DELETE.BUTTON') }}
       </button>
     </div>
+
+    <!-- Mark Contacted Modal -->
+    <MarkContactedModal
+      v-if="showMarkContactedModal"
+      :profile="profile"
+      @close="showMarkContactedModal = false"
+      @contacted="
+        p => {
+          emit('contacted', p);
+          emit('update:profile', p);
+          showMarkContactedModal = false;
+        }
+      "
+    />
   </div>
 </template>

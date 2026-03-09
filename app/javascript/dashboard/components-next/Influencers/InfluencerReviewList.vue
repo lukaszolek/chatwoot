@@ -4,9 +4,14 @@ import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
 
+import { ref } from 'vue';
 import FqsScoreBadge from './FqsScoreBadge.vue';
+import MarkContactedModal from './MarkContactedModal.vue';
 
 const emit = defineEmits(['select']);
+
+const markContactedProfile = ref(null);
+
 const store = useStore();
 const { t } = useI18n();
 
@@ -192,6 +197,13 @@ function loadMore() {
                 {{ t('INFLUENCER.REVIEW.APPROVE') }}
               </button>
               <button
+                v-if="profile.status === 'approved'"
+                class="rounded px-2 py-1 text-xs text-green-600 hover:bg-green-50"
+                @click="markContactedProfile = profile"
+              >
+                {{ t('INFLUENCER.MARK_CONTACTED.BUTTON') }}
+              </button>
+              <button
                 v-if="
                   profile.status !== 'rejected' && profile.status !== 'approved'
                 "
@@ -215,5 +227,12 @@ function loadMore() {
         {{ t('INFLUENCER.REVIEW.LOAD_MORE') }}
       </button>
     </div>
+
+    <MarkContactedModal
+      v-if="markContactedProfile"
+      :profile="markContactedProfile"
+      @close="markContactedProfile = null"
+      @contacted="markContactedProfile = null"
+    />
   </div>
 </template>

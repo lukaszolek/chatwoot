@@ -6,7 +6,8 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   skip_before_action :authenticate_user!, only: [:proxy_image]
   skip_before_action :current_account, only: [:proxy_image]
   before_action :set_profile, only: %i[show destroy request_report preselect approve reject recalculate retry_apify conversations
-                                       send_message create_offer offers update_email update_language update_multiplier]
+                                       send_message mark_contacted log_message conversation_messages
+                                       create_offer offers update_email update_language update_multiplier]
   rescue_from InfluencersClub::Client::ApiError, with: :handle_api_error
 
   def index
@@ -59,6 +60,11 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       payload: result[:profiles].map { |p| profile_json(p) },
       meta: result[:meta]
     }
+  end
+
+  def search_history
+    searches = Current.account.influencer_searches.order(updated_at: :desc).limit(50)
+    render json: { payload: searches.map { |s| search_history_json(s) } }
   end
 
   def import
@@ -155,6 +161,8 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       { content: params[:content], message_type: 'outgoing' }
     ).perform
 
+    @profile.update!(last_contacted_at: Time.current)
+
     translations = message.content_attributes&.dig('translations')
     render json: {
       conversation_id: conversation.display_id,
@@ -163,6 +171,53 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
     }
   rescue Influencers::ConversationService::ChannelUnavailableError => e
     render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def mark_contacted
+    inbox = Current.account.inboxes.find(params[:inbox_id])
+    conversation = Influencers::ConversationService.new(
+      profile: @profile, inbox: inbox, user: Current.user
+    ).find_or_create_conversation
+
+    Messages::MessageBuilder.new(
+      Current.user, conversation,
+      { content: params[:content], message_type: 'outgoing', content_attributes: { manual_log: true } }
+    ).perform
+
+    @profile.transition_to!(:contacted)
+    @profile.update!(last_contacted_at: Time.current)
+
+    render json: { payload: profile_json(@profile.reload) }
+  rescue Influencers::ConversationService::ChannelUnavailableError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def log_message
+    inbox = Current.account.inboxes.find(params[:inbox_id])
+    conversation = Influencers::ConversationService.new(
+      profile: @profile, inbox: inbox, user: Current.user
+    ).find_or_create_conversation
+
+    Messages::MessageBuilder.new(
+      Current.user, conversation,
+      { content: params[:content], message_type: 'outgoing', content_attributes: { manual_log: true } }
+    ).perform
+
+    @profile.update!(last_contacted_at: Time.current)
+
+    render json: { payload: profile_json(@profile.reload) }
+  rescue Influencers::ConversationService::ChannelUnavailableError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def conversation_messages
+    convs = @profile.contact.conversations
+                    .includes(:inbox, messages: [{ attachments: [{ file_attachment: :blob }] }])
+                    .order(last_activity_at: :desc)
+
+    render json: {
+      payload: convs.map { |c| conversation_with_messages_json(c) }
+    }
   end
 
   def create_offer
@@ -253,6 +308,18 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
 
   private
 
+  def search_history_json(search)
+    {
+      id: search.id,
+      query_params: search.query_params,
+      results_count: search.results_count,
+      pages_fetched: search.pages_fetched,
+      credits_used: search.credits_used,
+      created_at: search.created_at,
+      updated_at: search.updated_at
+    }
+  end
+
   def translate_mail_subject!(conversation)
     Influencers::SubjectTranslatorService.new(
       account: Current.account,
@@ -326,7 +393,8 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   end
 
   def current_search_page
-    search_params[:page].presence || 1
+    page = search_params[:page].presence || 1
+    page.to_s == 'next' ? 'next' : page
   end
 
   # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
@@ -381,6 +449,30 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       terms_accepted_at: offer.terms_accepted_at,
       offer_page_version: offer.offer_page_version,
       created_at: offer.created_at
+    }
+  end
+
+  def conversation_with_messages_json(conversation)
+    {
+      id: conversation.id,
+      display_id: conversation.display_id,
+      status: conversation.status,
+      inbox: { id: conversation.inbox.id, name: conversation.inbox.name, channel_type: conversation.inbox.channel_type },
+      messages: conversation.messages.order(created_at: :asc).map { |m| message_json(m) },
+      created_at: conversation.created_at,
+      last_activity_at: conversation.last_activity_at
+    }
+  end
+
+  def message_json(message)
+    {
+      id: message.id,
+      content: message.content,
+      message_type: message.message_type,
+      content_attributes: message.content_attributes,
+      created_at: message.created_at,
+      sender_type: message.sender_type,
+      sender_name: message.sender&.try(:name)
     }
   end
 
@@ -463,6 +555,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       email: profile.contact&.email,
       language: profile.contact&.additional_attributes&.dig('locale'),
       voucher_value_multiplier: profile.voucher_value_multiplier,
+      last_contacted_at: profile.last_contacted_at,
       created_at: profile.created_at,
       updated_at: profile.updated_at
     }

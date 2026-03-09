@@ -47,6 +47,18 @@ const showFqs = computed(
 const isEnrichmentPending = computed(
   () => props.profile.enrichment_pending === true
 );
+
+const formatContactDate = dateStr => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffDays === 0) return t('INFLUENCER.COMMUNICATION.TODAY');
+  if (diffDays === 1) return t('INFLUENCER.COMMUNICATION.YESTERDAY');
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+};
 </script>
 
 <template>
@@ -148,6 +160,18 @@ const isEnrichmentPending = computed(
         :score="profile.fqs_score"
         class="ml-auto"
       />
+    </div>
+
+    <!-- Last contacted date (contacted/confirmed statuses) -->
+    <div
+      v-if="
+        (profile.status === 'contacted' || profile.status === 'confirmed') &&
+        profile.last_contacted_at
+      "
+      class="text-xs text-n-slate-10 flex items-center gap-1"
+    >
+      <span class="i-lucide-clock size-3" />
+      {{ formatContactDate(profile.last_contacted_at) }}
     </div>
 
     <!-- Rejection reason (rejected column) -->

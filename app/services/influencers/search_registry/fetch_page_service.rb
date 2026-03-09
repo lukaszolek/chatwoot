@@ -16,14 +16,14 @@ class Influencers::SearchRegistry::FetchPageService
   def initialize(account:, filter_params:, page:, discovery_service: nil)
     @account = account
     @filter_params = filter_params || {}
-    @requested_page = [page.to_i, 1].max
+    @requested_page = page
     @discovery_service = discovery_service || InfluencersClub::DiscoveryService.new(account: account)
   end
 
   # rubocop:disable Metrics/MethodLength
   def perform
     search = find_or_initialize_search
-    @page = clamp_page(search)
+    @page = resolve_page(search)
     cached = ensure_page_loaded(search)
     raw_results = search.page_results(@page)
     imported = 0
@@ -117,10 +117,14 @@ class Influencers::SearchRegistry::FetchPageService
     [profile, profile.present?]
   end
 
-  # Only allow jumping one page beyond what's cached to avoid mass API calls
-  def clamp_page(search)
-    max_allowed = search.pages_fetched.to_i + 1
-    [@requested_page, max_allowed].min
+  def resolve_page(search)
+    if @requested_page.to_s == 'next'
+      search.pages_fetched.to_i + 1
+    else
+      # Only allow jumping one page beyond what's cached to avoid mass API calls
+      max_allowed = search.pages_fetched.to_i + 1
+      [[@requested_page.to_i, 1].max, max_allowed].min
+    end
   end
 
   def target_market

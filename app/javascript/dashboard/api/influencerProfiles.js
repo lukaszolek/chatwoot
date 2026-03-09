@@ -24,6 +24,10 @@ class InfluencerProfilesAPI extends ApiClient {
     return axios.post(`${this.url}/search`, { ...filters, page });
   }
 
+  searchHistory() {
+    return axios.get(`${this.url}/search_history`);
+  }
+
   importProfile(searchResult, targetMarket) {
     return axios.post(`${this.url}/import`, {
       search_result: searchResult,
@@ -78,6 +82,24 @@ class InfluencerProfilesAPI extends ApiClient {
       content,
       subject,
     });
+  }
+
+  markContacted(profileId, { inboxId, content }) {
+    return axios.post(`${this.url}/${profileId}/mark_contacted`, {
+      inbox_id: inboxId,
+      content,
+    });
+  }
+
+  logMessage(profileId, { inboxId, content }) {
+    return axios.post(`${this.url}/${profileId}/log_message`, {
+      inbox_id: inboxId,
+      content,
+    });
+  }
+
+  getConversationMessages(profileId) {
+    return axios.get(`${this.url}/${profileId}/conversation_messages`);
   }
 
   createOffer(profileId, { packages, rightsLevel, currency }) {

@@ -30,12 +30,16 @@ export const actions = {
     }
   },
 
-  search: async ({ commit, state }, { filters, page = 1 } = {}) => {
+  search: async ({ commit, dispatch, state }, { filters, page = 1 } = {}) => {
     commit(types.SET_INFLUENCER_UI_FLAG, { isSearching: true });
     const searchFilters = filters || state.lastSearchParams || {};
+    const searchPage = page === 'next' ? 'next' : page;
 
     try {
-      const { data } = await InfluencerProfilesAPI.search(searchFilters, page);
+      const { data } = await InfluencerProfilesAPI.search(
+        searchFilters,
+        searchPage
+      );
       commit(types.SET_INFLUENCER_LAST_SEARCH_PARAMS, searchFilters);
       commit(types.SET_INFLUENCER_SEARCH_RESULTS, {
         results: data.payload || [],
@@ -48,6 +52,7 @@ export const actions = {
         cached: data.meta?.cached || false,
         creditsLeft: data.meta?.credits_left ?? null,
       });
+      dispatch('fetchSearchHistory');
     } finally {
       commit(types.SET_INFLUENCER_UI_FLAG, { isSearching: false });
     }
@@ -203,6 +208,36 @@ export const actions = {
     return data;
   },
 
+  markContacted: async ({ commit, state }, { id, inboxId, content }) => {
+    const existing = state.records[id];
+    const oldStatus = existing?.status || 'approved';
+    const { data } = await InfluencerProfilesAPI.markContacted(id, {
+      inboxId,
+      content,
+    });
+    commit(types.EDIT_INFLUENCER, data.payload);
+    commit(types.UPDATE_KANBAN_ITEM, {
+      oldStatus,
+      newProfile: data.payload,
+    });
+    return data.payload;
+  },
+
+  logMessage: async ({ commit }, { profileId, inboxId, content }) => {
+    const { data } = await InfluencerProfilesAPI.logMessage(profileId, {
+      inboxId,
+      content,
+    });
+    commit(types.EDIT_INFLUENCER, data.payload);
+    return data.payload;
+  },
+
+  getConversationMessages: async (_, { profileId }) => {
+    const { data } =
+      await InfluencerProfilesAPI.getConversationMessages(profileId);
+    return data.payload;
+  },
+
   addByHandle: async ({ commit, dispatch }, { handle }) => {
     commit(types.SET_INFLUENCER_UI_FLAG, { isAdding: true });
     try {
@@ -232,6 +267,15 @@ export const actions = {
       commit(types.REMOVE_KANBAN_ITEM, { status, profileId: id });
     } finally {
       commit(types.SET_INFLUENCER_UI_FLAG, { isDeleting: false });
+    }
+  },
+
+  fetchSearchHistory: async ({ commit }) => {
+    try {
+      const { data } = await InfluencerProfilesAPI.searchHistory();
+      commit(types.SET_INFLUENCER_SEARCH_HISTORY, data.payload || []);
+    } catch {
+      // silently ignore
     }
   },
 

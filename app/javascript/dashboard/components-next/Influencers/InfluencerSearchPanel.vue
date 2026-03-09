@@ -3,15 +3,15 @@ import { ref, reactive, watch, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore, useMapGetter } from 'dashboard/composables/store';
 import { useAlert } from 'dashboard/composables';
+import InfluencerCreditsBadge from './InfluencerCreditsBadge.vue';
+import InfluencerSearchHistory from './InfluencerSearchHistory.vue';
 
 const store = useStore();
 const { t } = useI18n();
 const uiFlags = useMapGetter('influencerProfiles/getUIFlags');
 const starredHashtags = useMapGetter('influencerHashtags/getStarredHashtags');
+const lastSearchParams = useMapGetter('influencerProfiles/getLastSearchParams');
 const searchError = ref('');
-
-const showAdvanced = ref(false);
-const advancedChevron = '▸';
 
 const EU_COUNTRIES = [
   { code: 'DE', name: 'Germany' },
@@ -40,54 +40,6 @@ const LANGUAGES = [
   { code: 'sv', label: 'Svenska' },
 ];
 
-const SEARCH_PRESETS = {
-  'DE micro home decor': {
-    followers: { min: 5000, max: 30000 },
-    ai_search: 'home decor interior design wall art',
-    location: ['DE'],
-    profile_language: 'de',
-    engagement_percent_min: 1.5,
-    engagement_percent_max: 15,
-    hashtags: 'homedecor, interior, einrichtung',
-  },
-  'PL family photographers': {
-    followers: { min: 5000, max: 30000 },
-    ai_search: 'wnętrza rodzina zdjęcia dom',
-    location: ['PL'],
-    profile_language: 'pl',
-    engagement_percent_min: 1.5,
-    engagement_percent_max: 15,
-    hashtags: 'wnetrza, homedecor',
-  },
-  'FR interior micro': {
-    followers: { min: 5000, max: 30000 },
-    ai_search: 'decoration interieur maison',
-    location: ['FR'],
-    profile_language: 'fr',
-    engagement_percent_min: 1.5,
-    engagement_percent_max: 15,
-    hashtags: 'decoration, interieur',
-  },
-  'NL home lifestyle': {
-    followers: { min: 5000, max: 30000 },
-    ai_search: 'interieur woonkamer huis',
-    location: ['NL'],
-    profile_language: 'nl',
-    engagement_percent_min: 1.5,
-    engagement_percent_max: 15,
-    hashtags: 'interieur, wonen',
-  },
-  'UK home decor': {
-    followers: { min: 5000, max: 30000 },
-    ai_search: 'homedecor interiordesign',
-    location: ['GB'],
-    profile_language: 'en',
-    engagement_percent_min: 1.5,
-    engagement_percent_max: 15,
-    hashtags: 'homedecor, interiordesign',
-  },
-};
-
 const DEFAULT_FILTERS = {
   ai_search: '',
   followers_min: 5000,
@@ -99,6 +51,7 @@ const DEFAULT_FILTERS = {
   profile_language: '',
   hashtags: '',
   keywords_in_bio: '',
+  last_post_days: 30,
 };
 
 const COUNTRY_TO_LANGUAGE = {
@@ -117,7 +70,6 @@ const COUNTRY_TO_LANGUAGE = {
   SE: 'sv',
 };
 
-const selectedPreset = ref('');
 const filters = reactive({ ...DEFAULT_FILTERS });
 
 const selectedLanguages = computed(() => {
@@ -135,36 +87,7 @@ watch(selectedLanguages, langs => {
   }
 });
 
-function applyPreset() {
-  if (!selectedPreset.value) return;
-  const preset = SEARCH_PRESETS[selectedPreset.value];
-  if (!preset) return;
-
-  Object.assign(filters, { ...DEFAULT_FILTERS });
-  filters.ai_search = preset.ai_search || '';
-  filters.followers_min = preset.followers?.min ?? 5000;
-  filters.followers_max = preset.followers?.max ?? 30000;
-  filters.location = preset.location ? [...preset.location] : [];
-  filters.engagement_percent_min = preset.engagement_percent_min ?? '';
-  filters.engagement_percent_max = preset.engagement_percent_max ?? 15;
-  filters.gender = preset.gender || '';
-  filters.profile_language = preset.profile_language || '';
-  filters.hashtags = preset.hashtags || '';
-  filters.keywords_in_bio = preset.keywords_in_bio || '';
-
-  if (
-    filters.engagement_percent_min ||
-    filters.engagement_percent_max ||
-    filters.gender ||
-    filters.profile_language ||
-    filters.hashtags ||
-    filters.keywords_in_bio
-  ) {
-    showAdvanced.value = true;
-  }
-}
-
-async function handleSearch() {
+function buildPayload() {
   const payload = {
     ai_search: filters.ai_search || undefined,
     followers: { min: filters.followers_min, max: filters.followers_max },
@@ -188,12 +111,26 @@ async function handleSearch() {
       .split(',')
       .map(k => k.trim())
       .filter(Boolean);
+  if (filters.last_post_days)
+    payload.last_post_days = filters.last_post_days;
+
+  return payload;
+}
+
+async function handleSearch() {
+  const payload = buildPayload();
+
+  // If same filters as last search, fetch next page instead of page 1
+  const isSameSearch =
+    lastSearchParams.value &&
+    JSON.stringify(payload) === JSON.stringify(lastSearchParams.value);
+  const page = isSameSearch ? 'next' : 1;
 
   searchError.value = '';
   try {
     await store.dispatch('influencerProfiles/search', {
       filters: payload,
-      page: 1,
+      page,
     });
   } catch (error) {
     const message =
@@ -201,6 +138,37 @@ async function handleSearch() {
     searchError.value = message;
     useAlert(message);
   }
+}
+
+function applyHistorySearch(queryParams) {
+  Object.assign(filters, { ...DEFAULT_FILTERS });
+  if (queryParams.ai_search) filters.ai_search = queryParams.ai_search;
+  if (queryParams.followers?.min)
+    filters.followers_min = queryParams.followers.min;
+  if (queryParams.followers?.max)
+    filters.followers_max = queryParams.followers.max;
+  if (queryParams.location) filters.location = [...queryParams.location];
+  if (queryParams.engagement_percent_min)
+    filters.engagement_percent_min = queryParams.engagement_percent_min;
+  if (queryParams.engagement_percent_max)
+    filters.engagement_percent_max = queryParams.engagement_percent_max;
+  if (queryParams.gender) filters.gender = queryParams.gender;
+  if (queryParams.profile_language)
+    filters.profile_language = Array.isArray(queryParams.profile_language)
+      ? queryParams.profile_language[0]
+      : queryParams.profile_language;
+  if (queryParams.hashtags)
+    filters.hashtags = Array.isArray(queryParams.hashtags)
+      ? queryParams.hashtags.join(', ')
+      : queryParams.hashtags;
+  if (queryParams.keywords_in_bio)
+    filters.keywords_in_bio = Array.isArray(queryParams.keywords_in_bio)
+      ? queryParams.keywords_in_bio.join(', ')
+      : queryParams.keywords_in_bio;
+  if (queryParams.last_post_days)
+    filters.last_post_days = queryParams.last_post_days;
+
+  handleSearch();
 }
 
 function toggleHashtagChip(tag) {
@@ -231,24 +199,6 @@ function toggleCountry(code) {
   <div class="border-b border-n-weak p-4">
     <!-- Row 1: Quick filters -->
     <div class="flex flex-wrap items-end gap-4">
-      <div class="min-w-[200px]">
-        <label class="mb-1 block text-xs font-medium text-n-slate-11">
-          {{ t('INFLUENCER.SEARCH.PRESET') }}
-        </label>
-        <select
-          v-model="selectedPreset"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
-          @change="applyPreset"
-        >
-          <option value="">
-            {{ t('INFLUENCER.SEARCH.SELECT_PRESET') }}
-          </option>
-          <option v-for="(_, name) in SEARCH_PRESETS" :key="name" :value="name">
-            {{ name }}
-          </option>
-        </select>
-      </div>
-
       <div class="flex-1">
         <label class="mb-1 block text-xs font-medium text-n-slate-11">
           {{ t('INFLUENCER.SEARCH.AI_SEARCH') }}
@@ -343,22 +293,8 @@ function toggleCountry(code) {
       </button>
     </div>
 
-    <!-- Row 3: Advanced filters toggle -->
-    <button
-      class="mt-3 flex items-center gap-1 text-xs font-medium text-n-slate-11 hover:text-n-slate-12"
-      @click="showAdvanced = !showAdvanced"
-    >
-      <span
-        class="inline-block transition-transform"
-        :class="showAdvanced ? 'rotate-90' : ''"
-      >
-        {{ advancedChevron }}
-      </span>
-      {{ t('INFLUENCER.SEARCH.ADVANCED_FILTERS') }}
-    </button>
-
-    <!-- Row 4: Advanced filters (collapsible) -->
-    <div v-if="showAdvanced" class="mt-3 flex flex-wrap items-end gap-4">
+    <!-- Advanced filters (always visible) -->
+    <div class="mt-3 flex flex-wrap items-end gap-4">
       <div class="w-24">
         <label class="mb-1 block text-xs font-medium text-n-slate-11">
           {{ t('INFLUENCER.SEARCH.MIN_ER') }}
@@ -444,6 +380,28 @@ function toggleCountry(code) {
           :placeholder="t('INFLUENCER.SEARCH.KEYWORDS_IN_BIO_PLACEHOLDER')"
         />
       </div>
+
+      <label
+        class="flex cursor-pointer items-center gap-2 self-end rounded-lg px-2 py-1.5"
+      >
+        <input
+          type="checkbox"
+          :checked="!!filters.last_post_days"
+          class="size-3.5 rounded accent-n-brand"
+          @change="filters.last_post_days = $event.target.checked ? 30 : 0"
+        />
+        <span class="whitespace-nowrap text-xs font-medium text-n-slate-11">
+          {{ t('INFLUENCER.SEARCH.ACTIVE_LAST_30_DAYS') }}
+        </span>
+      </label>
     </div>
+
+    <!-- Credits badge -->
+    <div class="mt-3">
+      <InfluencerCreditsBadge />
+    </div>
+
+    <!-- Search history -->
+    <InfluencerSearchHistory @select="applyHistorySearch" />
   </div>
 </template>

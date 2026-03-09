@@ -20,6 +20,9 @@ export const getters = {
   getLastSearchParams($state) {
     return $state.lastSearchParams;
   },
+  getSearchHistory($state) {
+    return $state.searchHistory;
+  },
   getKanbanColumn: $state => status => {
     return (
       $state.kanban[status] || {
