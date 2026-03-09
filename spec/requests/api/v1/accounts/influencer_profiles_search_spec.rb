@@ -13,17 +13,18 @@ RSpec.describe 'Influencer profile search', type: :request do
       hashtags: %w[decor interior]
     }
   end
+  let(:page_size) { InfluencersClub::DiscoveryService::DEFAULT_PAGING[:limit] }
   let(:page_1_response) do
     {
-      'accounts' => build_results(1..5),
-      'total' => 6,
+      'accounts' => build_results(1..page_size),
+      'total' => page_size + 1,
       'credits_left' => 99.5
     }
   end
   let(:page_2_response) do
     {
-      'accounts' => build_results(6..6),
-      'total' => 6,
+      'accounts' => build_results((page_size + 1)..(page_size + 1)),
+      'total' => page_size + 1,
       'credits_left' => 99.49
     }
   end
@@ -62,12 +63,12 @@ RSpec.describe 'Influencer profile search', type: :request do
       response_body = response.parsed_body
       search = account.influencer_searches.last
 
-      expect(response_body['payload'].pluck('username')).to eq(%w[creator_1 creator_2 creator_3 creator_4 creator_5])
+      expect(response_body['payload'].pluck('username')).to eq((1..page_size).map { |i| "creator_#{i}" })
       expect(response_body['meta']).to include(
-        'total' => 6,
+        'total' => page_size + 1,
         'current_page' => 1,
-        'per_page' => 5,
-        'loaded_count' => 5,
+        'per_page' => page_size,
+        'loaded_count' => page_size,
         'total_pages' => 2,
         'cached' => false
       )
@@ -77,7 +78,7 @@ RSpec.describe 'Influencer profile search', type: :request do
         'hashtags' => %w[decor interior],
         'location' => ['Germany']
       )
-      expect(search.results.size).to eq(5)
+      expect(search.results.size).to eq(page_size)
       expect(search.pages_fetched).to eq(1)
     end
 
@@ -117,13 +118,13 @@ RSpec.describe 'Influencer profile search', type: :request do
       response_body = response.parsed_body
       search = account.influencer_searches.last
 
-      expect(response_body['payload'].pluck('username')).to eq(['creator_6'])
+      expect(response_body['payload'].pluck('username')).to eq(["creator_#{page_size + 1}"])
       expect(response_body['meta']).to include(
         'current_page' => 2,
-        'loaded_count' => 6,
+        'loaded_count' => page_size + 1,
         'cached' => false
       )
-      expect(search.reload.results.size).to eq(6)
+      expect(search.reload.results.size).to eq(page_size + 1)
       expect(search.pages_fetched).to eq(2)
 
       post "/api/v1/accounts/#{account.id}/influencer_profiles/search",

@@ -111,8 +111,7 @@ function buildPayload() {
       .split(',')
       .map(k => k.trim())
       .filter(Boolean);
-  if (filters.last_post_days)
-    payload.last_post_days = filters.last_post_days;
+  if (filters.last_post_days) payload.last_post_days = filters.last_post_days;
 
   return payload;
 }
@@ -198,7 +197,7 @@ function toggleCountry(code) {
 <template>
   <div class="border-b border-n-weak p-4">
     <!-- Row 1: Quick filters -->
-    <div class="flex flex-wrap items-end gap-4">
+    <div class="flex flex-wrap items-end gap-3">
       <div class="flex-1">
         <label class="mb-1 block text-xs font-medium text-n-slate-11">
           {{ t('INFLUENCER.SEARCH.AI_SEARCH') }}
@@ -206,7 +205,7 @@ function toggleCountry(code) {
         <input
           v-model="filters.ai_search"
           type="text"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+          class="h-[34px] w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 text-sm"
           :placeholder="t('INFLUENCER.SEARCH.AI_SEARCH_PLACEHOLDER')"
         />
       </div>
@@ -218,7 +217,7 @@ function toggleCountry(code) {
         <input
           v-model.number="filters.followers_min"
           type="number"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+          class="h-[34px] w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 text-sm"
         />
       </div>
 
@@ -229,12 +228,12 @@ function toggleCountry(code) {
         <input
           v-model.number="filters.followers_max"
           type="number"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+          class="h-[34px] w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 text-sm"
         />
       </div>
 
       <button
-        class="rounded-lg bg-n-brand px-4 py-1.5 text-sm font-medium text-white hover:bg-n-brand/90 disabled:opacity-50"
+        class="h-[34px] rounded-lg bg-n-brand px-4 text-sm font-medium text-white hover:bg-n-brand/90 disabled:opacity-50"
         :disabled="uiFlags.isSearching"
         @click="handleSearch"
       >
@@ -294,7 +293,7 @@ function toggleCountry(code) {
     </div>
 
     <!-- Advanced filters (always visible) -->
-    <div class="mt-3 flex flex-wrap items-end gap-4">
+    <div class="mt-3 flex flex-wrap items-end gap-3">
       <div class="w-24">
         <label class="mb-1 block text-xs font-medium text-n-slate-11">
           {{ t('INFLUENCER.SEARCH.MIN_ER') }}
@@ -304,7 +303,7 @@ function toggleCountry(code) {
           type="number"
           step="0.1"
           min="0"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+          class="h-[34px] w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 text-sm"
           :placeholder="t('INFLUENCER.SEARCH.MIN_ER_PLACEHOLDER')"
         />
       </div>
@@ -318,7 +317,7 @@ function toggleCountry(code) {
           type="number"
           step="0.1"
           min="0"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+          class="h-[34px] w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 text-sm"
           :placeholder="t('INFLUENCER.SEARCH.MAX_ER_PLACEHOLDER')"
         />
       </div>
@@ -329,7 +328,7 @@ function toggleCountry(code) {
         </label>
         <select
           v-model="filters.gender"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+          class="h-[34px] w-full appearance-none rounded-lg border border-n-weak bg-n-solid-1 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat px-3 pr-7 text-sm"
         >
           <option value="">
             {{ t('INFLUENCER.SEARCH.GENDER_ANY') }}
@@ -349,7 +348,7 @@ function toggleCountry(code) {
         </label>
         <select
           v-model="filters.profile_language"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+          class="h-[34px] w-full appearance-none rounded-lg border border-n-weak bg-n-solid-1 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat px-3 pr-7 text-sm"
         >
           <option v-for="lang in LANGUAGES" :key="lang.code" :value="lang.code">
             {{ lang.label }}
@@ -357,32 +356,32 @@ function toggleCountry(code) {
         </select>
       </div>
 
-      <div class="flex-1 min-w-[200px]">
+      <div class="min-w-[180px] flex-1">
         <label class="mb-1 block text-xs font-medium text-n-slate-11">
           {{ t('INFLUENCER.SEARCH.HASHTAGS') }}
         </label>
         <input
           v-model="filters.hashtags"
           type="text"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+          class="h-[34px] w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 text-sm"
           :placeholder="t('INFLUENCER.SEARCH.HASHTAGS_PLACEHOLDER')"
         />
       </div>
 
-      <div class="flex-1 min-w-[200px]">
+      <div class="min-w-[180px] flex-1">
         <label class="mb-1 block text-xs font-medium text-n-slate-11">
           {{ t('INFLUENCER.SEARCH.KEYWORDS_IN_BIO') }}
         </label>
         <input
           v-model="filters.keywords_in_bio"
           type="text"
-          class="w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+          class="h-[34px] w-full rounded-lg border border-n-weak bg-n-solid-1 px-3 text-sm"
           :placeholder="t('INFLUENCER.SEARCH.KEYWORDS_IN_BIO_PLACEHOLDER')"
         />
       </div>
 
       <label
-        class="flex cursor-pointer items-center gap-2 self-end rounded-lg px-2 py-1.5"
+        class="flex h-[34px] cursor-pointer items-center gap-2 rounded-lg px-2"
       >
         <input
           type="checkbox"

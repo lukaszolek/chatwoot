@@ -144,7 +144,7 @@ onMounted(() => fetchHashtags());
     <div class="mb-4 flex flex-wrap items-center gap-3">
       <select
         v-model="languageFilter"
-        class="w-36 rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+        class="h-[34px] w-36 appearance-none rounded-lg border border-n-weak bg-n-solid-1 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat px-3 pr-7 text-sm"
         @change="fetchHashtags(1)"
       >
         <option v-for="lang in LANGUAGES" :key="lang.code" :value="lang.code">
@@ -154,7 +154,7 @@ onMounted(() => fetchHashtags());
 
       <select
         v-model="minPostsFilter"
-        class="w-28 rounded-lg border border-n-weak bg-n-solid-1 px-3 py-1.5 text-sm"
+        class="h-[34px] w-28 appearance-none rounded-lg border border-n-weak bg-n-solid-1 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23666%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22m6%209%206%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat px-3 pr-7 text-sm"
         @change="fetchHashtags(1)"
       >
         <option
