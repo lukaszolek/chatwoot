@@ -149,26 +149,11 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   end
 
   def send_message
-    inbox = Current.account.inboxes.find(params[:inbox_id])
-    conversation = Influencers::ConversationService.new(
-      profile: @profile, inbox: inbox, user: Current.user, subject: params[:subject]
-    ).find_or_create_conversation
-
-    translate_mail_subject!(conversation) if conversation.additional_attributes&.dig('mail_subject').present?
-
-    message = Messages::MessageBuilder.new(
-      Current.user, conversation,
-      { content: params[:content], message_type: 'outgoing' }
-    ).perform
+    conversation, message = build_and_send_message
 
     @profile.update!(last_contacted_at: Time.current)
 
-    translations = message.content_attributes&.dig('translations')
-    render json: {
-      conversation_id: conversation.display_id,
-      message_id: message.id,
-      translated_to: translations.present? ? @profile.contact&.additional_attributes&.dig('locale') : nil
-    }
+    render json: send_message_response(conversation, message)
   rescue Influencers::ConversationService::ChannelUnavailableError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
@@ -318,6 +303,27 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       created_at: search.created_at,
       updated_at: search.updated_at
     }
+  end
+
+  def build_and_send_message
+    inbox = Current.account.inboxes.find(params[:inbox_id])
+    conversation = Influencers::ConversationService.new(
+      profile: @profile, inbox: inbox, user: Current.user, subject: params[:subject]
+    ).find_or_create_conversation
+
+    translate_mail_subject!(conversation) if conversation.additional_attributes&.dig('mail_subject').present?
+
+    message = Messages::MessageBuilder.new(
+      Current.user, conversation,
+      { content: params[:content], message_type: 'outgoing' }
+    ).perform
+
+    [conversation, message]
+  end
+
+  def send_message_response(conversation, message)
+    translated_to = message.content_attributes&.dig('translations').present? ? @profile.contact&.additional_attributes&.dig('locale') : nil
+    { conversation_id: conversation.display_id, message_id: message.id, translated_to: translated_to }
   end
 
   def translate_mail_subject!(conversation)
