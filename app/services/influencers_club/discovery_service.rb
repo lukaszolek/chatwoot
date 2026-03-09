@@ -50,6 +50,7 @@ class InfluencersClub::DiscoveryService
     filters[:average_views_for_reels] = { min: params[:avg_reels_min].to_f } if params[:avg_reels_min].present?
     filters[:follower_growth] = { growth_percentage: params[:growth_min].to_f, time_range_months: 3 } if params[:growth_min].present?
     filters[:reels_percent] = { min: params[:reels_percent_min].to_f } if params[:reels_percent_min].present?
+    filters[:last_post_date] = params[:last_post_days].to_i if params[:last_post_days].present? && params[:last_post_days].to_i.positive?
     filters
   end
 

@@ -379,7 +379,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
     params.permit(
       :page,
       :ai_search, :gender, :engagement_percent_min, :engagement_percent_max,
-      :avg_reels_min, :growth_min, :reels_percent_min,
+      :avg_reels_min, :growth_min, :reels_percent_min, :last_post_days,
       followers: %i[min max],
       location: [],
       profile_language: [],

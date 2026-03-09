@@ -33,6 +33,7 @@
       "HASHTAGS_PLACEHOLDER": "e.g. homedecor, interior, wnetrza",
       "KEYWORDS_IN_BIO": "Keywords in bio",
       "KEYWORDS_IN_BIO_PLACEHOLDER": "e.g. home, decor, interior (use to filter by bio terms)",
+      "ACTIVE_LAST_30_DAYS": "Active (last 30 days)",
       "NO_RESULTS": "Use the search panel above to discover influencers.",
       "EMPTY_RESULTS": "No influencers found matching your filters.",
       "EMPTY_RESULTS_HINT": "Try broadening your search — remove country filters, increase the follower range, or simplify the AI search query.",
