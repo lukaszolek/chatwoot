@@ -4,7 +4,7 @@ class Influencers::FetchReportJob < ApplicationJob
 
   def perform(profile_id)
     profile = InfluencerProfile.find(profile_id)
-    unless profile.discovered?
+    unless profile.discovered? || profile.preselected?
       profile.update!(enrichment_pending: false) if profile.enrichment_pending?
       return
     end

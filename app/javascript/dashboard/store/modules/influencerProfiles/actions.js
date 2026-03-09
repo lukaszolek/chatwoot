@@ -83,11 +83,13 @@ export const actions = {
     }
   },
 
-  requestReport: async ({ commit }, { id }) => {
+  requestReport: async ({ commit, state }, { id }) => {
+    const existing = state.records[id];
+    const oldStatus = existing?.status || 'discovered';
     const { data } = await InfluencerProfilesAPI.requestReport(id);
     commit(types.EDIT_INFLUENCER, data.payload);
     commit(types.UPDATE_KANBAN_ITEM, {
-      oldStatus: 'discovered',
+      oldStatus,
       newProfile: data.payload,
     });
   },
