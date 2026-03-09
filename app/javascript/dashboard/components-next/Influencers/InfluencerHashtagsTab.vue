@@ -14,6 +14,7 @@ const meta = useMapGetter('influencerHashtags/getMeta');
 const languageFilter = ref('');
 const minPostsFilter = ref('');
 const missingStatsFilter = ref(false);
+const starredFilter = ref(false);
 const sortColumn = ref('');
 const sortDirection = ref('desc');
 const selectedIds = ref([]);
@@ -59,6 +60,7 @@ function buildParams(page = 1) {
   if (languageFilter.value) params.language = languageFilter.value;
   if (minPostsFilter.value) params.min_posts = minPostsFilter.value;
   if (missingStatsFilter.value) params.missing_stats = 'true';
+  if (starredFilter.value) params.starred = 'true';
   return params;
 }
 
@@ -174,6 +176,18 @@ onMounted(() => fetchHashtags());
           @change="fetchHashtags(1)"
         />
         {{ t('INFLUENCER.HASHTAGS.MISSING_STATS_ONLY') }}
+      </label>
+
+      <label
+        class="flex cursor-pointer items-center gap-1.5 text-sm text-n-slate-11"
+      >
+        <input
+          v-model="starredFilter"
+          type="checkbox"
+          class="rounded"
+          @change="fetchHashtags(1)"
+        />
+        {{ t('INFLUENCER.HASHTAGS.STARRED_ONLY') }}
       </label>
 
       <div class="ml-auto flex items-center gap-2">

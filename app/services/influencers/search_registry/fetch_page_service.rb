@@ -56,12 +56,11 @@ class Influencers::SearchRegistry::FetchPageService
 
   private
 
-  # rubocop:disable Metrics/CyclomaticComplexity
   def find_or_initialize_search
     normalized_filters = normalizer.perform
     @account.influencer_searches.find_or_initialize_by(query_signature: normalizer.signature).tap do |search|
       search.query_params = normalized_filters
-      search.page_size ||= page_size
+      search.page_size = page_size
       search.results ||= []
       search.results_count ||= 0
       search.pages_fetched ||= 0
@@ -69,7 +68,6 @@ class Influencers::SearchRegistry::FetchPageService
       search.save! if search.new_record? || search.changed?
     end
   end
-  # rubocop:enable Metrics/CyclomaticComplexity
 
   def ensure_page_loaded(search)
     return true if search.page_cached?(@page)
