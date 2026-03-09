@@ -1,5 +1,5 @@
 class InfluencersClub::DiscoveryService
-  DEFAULT_PAGING = { limit: 5, page: 1 }.freeze
+  DEFAULT_PAGING = { limit: 20, page: 1 }.freeze
 
   COUNTRY_CODE_TO_NAME = {
     'DE' => 'Germany',

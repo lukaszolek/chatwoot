@@ -180,7 +180,7 @@ async function handleSearch() {
     payload.profile_language = [filters.profile_language];
   if (filters.hashtags)
     payload.hashtags = filters.hashtags
-      .split(',')
+      .split(/[,\s]+/)
       .map(h => h.trim())
       .filter(Boolean);
   if (filters.keywords_in_bio)
