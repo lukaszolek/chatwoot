@@ -1,6 +1,20 @@
 class InfluencersClub::DiscoveryService
   DEFAULT_PAGING = { limit: 5, page: 1 }.freeze
 
+  COUNTRY_CODE_TO_NAME = {
+    'DE' => 'Germany',
+    'PL' => 'Poland',
+    'FR' => 'France',
+    'NL' => 'Netherlands',
+    'GB' => 'United Kingdom',
+    'IT' => 'Italy',
+    'ES' => 'Spain',
+    'AT' => 'Austria',
+    'BE' => 'Belgium',
+    'DK' => 'Denmark',
+    'SE' => 'Sweden'
+  }.freeze
+
   def initialize(account:, client: InfluencersClub::Client.new)
     @client = client
     @account = account
@@ -22,7 +36,7 @@ class InfluencersClub::DiscoveryService
     filters = {}
     filters[:ai_search] = params[:ai_search] if params[:ai_search].present?
     filters[:number_of_followers] = range_filter(params[:followers]) if params[:followers].present?
-    filters[:location] = Array(params[:location]).compact_blank if params[:location].present?
+    filters[:location] = Array(params[:location]).compact_blank.map { |loc| COUNTRY_CODE_TO_NAME[loc] || loc } if params[:location].present?
     if params[:engagement_percent_min].present? || params[:engagement_percent_max].present?
       er_range = {}
       er_range[:min] = params[:engagement_percent_min].to_f if params[:engagement_percent_min].present?
