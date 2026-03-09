@@ -22,7 +22,7 @@ class Apify::Client
   # Run the Instagram Profile Scraper for given usernames and wait for results.
   # Returns an array of profile data hashes.
   def scrape_profiles(usernames)
-    run = start_run(usernames: Array(usernames))
+    run = start_run({ usernames: Array(usernames) })
     dataset_id = run['defaultDatasetId']
     raise ApiError.new('No dataset returned from Apify run', nil, run) if dataset_id.blank?
 
