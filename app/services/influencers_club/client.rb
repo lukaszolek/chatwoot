@@ -19,8 +19,10 @@ class InfluencersClub::Client
 
   def post(path, body = {})
     url = "#{BASE_URI}#{path}"
-    response = self.class.post(url, headers: headers, body: body.to_json)
+    response = self.class.post(url, headers: headers, body: body.to_json, timeout: 12)
     handle_response(response)
+  rescue Net::OpenTimeout, Net::ReadTimeout => e
+    raise ApiError.new("influencers.club API timeout: #{e.message}", 408)
   end
 
   private

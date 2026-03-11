@@ -506,11 +506,14 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
                 'No credits remaining. Please refill your influencers.club account.'
               elsif exception.code == 429
                 'Rate limit exceeded. Please wait a moment and try again.'
+              elsif exception.code == 408
+                'Search timed out. The external API is slow — please try again.'
               else
                 "influencers.club API error: #{exception.message}"
               end
 
-    render json: { error: message }, status: :unprocessable_entity
+    status = exception.code == 408 ? :gateway_timeout : :unprocessable_entity
+    render json: { error: message }, status: status
   end
 
   # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
