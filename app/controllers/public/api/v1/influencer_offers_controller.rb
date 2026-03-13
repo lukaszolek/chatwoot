@@ -69,7 +69,7 @@ class Public::Api::V1::InfluencerOffersController < PublicController
       default_rights: @offer.rights_level,
       custom_message: @offer.custom_message,
       expires_at: @offer.expires_at,
-      calculator: { followers: profile.followers_count, fqs_score: profile.fqs_score },
+      calculator: { followers: profile.followers_count, fqs_score: profile.fqs_score, value_multiplier: profile.voucher_value_multiplier },
       status: @offer.status
     }
     if @offer.accepted?

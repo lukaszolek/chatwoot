@@ -970,7 +970,7 @@
       }
       if (contentMult > 0) contentMult = Math.max(contentMult, 0.1);
       const rightsMult = RIGHTS_MULTIPLIERS[rightsKey] || 1.0;
-      return Math.round(calc.followers * (fqs / 100) * RATE * contentMult * rightsMult);
+      return Math.round(calc.followers * (fqs / 100) * RATE * contentMult * rightsMult * (calc.value_multiplier ?? 1.0));
     }
 
     function packageEurValue(pkgKey) {
@@ -978,7 +978,7 @@
       const fqs = calc.fqs_score ?? 50;
       const weight = CONTENT_WEIGHTS[pkgKey] || 0;
       const rightsMult = RIGHTS_MULTIPLIERS[selectedRights] || 1.0;
-      return Math.round(calc.followers * (fqs / 100) * RATE * weight * rightsMult);
+      return Math.round(calc.followers * (fqs / 100) * RATE * weight * rightsMult * (calc.value_multiplier ?? 1.0));
     }
 
     function recalculate() {
@@ -990,7 +990,7 @@
       if (contentMult > 0) contentMult = Math.max(contentMult, 0.1);
       const rightsMult = RIGHTS_MULTIPLIERS[selectedRights] || 1.0;
       const fqs = calc.fqs_score ?? 50;
-      const value = calc.followers * (fqs / 100) * RATE * contentMult * rightsMult;
+      const value = calc.followers * (fqs / 100) * RATE * contentMult * rightsMult * (calc.value_multiplier ?? 1.0);
       document.getElementById('voucher-value').textContent = Math.round(value).toLocaleString('pl-PL');
       // Update per-package EUR badges
       document.querySelectorAll('.pkg-eur-value').forEach(el => {
