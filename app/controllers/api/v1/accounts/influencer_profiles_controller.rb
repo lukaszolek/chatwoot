@@ -217,7 +217,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       custom_message: params[:custom_message],
       voucher_currency: params[:currency] || 'EUR'
     )
-    url = "#{request.base_url}#{offer.offer_path}"
+    url = "#{offer_base_url}#{offer.offer_path}"
     render json: { offer_url: url, token: offer.token, expires_at: offer.expires_at }
   end
 
@@ -292,6 +292,10 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   end
 
   private
+
+  def offer_base_url
+    ENV.fetch('OFFER_BASE_URL', 'https://framky.com')
+  end
 
   def search_history_json(search)
     {
@@ -443,7 +447,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       id: offer.id,
       token: offer.token,
       status: offer.status,
-      offer_url: "#{request.base_url}#{offer.offer_path}",
+      offer_url: "#{offer_base_url}#{offer.offer_path}",
       voucher_value: offer.voucher_value,
       voucher_code: offer.voucher_code,
       voucher_currency: offer.voucher_currency,
