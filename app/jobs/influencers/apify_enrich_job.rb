@@ -1,5 +1,6 @@
 class Influencers::ApifyEnrichJob < ApplicationJob
   queue_as :medium
+  discard_on(Apify::Client::ApiError) { |_job, error| error.code == 403 }
   retry_on Apify::Client::ApiError, wait: :polynomially_longer, attempts: 3
 
   def perform(profile_id)

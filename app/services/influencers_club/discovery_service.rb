@@ -32,7 +32,7 @@ class InfluencersClub::DiscoveryService
 
   private
 
-  def build_filters(params) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+  def build_filters(params) # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/MethodLength
     filters = {}
     filters[:ai_search] = params[:ai_search] if params[:ai_search].present?
     filters[:number_of_followers] = range_filter(params[:followers]) if params[:followers].present?
@@ -51,6 +51,7 @@ class InfluencersClub::DiscoveryService
     filters[:follower_growth] = { growth_percentage: params[:growth_min].to_f, time_range_months: 3 } if params[:growth_min].present?
     filters[:reels_percent] = { min: params[:reels_percent_min].to_f } if params[:reels_percent_min].present?
     filters[:last_post_date] = params[:last_post_days].to_i if params[:last_post_days].present? && params[:last_post_days].to_i.positive?
+    Rails.logger.info("[InfluencersClub::DiscoveryService] filters=#{filters.inspect}")
     filters
   end
 

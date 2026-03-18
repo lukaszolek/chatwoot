@@ -6,8 +6,13 @@ class Influencers::FqsCalculator
   ].freeze
 
   GEO_BASELINE = 0.8 # 80% EU audience = factor 1.0
-  AF_BASELINE = 5.0  # sum(weight×affinity) of 5.0 = factor 1.0
-  AF_TARGET_INTERESTS = ['Home Decor, Furniture & Garden', 'Camera & Photography'].freeze
+  AF_BASELINE = 5.0  # sum(weight×affinity×category_weight) of 5.0 = factor 1.0
+  AF_TARGET_INTERESTS = {
+    'Home Decor, Furniture & Garden' => 1.5,
+    'Camera & Photography' => 1.0,
+    'Friends, Family & Relationships' => 1.2,
+    'Toys, Children & Baby' => 0.6
+  }.freeze
   FACTOR_FLOOR = 0.1
 
   def initialize(profile)
@@ -125,9 +130,9 @@ class Influencers::FqsCalculator
       interests = @profile.audience_interests
       return 0.0 unless interests.is_a?(Array) # rubocop:disable Lint/NoReturnInBeginEndBlocks
 
-      AF_TARGET_INTERESTS.sum do |name|
+      AF_TARGET_INTERESTS.sum do |name, category_weight|
         i = interests.find { |x| x['name'] == name }
-        i ? i['weight'].to_f * i['affinity'].to_f : 0.0
+        i ? i['weight'].to_f * i['affinity'].to_f * category_weight : 0.0
       end
     end
   end

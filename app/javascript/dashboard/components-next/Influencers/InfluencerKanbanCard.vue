@@ -41,6 +41,10 @@ const isApifyFailed = computed(
   () => props.profile.apify_status === 'apify_failed'
 );
 const isApifyDone = computed(() => props.profile.apify_status === 'apify_done');
+const isApify403 = computed(
+  () =>
+    isApifyFailed.value && props.profile.apify_error?.includes('access denied')
+);
 const showFqs = computed(
   () => props.profile.status !== 'discovered' && props.profile.fqs_score != null
 );
@@ -84,7 +88,11 @@ const formatContactDate = dateStr => {
     >
       <span class="truncate" :title="profile.apify_error">
         <span class="i-lucide-alert-triangle size-3 mr-1 align-text-bottom" />
-        {{ profile.apify_error || t('INFLUENCER.KANBAN.APIFY_FAILED') }}
+        {{
+          isApify403
+            ? t('INFLUENCER.KANBAN.APIFY_ACCESS_DENIED')
+            : profile.apify_error || t('INFLUENCER.KANBAN.APIFY_FAILED')
+        }}
       </span>
       <button
         class="flex-shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded font-medium hover:bg-n-amber-3"

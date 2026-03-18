@@ -64,6 +64,8 @@ class Apify::Client
       response.parsed_response
     when 402
       raise ApiError.new('Apify account has insufficient credits', response.code, response)
+    when 403
+      raise ApiError.new('Apify access denied — check API token permissions or actor access', response.code, response)
     when 429
       raise ApiError.new('Apify rate limit exceeded', response.code, response)
     else

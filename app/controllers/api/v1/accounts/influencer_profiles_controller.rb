@@ -5,7 +5,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
 
   skip_before_action :authenticate_user!, only: [:proxy_image]
   skip_before_action :current_account, only: [:proxy_image]
-  before_action :set_profile, only: %i[show destroy request_report preselect approve reject recalculate retry_apify conversations
+  before_action :set_profile, only: %i[show destroy request_report preselect approve reject recalculate retry_apify lookalike conversations
                                        send_message mark_contacted log_message conversation_messages
                                        create_offer offers update_email update_language update_multiplier]
   rescue_from InfluencersClub::Client::ApiError, with: :handle_api_error
@@ -45,7 +45,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
     return render json: { payload: profile_json(existing), existing: true } if existing
 
     profile = create_profile_from_handle(handle)
-    profile.update!(followers_count: 20_000, status: :approved)
+    profile.update!(followers_count: 20_000, status: :preselected)
     render json: { payload: profile_json(profile.reload) }, status: :created
   end
 
@@ -138,6 +138,11 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
     Influencers::ApifyEnrichJob.perform_later(@profile.id)
     @profile.update!(apify_status: :apify_pending, apify_error: nil)
     render json: { payload: profile_json(@profile.reload) }
+  end
+
+  def lookalike
+    results = InfluencersClub::LookalikeService.new.perform(username: @profile.username)
+    render json: { payload: results }
   end
 
   def conversations

@@ -130,6 +130,10 @@ class InfluencerProfilesAPI extends ApiClient {
     });
   }
 
+  lookalike(id) {
+    return axios.post(`${this.url}/${id}/lookalike`);
+  }
+
   addByHandle(handle) {
     return axios.post(`${this.url}/add_by_handle`, { handle });
   }

@@ -11,6 +11,7 @@ import InfluencerOffers from './InfluencerOffers.vue';
 import InfluencerMessaging from './InfluencerMessaging.vue';
 import InfluencerCommunicationTab from './InfluencerCommunicationTab.vue';
 import MarkContactedModal from './MarkContactedModal.vue';
+import InfluencerProfilesAPI from 'dashboard/api/influencerProfiles';
 
 const props = defineProps({
   profile: { type: Object, required: true },
@@ -29,6 +30,37 @@ const emit = defineEmits([
 
 const activeTab = ref('profile');
 const showMarkContactedModal = ref(false);
+const showLookalikeModal = ref(false);
+const lookalikeResults = ref([]);
+const lookalikeLoading = ref(false);
+const lookalikeError = ref('');
+const addingHandle = ref('');
+
+async function findSimilar() {
+  lookalikeLoading.value = true;
+  lookalikeError.value = '';
+  lookalikeResults.value = [];
+  showLookalikeModal.value = true;
+  try {
+    const { data } = await InfluencerProfilesAPI.lookalike(props.profile.id);
+    lookalikeResults.value = data.payload?.lookalikes || data.payload || [];
+  } catch {
+    lookalikeError.value = t('INFLUENCER.DETAIL.SIMILAR_ERROR');
+  } finally {
+    lookalikeLoading.value = false;
+  }
+}
+
+async function addToPipeline(handle) {
+  addingHandle.value = handle;
+  try {
+    await InfluencerProfilesAPI.addByHandle(handle);
+  } catch {
+    // silent — user sees button state reset
+  } finally {
+    addingHandle.value = '';
+  }
+}
 const EU_LANGUAGES = [
   'bg',
   'cs',
@@ -654,14 +686,24 @@ function handleReject() {
               {{ languageCode || t('INFLUENCER.DETAIL.SET_LANGUAGE') }}
             </button>
           </div>
-          <a
-            :href="`https://www.instagram.com/${profile.username}/`"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-xs text-n-brand hover:underline"
-          >
-            {{ t('INFLUENCER.DETAIL.VIEW_INSTAGRAM') }}
-          </a>
+          <div class="flex items-center gap-2">
+            <a
+              :href="`https://www.instagram.com/${profile.username}/`"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-xs text-n-brand hover:underline"
+            >
+              {{ t('INFLUENCER.DETAIL.VIEW_INSTAGRAM') }}
+            </a>
+            <button
+              v-if="isEnriched"
+              class="flex items-center gap-1 rounded bg-n-background px-1.5 py-0.5 text-xs text-n-slate-11 hover:bg-n-slate-3"
+              @click="findSimilar"
+            >
+              <span class="i-lucide-search size-3" />
+              {{ t('INFLUENCER.DETAIL.FIND_SIMILAR') }}
+            </button>
+          </div>
 
           <!-- Editable email -->
           <div class="mt-1">
@@ -1221,6 +1263,97 @@ function handleReject() {
       >
         {{ t('INFLUENCER.DELETE.BUTTON') }}
       </button>
+    </div>
+
+    <!-- Lookalike Modal -->
+    <div
+      v-if="showLookalikeModal"
+      class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
+      @click.self="showLookalikeModal = false"
+    >
+      <div
+        class="relative flex max-h-[80vh] w-full max-w-md flex-col rounded-xl bg-n-solid-1 shadow-xl"
+      >
+        <div
+          class="flex items-center justify-between border-b border-n-weak px-4 py-3"
+        >
+          <h3 class="text-sm font-semibold text-n-slate-12">
+            {{ t('INFLUENCER.DETAIL.SIMILAR_RESULTS') }}
+          </h3>
+          <button
+            class="rounded p-1 text-n-slate-11 hover:bg-n-background"
+            @click="showLookalikeModal = false"
+          >
+            <span class="i-lucide-x size-4" />
+          </button>
+        </div>
+        <div class="flex-1 overflow-auto p-4">
+          <div
+            v-if="lookalikeLoading"
+            class="flex items-center justify-center py-8"
+          >
+            <span
+              class="i-lucide-loader-2 animate-spin size-5 text-n-slate-10"
+            />
+            <span class="ml-2 text-sm text-n-slate-10">
+              {{ t('INFLUENCER.DETAIL.FINDING_SIMILAR') }}
+            </span>
+          </div>
+          <p
+            v-else-if="lookalikeError"
+            class="py-4 text-center text-sm text-red-600"
+          >
+            {{ lookalikeError }}
+          </p>
+          <p
+            v-else-if="!lookalikeResults.length"
+            class="py-4 text-center text-sm text-n-slate-10"
+          >
+            {{ t('INFLUENCER.DETAIL.SIMILAR_EMPTY') }}
+          </p>
+          <div v-else class="space-y-2">
+            <div
+              v-for="result in lookalikeResults"
+              :key="result.username || result.user_id"
+              class="flex items-center gap-3 rounded-lg border border-n-weak p-3"
+            >
+              <img
+                v-if="result.picture"
+                :src="result.picture"
+                class="size-10 rounded-full object-cover"
+                @error="$event.target.style.display = 'none'"
+              />
+              <div
+                v-else
+                class="size-10 rounded-full bg-n-solid-3 flex items-center justify-center"
+              >
+                <span class="i-lucide-user size-5 text-n-slate-10" />
+              </div>
+              <div class="min-w-0 flex-1">
+                <p class="text-sm font-medium text-n-slate-12 truncate">
+                  {{ result.fullname || result.username }}
+                </p>
+                <p class="text-xs text-n-slate-10">
+                  @{{ result.username }}
+                  <span v-if="result.followers" class="ml-1">
+                    · {{ formatNumber(result.followers) }}
+                  </span>
+                  <span v-if="result.engagement_rate" class="ml-1">
+                    · {{ (result.engagement_rate * 100).toFixed(1) }}%
+                  </span>
+                </p>
+              </div>
+              <button
+                class="flex-shrink-0 rounded bg-n-brand px-2 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
+                :disabled="addingHandle === result.username"
+                @click="addToPipeline(result.username)"
+              >
+                {{ t('INFLUENCER.DETAIL.ADD_TO_PIPELINE') }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Mark Contacted Modal -->

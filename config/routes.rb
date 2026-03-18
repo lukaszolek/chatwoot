@@ -222,6 +222,7 @@ Rails.application.routes.draw do
               post :reject
               post :recalculate
               post :retry_apify
+              post :lookalike
               get :conversations
               post :send_message
               post :mark_contacted
