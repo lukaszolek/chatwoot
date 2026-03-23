@@ -92,6 +92,28 @@ async function handleReject(profileId, reason) {
   closeDetail();
 }
 
+async function handleDecline(profileId, reason) {
+  await store.dispatch('influencerProfiles/decline', {
+    id: profileId,
+    reason,
+  });
+  closeDetail();
+}
+
+async function handleContentDelivered(profileId) {
+  await store.dispatch('influencerProfiles/markContentDelivered', {
+    id: profileId,
+  });
+  closeDetail();
+}
+
+async function handleComplete(profileId) {
+  await store.dispatch('influencerProfiles/markComplete', {
+    id: profileId,
+  });
+  closeDetail();
+}
+
 async function handleAddByHandle() {
   if (!addHandle.value.trim()) return;
   addError.value = '';
@@ -197,7 +219,13 @@ async function handleDelete() {
 
       <InfluencerKanbanBoard
         v-else-if="activeTab === 'pipeline'"
-        :statuses="['contacted', 'confirmed']"
+        :statuses="[
+          'contacted',
+          'confirmed',
+          'content_delivered',
+          'completed',
+          'declined',
+        ]"
         @select="openProfile"
       />
 
@@ -210,6 +238,9 @@ async function handleDelete() {
       @close="closeDetail"
       @approve="handleApprove"
       @reject="handleReject"
+      @decline="handleDecline"
+      @content-delivered="handleContentDelivered"
+      @complete="handleComplete"
       @preselect="handlePreselect"
       @request-report="handleRequestReport"
       @delete="handleDelete"

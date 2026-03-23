@@ -217,6 +217,36 @@ export const actions = {
     return data;
   },
 
+  decline: async ({ commit }, { id, reason }) => {
+    const { data } = await InfluencerProfilesAPI.decline(id, reason);
+    commit(types.EDIT_INFLUENCER, data.payload);
+    commit(types.UPDATE_KANBAN_ITEM, {
+      oldStatus: 'contacted',
+      newProfile: data.payload,
+    });
+    return data.payload;
+  },
+
+  markContentDelivered: async ({ commit }, { id }) => {
+    const { data } = await InfluencerProfilesAPI.markContentDelivered(id);
+    commit(types.EDIT_INFLUENCER, data.payload);
+    commit(types.UPDATE_KANBAN_ITEM, {
+      oldStatus: 'confirmed',
+      newProfile: data.payload,
+    });
+    return data.payload;
+  },
+
+  markComplete: async ({ commit }, { id }) => {
+    const { data } = await InfluencerProfilesAPI.markComplete(id);
+    commit(types.EDIT_INFLUENCER, data.payload);
+    commit(types.UPDATE_KANBAN_ITEM, {
+      oldStatus: 'content_delivered',
+      newProfile: data.payload,
+    });
+    return data.payload;
+  },
+
   markContacted: async ({ commit, state }, { id, inboxId, content }) => {
     const existing = state.records[id];
     const oldStatus = existing?.status || 'approved';
@@ -337,6 +367,9 @@ export const actions = {
       'approved',
       'contacted',
       'confirmed',
+      'declined',
+      'content_delivered',
+      'completed',
     ];
     const results = await Promise.all(
       activeStatuses.map(status =>

@@ -1,10 +1,11 @@
 <script setup>
-import { onMounted, reactive } from 'vue';
+import { computed, onMounted, reactive } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useStore } from 'dashboard/composables/store';
 import InfluencerKanbanColumn from './InfluencerKanbanColumn.vue';
+import PipelineStats from './PipelineStats.vue';
 
-defineProps({
+const props = defineProps({
   statuses: {
     type: Array,
     default: () => [
@@ -24,6 +25,8 @@ const store = useStore();
 
 const collapsedColumns = reactive({ rejected: true });
 
+const showPipelineStats = computed(() => props.statuses.includes('contacted'));
+
 const statusLabels = {
   discovered: t('INFLUENCER.KANBAN.STATUS_DISCOVERED'),
   preselected: t('INFLUENCER.KANBAN.STATUS_PRESELECTED'),
@@ -32,6 +35,9 @@ const statusLabels = {
   rejected: t('INFLUENCER.KANBAN.STATUS_REJECTED'),
   contacted: t('INFLUENCER.KANBAN.STATUS_CONTACTED'),
   confirmed: t('INFLUENCER.KANBAN.STATUS_CONFIRMED'),
+  declined: t('INFLUENCER.KANBAN.STATUS_DECLINED'),
+  content_delivered: t('INFLUENCER.KANBAN.STATUS_CONTENT_DELIVERED'),
+  completed: t('INFLUENCER.KANBAN.STATUS_COMPLETED'),
 };
 
 const getColumn = status => {
@@ -72,6 +78,7 @@ const handleCollapse = status => {
 
 <template>
   <div class="flex flex-col h-full">
+    <PipelineStats v-if="showPipelineStats" class="mx-4 mt-4" />
     <div class="flex gap-4 overflow-x-auto items-start flex-1 p-4">
       <InfluencerKanbanColumn
         v-for="status in statuses"

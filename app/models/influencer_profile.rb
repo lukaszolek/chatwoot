@@ -7,15 +7,19 @@ class InfluencerProfile < ApplicationRecord
     enriched: %i[approved rejected],
     approved: %i[contacted rejected],
     rejected: %i[discovered],
-    contacted: %i[confirmed],
-    confirmed: %i[]
+    contacted: %i[confirmed declined],
+    confirmed: %i[content_delivered declined],
+    content_delivered: %i[completed],
+    completed: %i[],
+    declined: %i[]
   }.freeze
 
   belongs_to :contact
   belongs_to :account
   has_many :influencer_offers, dependent: :destroy
 
-  enum :status, { discovered: 0, preselected: 1, enriched: 2, approved: 3, rejected: 4, contacted: 5, confirmed: 6 }
+  enum :status, { discovered: 0, preselected: 1, enriched: 2, approved: 3, rejected: 4, contacted: 5, confirmed: 6,
+                  declined: 7, content_delivered: 8, completed: 9 }
   enum :apify_status, { apify_none: 0, apify_pending: 1, apify_done: 2, apify_failed: 3 }, prefix: :apify
 
   SUPPORTED_CURRENCIES = %w[EUR GBP PLN].freeze

@@ -145,6 +145,11 @@
       "ERROR": "Failed to add profile",
       "EXISTS": "Profile already exists"
     },
+    "DETAIL": {
+      "DECLINE": "Decline collaboration",
+      "MARK_CONTENT_DELIVERED": "Mark content delivered",
+      "COMPLETE": "Complete collaboration"
+    },
     "DELETE": {
       "BUTTON": "Delete",
       "CONFIRM": "Are you sure you want to delete this profile?",
@@ -158,9 +163,13 @@
       "STATUS_REJECTED": "Rejected",
       "STATUS_CONTACTED": "Contacted",
       "STATUS_CONFIRMED": "Confirmed",
+      "STATUS_DECLINED": "Declined",
+      "STATUS_CONTENT_DELIVERED": "Content Delivered",
+      "STATUS_COMPLETED": "Completed",
       "EMPTY_COLUMN": "No profiles in this column",
       "LOADING": "Loading...",
       "LOAD_MORE": "Load more",
+      "PIPELINE_STATS_PENDING": "Pending",
       "APIFY_PENDING": "Fetching profile...",
       "APIFY_FAILED": "Scraping failed",
       "APIFY_ACCESS_DENIED": "Access denied — check Apify token",

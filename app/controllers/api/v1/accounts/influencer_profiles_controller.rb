@@ -7,7 +7,8 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   skip_before_action :current_account, only: [:proxy_image]
   before_action :set_profile, only: %i[show destroy request_report preselect approve reject recalculate retry_apify lookalike conversations
                                        send_message mark_contacted log_message conversation_messages
-                                       create_offer offers update_email update_language update_multiplier update_currency]
+                                       create_offer offers update_email update_language update_multiplier update_currency
+                                       decline mark_content_delivered complete]
   rescue_from InfluencersClub::Client::ApiError, with: :handle_api_error
 
   def index
@@ -278,6 +279,22 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
     else
       render json: { error: @profile.errors.full_messages.join(', ') }, status: :unprocessable_entity
     end
+  end
+
+  def decline
+    @profile.transition_to!(:declined)
+    @profile.update!(rejection_reason: params[:reason]) if params[:reason].present?
+    render json: { payload: profile_json(@profile.reload) }
+  end
+
+  def mark_content_delivered
+    @profile.transition_to!(:content_delivered)
+    render json: { payload: profile_json(@profile.reload) }
+  end
+
+  def complete
+    @profile.transition_to!(:completed)
+    render json: { payload: profile_json(@profile.reload) }
   end
 
   ALLOWED_IMAGE_HOSTS = /\A[a-z0-9-]+\.(cdninstagram|fbcdn)\.com\z/i

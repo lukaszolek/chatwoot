@@ -41,6 +41,9 @@ const statusColors = {
   rejected: 'bg-n-ruby-3 text-n-ruby-11',
   contacted: 'bg-n-amber-3 text-n-amber-11',
   confirmed: 'bg-n-green-3 text-n-green-11',
+  declined: 'bg-n-ruby-3 text-n-ruby-11',
+  content_delivered: 'bg-n-violet-3 text-n-violet-11',
+  completed: 'bg-n-green-3 text-n-green-11',
 };
 </script>
 

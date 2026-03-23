@@ -26,6 +26,9 @@ const emit = defineEmits([
   'delete',
   'update:profile',
   'contacted',
+  'decline',
+  'contentDelivered',
+  'complete',
 ]);
 
 const activeTab = ref('profile');
@@ -1252,6 +1255,61 @@ function handleReject() {
         @click="emit('delete')"
       >
         {{ t('INFLUENCER.DELETE.BUTTON') }}
+      </button>
+    </div>
+
+    <!-- Actions for contacted profiles -->
+    <div
+      v-else-if="profile.status === 'contacted'"
+      class="border-t border-n-weak p-4"
+    >
+      <button
+        class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-n-ruby-9 px-4 py-2 text-sm font-medium text-white hover:bg-n-ruby-10"
+        @click="emit('decline', profile.id)"
+      >
+        <span class="i-lucide-x size-3.5" />
+        {{ t('INFLUENCER.DETAIL.DECLINE') }}
+      </button>
+      <button
+        class="mt-2 w-full rounded-lg border border-n-weak px-4 py-1.5 text-sm text-n-slate-11 hover:bg-n-background"
+        @click="emit('delete')"
+      >
+        {{ t('INFLUENCER.DELETE.BUTTON') }}
+      </button>
+    </div>
+
+    <!-- Actions for confirmed profiles -->
+    <div
+      v-else-if="profile.status === 'confirmed'"
+      class="border-t border-n-weak p-4"
+    >
+      <button
+        class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+        @click="emit('contentDelivered', profile.id)"
+      >
+        <span class="i-lucide-check-circle size-3.5" />
+        {{ t('INFLUENCER.DETAIL.MARK_CONTENT_DELIVERED') }}
+      </button>
+      <button
+        class="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-n-ruby-9 px-4 py-2 text-sm font-medium text-white hover:bg-n-ruby-10"
+        @click="emit('decline', profile.id)"
+      >
+        <span class="i-lucide-x size-3.5" />
+        {{ t('INFLUENCER.DETAIL.DECLINE') }}
+      </button>
+    </div>
+
+    <!-- Actions for content_delivered profiles -->
+    <div
+      v-else-if="profile.status === 'content_delivered'"
+      class="border-t border-n-weak p-4"
+    >
+      <button
+        class="flex w-full items-center justify-center gap-1.5 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+        @click="emit('complete', profile.id)"
+      >
+        <span class="i-lucide-check-check size-3.5" />
+        {{ t('INFLUENCER.DETAIL.COMPLETE') }}
       </button>
     </div>
 

@@ -25,6 +25,9 @@ const state = {
     rejected: defaultColumnState(),
     contacted: defaultColumnState(),
     confirmed: defaultColumnState(),
+    declined: defaultColumnState(),
+    content_delivered: defaultColumnState(),
+    completed: defaultColumnState(),
   },
   searchResults: [],
   searchMeta: {

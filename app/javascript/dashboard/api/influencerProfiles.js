@@ -64,6 +64,18 @@ class InfluencerProfilesAPI extends ApiClient {
     return axios.post(`${this.url}/${id}/reject`, { reason });
   }
 
+  decline(id, reason = '') {
+    return axios.post(`${this.url}/${id}/decline`, { reason });
+  }
+
+  markContentDelivered(id) {
+    return axios.post(`${this.url}/${id}/mark_content_delivered`);
+  }
+
+  markComplete(id) {
+    return axios.post(`${this.url}/${id}/complete`);
+  }
+
   recalculate(id) {
     return axios.post(`${this.url}/${id}/recalculate`);
   }
