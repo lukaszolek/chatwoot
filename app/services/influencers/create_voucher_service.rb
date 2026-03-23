@@ -34,9 +34,9 @@ class Influencers::CreateVoucherService
   end
 
   def generate_code
-    username = @offer.influencer_profile.username.upcase.gsub(/[^A-Z0-9]/, '')[0..8]
-    suffix = SecureRandom.alphanumeric(4).upcase
-    "INF-#{username}-#{suffix}"
+    username = @offer.influencer_profile.username.upcase.gsub(/[^A-Z0-9]/, '')
+    suffix = rand(100..999).to_s
+    "#{username}#{suffix}"
   end
 
   def build_referral_link

@@ -16,6 +16,13 @@ const RIGHTS_MULTIPLIERS = {
 
 const CONTENT_FLOOR = 0.1;
 
+const EXCHANGE_RATES = { EUR: 1.0, GBP: 0.86, PLN: 4.28 };
+
+export function convertCurrency(eurValue, targetCurrency) {
+  const rate = EXCHANGE_RATES[targetCurrency] || 1.0;
+  return eurValue * rate;
+}
+
 export function useVoucherCalculator(profile) {
   const includeReel = ref(CONTENT_ELEMENTS.reel.defaultOn);
   const includeCarousel = ref(CONTENT_ELEMENTS.carousel.defaultOn);

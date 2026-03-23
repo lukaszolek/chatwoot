@@ -130,6 +130,12 @@ class InfluencerProfilesAPI extends ApiClient {
     });
   }
 
+  updateCurrency(profileId, currency) {
+    return axios.patch(`${this.url}/${profileId}/update_currency`, {
+      currency,
+    });
+  }
+
   lookalike(id) {
     return axios.post(`${this.url}/${id}/lookalike`);
   }

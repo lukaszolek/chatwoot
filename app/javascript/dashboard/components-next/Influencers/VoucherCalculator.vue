@@ -1,7 +1,10 @@
 <script setup>
-import { computed, ref, toRef } from 'vue';
+import { computed, ref, toRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useVoucherCalculator } from './composables/useVoucherCalculator';
+import {
+  useVoucherCalculator,
+  convertCurrency,
+} from './composables/useVoucherCalculator';
 import InfluencerProfilesAPI from '../../api/influencerProfiles';
 
 const props = defineProps({
@@ -9,6 +12,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['profileUpdated']);
+
+const CURRENCIES = ['EUR', 'GBP', 'PLN'];
 
 const { t } = useI18n();
 const profileRef = toRef(props, 'profile');
@@ -29,6 +34,21 @@ const localMultiplier = ref(
 );
 const isSavingMultiplier = ref(false);
 
+const selectedCurrency = ref(props.profile.voucher_currency || 'EUR');
+const isSavingCurrency = ref(false);
+
+watch(
+  () => props.profile.voucher_currency,
+  val => {
+    if (val) selectedCurrency.value = val;
+  }
+);
+
+const convertedValue = computed(() => {
+  if (voucherValue.value == null) return null;
+  return convertCurrency(voucherValue.value, selectedCurrency.value);
+});
+
 async function onMultiplierChange(event) {
   const value = parseFloat(event.target.value);
   localMultiplier.value = value;
@@ -41,6 +61,20 @@ async function onMultiplierChange(event) {
     emit('profileUpdated', data.payload);
   } finally {
     isSavingMultiplier.value = false;
+  }
+}
+
+async function onCurrencyChange(currency) {
+  selectedCurrency.value = currency;
+  isSavingCurrency.value = true;
+  try {
+    const { data } = await InfluencerProfilesAPI.updateCurrency(
+      props.profile.id,
+      currency
+    );
+    emit('profileUpdated', data.payload);
+  } finally {
+    isSavingCurrency.value = false;
   }
 }
 
@@ -137,6 +171,29 @@ function formatVoucher(value) {
         </button>
       </div>
 
+      <!-- Currency -->
+      <p class="mb-1.5 text-xs text-n-slate-11">
+        {{ t('INFLUENCER.VOUCHER.CURRENCY') }}
+      </p>
+      <div
+        class="mb-4 inline-flex overflow-hidden rounded-lg border border-n-weak"
+      >
+        <button
+          v-for="curr in CURRENCIES"
+          :key="curr"
+          class="px-3 py-1 text-xs font-medium transition-colors"
+          :class="
+            selectedCurrency === curr
+              ? 'bg-n-brand text-white'
+              : 'bg-n-solid-1 text-n-slate-11 hover:bg-n-background'
+          "
+          :disabled="isSavingCurrency"
+          @click="onCurrencyChange(curr)"
+        >
+          {{ curr }}
+        </button>
+      </div>
+
       <!-- Multiplier slider -->
       <p class="mb-1.5 text-xs text-n-slate-11">
         {{ t('INFLUENCER.VOUCHER.MULTIPLIER_LABEL') }}
@@ -168,7 +225,7 @@ function formatVoucher(value) {
           {{ t('INFLUENCER.VOUCHER.ESTIMATED_VALUE') }}
         </p>
         <p class="text-2xl font-bold text-n-slate-12">
-          &asymp; {{ formatVoucher(voucherValue) }} EUR
+          &asymp; {{ formatVoucher(convertedValue) }} {{ selectedCurrency }}
         </p>
         <p class="mt-1 font-mono text-[10px] text-n-slate-10">
           {{

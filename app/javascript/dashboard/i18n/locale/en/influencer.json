@@ -231,6 +231,7 @@
       "STANDARD": "Standard",
       "EXTENDED": "Extended",
       "ESTIMATED_VALUE": "Estimated voucher value",
+      "CURRENCY": "Currency",
       "MULTIPLIER_LABEL": "Value multiplier",
       "FORMULA_HINT": "followers x (FQS/100) x 0.019 x {content} x {rights} x {multiplier}",
       "ENRICH_HINT": "Enrich this profile to unlock voucher valuation."

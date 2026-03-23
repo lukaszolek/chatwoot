@@ -18,8 +18,11 @@ class InfluencerProfile < ApplicationRecord
   enum :status, { discovered: 0, preselected: 1, enriched: 2, approved: 3, rejected: 4, contacted: 5, confirmed: 6 }
   enum :apify_status, { apify_none: 0, apify_pending: 1, apify_done: 2, apify_failed: 3 }, prefix: :apify
 
+  SUPPORTED_CURRENCIES = %w[EUR GBP PLN].freeze
+
   validates :username, presence: true, uniqueness: { scope: %i[account_id platform] }
   validates :contact_id, uniqueness: true
+  validates :voucher_currency, inclusion: { in: SUPPORTED_CURRENCIES }
 
   scope :scoreable, -> { where(status: :enriched) }
   scope :actionable, -> { where(status: %i[enriched approved]) }

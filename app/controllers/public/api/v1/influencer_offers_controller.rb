@@ -12,7 +12,8 @@ class Public::Api::V1::InfluencerOffersController < PublicController
     apply_consents
     result = Influencers::CreateVoucherService.new(offer: @offer).perform
     finalize_acceptance(result[:voucher_code], result[:referral_link])
-    render json: { voucher_code: result[:voucher_code], voucher_value: @offer.voucher_value, referral_link: result[:referral_link] }
+    render json: { voucher_code: result[:voucher_code], voucher_value: @offer.voucher_value,
+                   voucher_currency: @offer.voucher_currency, referral_link: result[:referral_link] }
   rescue Influencers::CreateVoucherService::VoucherCreationError => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
@@ -20,7 +21,8 @@ class Public::Api::V1::InfluencerOffersController < PublicController
   def calculate
     packages = params[:packages]&.to_unsafe_h || @offer.available_packages
     rights = params[:rights_level].presence || 'standard'
-    value = @offer.calculate_voucher_value(packages, rights)
+    eur_value = @offer.calculate_voucher_value(packages, rights)
+    value = Influencers::VoucherCalculator.convert(eur_value, @offer.voucher_currency)
     render json: { value: value, currency: @offer.voucher_currency }
   end
 
@@ -41,7 +43,8 @@ class Public::Api::V1::InfluencerOffersController < PublicController
   def apply_selections
     @offer.selected_packages = params[:packages]&.to_unsafe_h || @offer.available_packages
     @offer.rights_level = params[:rights_level].presence || @offer.rights_level
-    @offer.voucher_value = @offer.calculate_voucher_value(@offer.selected_packages, @offer.rights_level)
+    eur_value = @offer.calculate_voucher_value(@offer.selected_packages, @offer.rights_level)
+    @offer.voucher_value = Influencers::VoucherCalculator.convert(eur_value, @offer.voucher_currency)
   end
 
   def apply_consents
@@ -62,26 +65,20 @@ class Public::Api::V1::InfluencerOffersController < PublicController
 
   def offer_json
     profile = @offer.influencer_profile
-    json = {
-      influencer: { username: profile.username, fullname: profile.fullname },
+    base_json(profile).tap { |json| json.merge!(accepted_json) if @offer.accepted? }
+  end
+
+  def base_json(profile)
+    { influencer: { username: profile.username, fullname: profile.fullname },
       brand: { name: 'Framky', logo_url: '/brand/framky-logo.svg' },
-      available_packages: @offer.available_packages,
-      default_rights: @offer.rights_level,
-      custom_message: @offer.custom_message,
-      expires_at: @offer.expires_at,
+      available_packages: @offer.available_packages, default_rights: @offer.rights_level,
+      custom_message: @offer.custom_message, expires_at: @offer.expires_at,
       calculator: { followers: profile.followers_count, fqs_score: profile.fqs_score, value_multiplier: profile.voucher_value_multiplier },
-      status: @offer.status
-    }
-    if @offer.accepted?
-      json.merge!(
-        voucher_code: @offer.voucher_code,
-        voucher_value: @offer.voucher_value,
-        voucher_currency: @offer.voucher_currency,
-        referral_link: @offer.referral_link,
-        selected_packages: @offer.selected_packages,
-        rights_level: @offer.rights_level
-      )
-    end
-    json
+      voucher_currency: @offer.voucher_currency, status: @offer.status }
+  end
+
+  def accepted_json
+    { voucher_code: @offer.voucher_code, voucher_value: @offer.voucher_value,
+      referral_link: @offer.referral_link, selected_packages: @offer.selected_packages, rights_level: @offer.rights_level }
   end
 end

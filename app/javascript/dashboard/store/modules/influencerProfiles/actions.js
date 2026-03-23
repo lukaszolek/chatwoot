@@ -199,6 +199,15 @@ export const actions = {
     return data.payload;
   },
 
+  updateCurrency: async ({ commit }, { profileId, currency }) => {
+    const { data } = await InfluencerProfilesAPI.updateCurrency(
+      profileId,
+      currency
+    );
+    commit(types.EDIT_INFLUENCER, data.payload);
+    return data.payload;
+  },
+
   sendMessage: async (_, { profileId, inboxId, content, subject }) => {
     const { data } = await InfluencerProfilesAPI.sendMessage(profileId, {
       inboxId,

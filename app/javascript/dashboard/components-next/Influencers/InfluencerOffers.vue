@@ -51,7 +51,7 @@ async function handleGenerate() {
       profileId: props.profile.id,
       packages: { reel: true, carousel: true, stories: true },
       rightsLevel: 'standard',
-      currency: 'EUR',
+      currency: props.profile.voucher_currency || 'EUR',
     });
     await fetchOffers();
   } catch (err) {

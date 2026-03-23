@@ -7,7 +7,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   skip_before_action :current_account, only: [:proxy_image]
   before_action :set_profile, only: %i[show destroy request_report preselect approve reject recalculate retry_apify lookalike conversations
                                        send_message mark_contacted log_message conversation_messages
-                                       create_offer offers update_email update_language update_multiplier]
+                                       create_offer offers update_email update_language update_multiplier update_currency]
   rescue_from InfluencersClub::Client::ApiError, with: :handle_api_error
 
   def index
@@ -220,7 +220,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       available_packages: params[:packages] || { reel: true, carousel: true, stories: true },
       rights_level: params[:rights_level] || 'standard',
       custom_message: params[:custom_message],
-      voucher_currency: params[:currency] || 'EUR'
+      voucher_currency: params[:currency] || @profile.voucher_currency
     )
     url = "#{offer_base_url}#{offer.offer_path}"
     render json: { offer_url: url, token: offer.token, expires_at: offer.expires_at }
@@ -263,6 +263,17 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
   def update_multiplier
     multiplier = params[:multiplier].to_f.clamp(0.5, 2.0)
     if @profile.update(voucher_value_multiplier: multiplier)
+      render json: { payload: profile_json(@profile.reload) }
+    else
+      render json: { error: @profile.errors.full_messages.join(', ') }, status: :unprocessable_entity
+    end
+  end
+
+  def update_currency
+    currency = params[:currency]
+    return render json: { error: 'Invalid currency' }, status: :unprocessable_entity unless InfluencerProfile::SUPPORTED_CURRENCIES.include?(currency)
+
+    if @profile.update(voucher_currency: currency)
       render json: { payload: profile_json(@profile.reload) }
     else
       render json: { error: @profile.errors.full_messages.join(', ') }, status: :unprocessable_entity
@@ -573,6 +584,7 @@ class Api::V1::Accounts::InfluencerProfilesController < Api::V1::Accounts::BaseC
       email: profile.contact&.email,
       language: profile.contact&.additional_attributes&.dig('locale'),
       voucher_value_multiplier: profile.voucher_value_multiplier,
+      voucher_currency: profile.voucher_currency,
       last_contacted_at: profile.last_contacted_at,
       created_at: profile.created_at,
       updated_at: profile.updated_at

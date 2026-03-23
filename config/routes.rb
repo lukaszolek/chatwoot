@@ -233,6 +233,7 @@ Rails.application.routes.draw do
               patch :update_email
               patch :update_language
               patch :update_multiplier
+              patch :update_currency
             end
           end
           resources :csat_survey_responses, only: [:index] do
