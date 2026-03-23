@@ -5,7 +5,7 @@ class InfluencerProfile < ApplicationRecord
     discovered: %i[preselected enriched rejected],
     preselected: %i[enriched rejected],
     enriched: %i[approved rejected],
-    approved: %i[contacted rejected],
+    approved: %i[contacted confirmed rejected],
     rejected: %i[discovered],
     contacted: %i[confirmed declined],
     confirmed: %i[content_delivered declined],

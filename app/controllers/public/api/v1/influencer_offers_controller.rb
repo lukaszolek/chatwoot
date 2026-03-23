@@ -56,7 +56,8 @@ class Public::Api::V1::InfluencerOffersController < PublicController
     version = params[:offer_page_version].presence || InfluencerOffer::CURRENT_OFFER_PAGE_VERSION
     @offer.update!(status: :accepted, voucher_code: voucher_code, referral_link: referral_link, terms_accepted_at: Time.current,
                    offer_page_version: version)
-    @offer.influencer_profile.transition_to!(:confirmed) if @offer.influencer_profile.contacted?
+    profile = @offer.influencer_profile
+    profile.transition_to!(:confirmed) if profile.contacted? || profile.approved?
   end
 
   def render_unavailable
