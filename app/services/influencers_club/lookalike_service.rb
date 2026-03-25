@@ -4,8 +4,8 @@ class InfluencersClub::LookalikeService
   end
 
   def perform(username:, platform: 'instagram', filters: {})
-    body = { platform: platform, handle: username }
+    body = { platform: platform, filter_key: 'username', filter_value: username, paging: { limit: 10, page: 0 } }
     body[:filters] = filters if filters.present?
-    @client.post('/public/v1/lookalikes/', body)
+    @client.post('/public/v1/discovery/creators/similar/', body)
   end
 end
