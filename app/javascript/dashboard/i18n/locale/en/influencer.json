@@ -136,7 +136,10 @@
       "PRESELECT": "Preselect",
       "RAW_DATA": "All data in DB",
       "SET_LANGUAGE": "language",
-      "EDIT_LANGUAGE": "Change language"
+      "EDIT_LANGUAGE": "Change language",
+      "DECLINE": "Decline collaboration",
+      "MARK_CONTENT_DELIVERED": "Mark content delivered",
+      "COMPLETE": "Complete collaboration"
     },
     "ADD": {
       "BUTTON": "Add",
@@ -144,11 +147,6 @@
       "SUCCESS": "Profile added. Fetching details...",
       "ERROR": "Failed to add profile",
       "EXISTS": "Profile already exists"
-    },
-    "DETAIL": {
-      "DECLINE": "Decline collaboration",
-      "MARK_CONTENT_DELIVERED": "Mark content delivered",
-      "COMPLETE": "Complete collaboration"
     },
     "DELETE": {
       "BUTTON": "Delete",
