@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_23_140000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_22_120700) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -258,6 +258,120 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_23_140000) do
     t.datetime "updated_at", null: false
     t.boolean "active", default: true, null: false
     t.index ["account_id"], name: "index_automation_rules_on_account_id"
+  end
+
+  create_table "campaign_attribution_events", force: :cascade do |t|
+    t.bigint "campaign_participant_id", null: false
+    t.integer "event_type", null: false
+    t.datetime "occurred_at", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["campaign_participant_id", "event_type", "occurred_at"], name: "idx_attribution_events_participant_type_time"
+    t.index ["campaign_participant_id"], name: "index_campaign_attribution_events_on_campaign_participant_id"
+  end
+
+  create_table "campaign_drafts", force: :cascade do |t|
+    t.bigint "campaign_participant_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "campaign_llm_decision_id"
+    t.string "subject", null: false
+    t.text "body", null: false
+    t.string "template_slot", null: false
+    t.string "locale", null: false
+    t.integer "status", default: 0, null: false
+    t.bigint "assigned_user_id"
+    t.datetime "reviewed_at"
+    t.bigint "reviewed_by_user_id"
+    t.datetime "send_after_at"
+    t.integer "iteration_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assigned_user_id"], name: "index_campaign_drafts_on_assigned_user_id"
+    t.index ["campaign_llm_decision_id"], name: "index_campaign_drafts_on_campaign_llm_decision_id"
+    t.index ["campaign_participant_id"], name: "index_campaign_drafts_on_campaign_participant_id"
+    t.index ["conversation_id"], name: "index_campaign_drafts_on_conversation_id"
+    t.index ["reviewed_by_user_id"], name: "index_campaign_drafts_on_reviewed_by_user_id"
+    t.index ["status", "created_at"], name: "idx_campaign_drafts_status_time"
+  end
+
+  create_table "campaign_llm_decisions", force: :cascade do |t|
+    t.bigint "campaign_participant_id", null: false
+    t.bigint "outbound_campaign_id", null: false
+    t.bigint "conversation_id"
+    t.bigint "message_id"
+    t.integer "decision_type", null: false
+    t.string "model", null: false
+    t.string "prompt_version"
+    t.string "input_digest"
+    t.jsonb "output", default: {}, null: false
+    t.float "confidence"
+    t.integer "routed_to"
+    t.jsonb "token_usage", default: {}, null: false
+    t.integer "latency_ms"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["campaign_participant_id"], name: "index_campaign_llm_decisions_on_campaign_participant_id"
+    t.index ["conversation_id"], name: "index_campaign_llm_decisions_on_conversation_id"
+    t.index ["message_id"], name: "idx_llm_decisions_message"
+    t.index ["outbound_campaign_id", "decision_type", "created_at"], name: "idx_llm_decisions_campaign_type_time"
+    t.index ["outbound_campaign_id"], name: "index_campaign_llm_decisions_on_outbound_campaign_id"
+  end
+
+  create_table "campaign_participants", force: :cascade do |t|
+    t.bigint "outbound_campaign_id", null: false
+    t.bigint "account_id", null: false
+    t.string "participatable_type", null: false
+    t.bigint "participatable_id", null: false
+    t.string "current_stage_key", null: false
+    t.datetime "stage_entered_at", null: false
+    t.datetime "next_action_at"
+    t.datetime "last_outbound_at"
+    t.datetime "last_inbound_at"
+    t.bigint "conversation_id"
+    t.bigint "contact_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.boolean "paused", default: false, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_campaign_participants_on_account_id"
+    t.index ["contact_id"], name: "index_campaign_participants_on_contact_id"
+    t.index ["conversation_id"], name: "index_campaign_participants_on_conversation_id"
+    t.index ["outbound_campaign_id", "current_stage_key", "next_action_at"], name: "idx_campaign_participants_tick_scan"
+    t.index ["outbound_campaign_id", "participatable_type", "participatable_id"], name: "idx_campaign_participants_unique_per_campaign", unique: true
+    t.index ["outbound_campaign_id"], name: "index_campaign_participants_on_outbound_campaign_id"
+    t.index ["participatable_type", "participatable_id"], name: "index_campaign_participants_on_participatable"
+  end
+
+  create_table "campaign_pipeline_stages", force: :cascade do |t|
+    t.bigint "outbound_campaign_id", null: false
+    t.string "key", null: false
+    t.integer "position", null: false
+    t.integer "on_enter_action", null: false
+    t.string "template_slot"
+    t.integer "auto_advance_after_hours"
+    t.string "next_stage_key"
+    t.jsonb "branch_rules", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["outbound_campaign_id", "key"], name: "idx_pipeline_stages_campaign_key", unique: true
+    t.index ["outbound_campaign_id", "position"], name: "idx_pipeline_stages_campaign_position"
+    t.index ["outbound_campaign_id"], name: "index_campaign_pipeline_stages_on_outbound_campaign_id"
+  end
+
+  create_table "campaign_templates", force: :cascade do |t|
+    t.bigint "outbound_campaign_id", null: false
+    t.string "slot", null: false
+    t.string "locale", null: false
+    t.string "subject", null: false
+    t.text "body", null: false
+    t.text "llm_guidance"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["outbound_campaign_id", "slot", "locale", "active"], name: "idx_campaign_templates_slot_locale_active"
+    t.index ["outbound_campaign_id", "slot", "locale"], name: "idx_campaign_templates_active_slot_locale", unique: true, where: "(active = true)"
+    t.index ["outbound_campaign_id"], name: "index_campaign_templates_on_outbound_campaign_id"
   end
 
   create_table "campaigns", force: :cascade do |t|
@@ -1191,6 +1305,54 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_23_140000) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "outbound_campaigns", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "name", null: false
+    t.string "program_key", null: false
+    t.integer "status", default: 0, null: false
+    t.bigint "inbox_id"
+    t.bigint "sender_user_id"
+    t.jsonb "config", default: {}, null: false
+    t.jsonb "audience_source_config", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "program_key"], name: "idx_outbound_campaigns_account_program", unique: true
+    t.index ["account_id"], name: "index_outbound_campaigns_on_account_id"
+    t.index ["inbox_id"], name: "index_outbound_campaigns_on_inbox_id"
+    t.index ["sender_user_id"], name: "index_outbound_campaigns_on_sender_user_id"
+    t.index ["status"], name: "index_outbound_campaigns_on_status"
+  end
+
+  create_table "photographer_partner_profiles", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.string "external_id", null: false
+    t.string "email", null: false
+    t.string "business_name"
+    t.string "owner_name"
+    t.string "website"
+    t.string "country_code"
+    t.string "phone"
+    t.string "instagram_handle"
+    t.string "preferred_language"
+    t.boolean "marketing_consent", default: false, null: false
+    t.datetime "gdpr_delete_requested_at"
+    t.string "source_status"
+    t.integer "partnership_status", default: 0, null: false
+    t.datetime "partnership_status_changed_at"
+    t.string "tags", default: [], array: true
+    t.text "notes"
+    t.datetime "last_synced_at"
+    t.bigint "contact_id"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "email"], name: "idx_photographer_profiles_account_email", unique: true
+    t.index ["account_id", "external_id"], name: "idx_photographer_profiles_account_external", unique: true
+    t.index ["account_id"], name: "index_photographer_partner_profiles_on_account_id"
+    t.index ["contact_id"], name: "index_photographer_partner_profiles_on_contact_id"
+    t.index ["partnership_status"], name: "index_photographer_partner_profiles_on_partnership_status"
+  end
+
   create_table "pipeline_stages", force: :cascade do |t|
     t.bigint "label_id", null: false
     t.string "title", null: false
@@ -1425,6 +1587,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_23_140000) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "campaign_attribution_events", "campaign_participants", on_delete: :cascade
+  add_foreign_key "campaign_drafts", "campaign_llm_decisions"
+  add_foreign_key "campaign_drafts", "campaign_participants", on_delete: :cascade
+  add_foreign_key "campaign_drafts", "conversations"
+  add_foreign_key "campaign_drafts", "users", column: "assigned_user_id"
+  add_foreign_key "campaign_drafts", "users", column: "reviewed_by_user_id"
+  add_foreign_key "campaign_llm_decisions", "campaign_participants", on_delete: :cascade
+  add_foreign_key "campaign_llm_decisions", "conversations"
+  add_foreign_key "campaign_llm_decisions", "outbound_campaigns", on_delete: :cascade
+  add_foreign_key "campaign_participants", "accounts"
+  add_foreign_key "campaign_participants", "contacts"
+  add_foreign_key "campaign_participants", "conversations"
+  add_foreign_key "campaign_participants", "outbound_campaigns", on_delete: :cascade
+  add_foreign_key "campaign_pipeline_stages", "outbound_campaigns", on_delete: :cascade
+  add_foreign_key "campaign_templates", "outbound_campaigns", on_delete: :cascade
   add_foreign_key "contact_pipeline_stages", "accounts"
   add_foreign_key "contact_pipeline_stages", "contacts"
   add_foreign_key "contact_pipeline_stages", "pipeline_stages"
@@ -1436,6 +1613,11 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_23_140000) do
   add_foreign_key "influencer_profiles", "accounts"
   add_foreign_key "influencer_profiles", "contacts"
   add_foreign_key "influencer_searches", "accounts"
+  add_foreign_key "outbound_campaigns", "accounts"
+  add_foreign_key "outbound_campaigns", "inboxes"
+  add_foreign_key "outbound_campaigns", "users", column: "sender_user_id"
+  add_foreign_key "photographer_partner_profiles", "accounts"
+  add_foreign_key "photographer_partner_profiles", "contacts"
   add_foreign_key "pipeline_stages", "labels"
   create_trigger("accounts_after_insert_row_tr", :generated => true, :compatibility => 1).
       on("accounts").
