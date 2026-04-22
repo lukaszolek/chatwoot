@@ -140,6 +140,7 @@ Rails.application.routes.draw do
             end
             get 'directory/search', to: 'directory#search'
             post 'directory/import', to: 'directory#import'
+            get 'conversations/:conversation_id/context', to: 'conversation_contexts#show'
           end
           resources :dashboard_apps, only: [:index, :show, :create, :update, :destroy]
           namespace :channels do

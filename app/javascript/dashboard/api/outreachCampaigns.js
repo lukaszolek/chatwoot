@@ -21,6 +21,13 @@ class OutreachCampaignsAPI extends ApiClient {
   archive(id) {
     return axios.post(`${this.url}/${id}/archive`);
   }
+
+  conversationContext(conversationDisplayId) {
+    const accountId = this.accountIdFromRoute;
+    return axios.get(
+      `/api/v1/accounts/${accountId}/outreach/conversations/${conversationDisplayId}/context`
+    );
+  }
 }
 
 export default new OutreachCampaignsAPI();

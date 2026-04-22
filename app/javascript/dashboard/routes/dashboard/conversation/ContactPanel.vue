@@ -19,6 +19,7 @@ import ConversationInfo from './ConversationInfo.vue';
 import CustomAttributes from './customAttributes/CustomAttributes.vue';
 import Draggable from 'vuedraggable';
 import MacrosList from './Macros/List.vue';
+import OutreachSidebarPanel from './OutreachSidebarPanel.vue';
 import ShopifyOrdersList from 'dashboard/components/widgets/conversation/ShopifyOrdersList.vue';
 import SidebarActionsHeader from 'dashboard/components-next/SidebarActionsHeader.vue';
 import ContactLabels from 'dashboard/components-next/Contacts/ContactLabels/ContactLabels.vue';
@@ -62,7 +63,7 @@ const isShopifyFeatureEnabled = computed(
   () => shopifyIntegration.value.enabled
 );
 
-const { isCloudFeatureEnabled } = useAccount();
+const { isCloudFeatureEnabled, currentAccount } = useAccount();
 
 const isLinearFeatureEnabled = computed(() =>
   isCloudFeatureEnabled(FEATURE_FLAGS.LINEAR)
@@ -93,6 +94,12 @@ const currentConversationMetaData = computed(() =>
 const conversationAdditionalAttributes = computed(
   () => currentConversationMetaData.value.additional_attributes || {}
 );
+
+const currentConversationDisplayId = computed(
+  () => currentChat.value?.id ?? conversationId.value
+);
+const currentAccountId = computed(() => currentAccount.value?.id);
+const outreachPanelTitle = 'Outreach campaign';
 
 const channelType = computed(() => currentChat.value.meta?.channel);
 
@@ -317,6 +324,21 @@ onMounted(() => {
           </div>
         </template>
       </Draggable>
+
+      <!-- Outreach sidebar panel — visible only when conversation is
+           linked to an outreach campaign (participant_id present in
+           additional_attributes). Not draggable (static trailing). -->
+      <AccordionItem
+        :title="outreachPanelTitle"
+        :is-open="isContactSidebarItemOpen('is_outreach_open')"
+        compact
+        @toggle="value => toggleSidebarUIState('is_outreach_open', value)"
+      >
+        <OutreachSidebarPanel
+          :conversation-id="currentConversationDisplayId"
+          :account-id="currentAccountId"
+        />
+      </AccordionItem>
     </div>
   </div>
 </template>
