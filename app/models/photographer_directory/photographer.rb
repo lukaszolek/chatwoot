@@ -40,7 +40,9 @@ class PhotographerDirectory::Photographer < PhotographerDirectory::ApplicationRe
          .where(status: 'active')
   }
 
-  def opt_out!(_reason:)
+  # Reason is tracked by the caller (ConsentWriter → CampaignAttributionEvent),
+  # not stored on the source row.
+  def opt_out!
     update!(marketing_consent: false, unsubscribed_from_all_campaigns: true,
             unsubscribed_from_all_at: Time.current)
   end
