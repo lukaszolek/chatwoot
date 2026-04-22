@@ -54,8 +54,12 @@ class Outreach::Llm::Client
       end
       yield context.chat(model: model, provider: :openrouter, assume_model_exists: true)
     else
+      # OpenAI-compatible gateways (eurouter.ai, custom proxies, etc.)
+      # use OpenAI's request shape but with their own model IDs.
+      # assume_model_exists bypasses RubyLLM's built-in model registry
+      # so arbitrary model slugs work.
       Llm::Config.with_api_key(api_key, api_base: api_base) do |context|
-        yield context.chat(model: model)
+        yield context.chat(model: model, provider: :openai, assume_model_exists: true)
       end
     end
   end
