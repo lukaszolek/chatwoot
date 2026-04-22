@@ -3,7 +3,21 @@ json.name resource.name
 json.program_key resource.program_key
 json.status resource.status
 json.inbox_id resource.inbox_id
+if resource.inbox
+  json.inbox do
+    json.id resource.inbox.id
+    json.name resource.inbox.name
+    json.channel_type resource.inbox.channel_type
+  end
+end
 json.sender_user_id resource.sender_user_id
+if resource.sender_user
+  json.sender_user do
+    json.id resource.sender_user.id
+    json.name resource.sender_user.name
+    json.email resource.sender_user.email
+  end
+end
 json.config resource.config
 json.audience_source_config resource.audience_source_config
 json.participants_count resource.participants.count

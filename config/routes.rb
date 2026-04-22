@@ -119,7 +119,7 @@ Rails.application.routes.draw do
           end
           resources :campaigns, only: [:index, :create, :show, :update, :destroy]
           namespace :outreach do
-            resources :campaigns, only: [:index, :show] do
+            resources :campaigns, only: [:index, :show, :update] do
               member do
                 post :pause
                 post :resume

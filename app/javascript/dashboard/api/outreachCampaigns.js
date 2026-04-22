@@ -6,6 +6,10 @@ class OutreachCampaignsAPI extends ApiClient {
     super('outreach/campaigns', { accountScoped: true });
   }
 
+  update(id, payload) {
+    return axios.patch(`${this.url}/${id}`, { outbound_campaign: payload });
+  }
+
   pause(id) {
     return axios.post(`${this.url}/${id}/pause`);
   }

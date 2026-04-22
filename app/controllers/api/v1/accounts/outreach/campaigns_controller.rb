@@ -8,6 +8,11 @@ class Api::V1::Accounts::Outreach::CampaignsController < Api::V1::Accounts::Base
 
   def show; end
 
+  def update
+    @campaign.update!(campaign_params)
+    render :show
+  end
+
   def pause
     @campaign.update!(status: :paused)
     render :show
@@ -27,6 +32,10 @@ class Api::V1::Accounts::Outreach::CampaignsController < Api::V1::Accounts::Base
 
   def campaign
     @campaign ||= Current.account.outbound_campaigns.find(params[:id])
+  end
+
+  def campaign_params
+    params.require(:outbound_campaign).permit(:inbox_id, :sender_user_id)
   end
 
   def check_authorization
