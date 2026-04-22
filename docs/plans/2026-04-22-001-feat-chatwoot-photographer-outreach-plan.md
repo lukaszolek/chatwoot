@@ -152,6 +152,31 @@ This plan covers **only the chatwoot side** (§6, §9.7–§9.12, §10 of the so
 - `bundle exec rake "outreach:blueprints:apply[1]"` → creates 10 stages, 15 templates for Framky account (id=1). Re-run is idempotent (no row churn).
 - `bundle exec rake "outreach:photographers:import[1]"` → currently returns `imported=0 updated=0` because all 18 `queryable_for_outreach` photographers on prod are enrolled in the active photographer-directory onboarding CRM (`photographer_campaign_status`). **Option C exclusion working as intended** — partnership outreach will pick them up once they complete onboarding.
 
+### Quick-start (hands-on testing)
+
+```bash
+cd /Users/lukasz/Development/framky/chatwoot
+export PATH="$HOME/.rbenv/shims:$PATH"   # ensure rbenv ruby 3.4.4 is active
+
+# Full outreach spec suite
+bundle exec rspec spec/services/outreach/ spec/jobs/outreach/ \
+                  spec/models/photographer_directory/
+
+# Apply blueprint to account id=1 (Framky). Idempotent — safe to re-run.
+bundle exec rake "outreach:blueprints:apply[1]"
+
+# Import photographer leads for account id=1 (Option C exclusion applies).
+# Pass a country code as the 2nd arg to scope, e.g. "outreach:photographers:import[1,pl]".
+bundle exec rake "outreach:photographers:import[1]"
+
+# Interactive session — inspect the wired-up models and services.
+bundle exec rails c
+
+# (Optional) Run only the secondary-DB-dependent specs against prod directory via Tailscale.
+PHOTOGRAPHER_DIRECTORY_DATABASE_URL="postgresql://photographer_directory_outreach:${CHATWOOT_OUTREACH_DB_PASSWORD}@10.0.1.1:5432/photographer_directory" \
+  bundle exec rspec spec/models/photographer_directory/photographer_spec.rb
+```
+
 ### Ready-to-test paths
 
 1. **Blueprint idempotency** — `rails c`, edit a template body in YAML, re-apply, inspect `CampaignTemplate` row (expect update in place, no duplicate).
