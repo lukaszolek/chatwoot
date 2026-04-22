@@ -81,3 +81,10 @@ outreach_photographer_directory_scheduled_sync_job:
   cron: '0 */6 * * *'
   class: 'Outreach::PhotographerDirectory::ScheduledSyncJob'
   queue: outreach
+
+# Outreach engine: tick every 5 min. Fans out to CampaignTickJob per
+# active OutboundCampaign which runs the engine's Runner#tick.
+outreach_tick_scheduler_job:
+  cron: '*/5 * * * *'
+  class: 'Outreach::TickSchedulerJob'
+  queue: outreach
