@@ -31,16 +31,24 @@ RSpec.describe Outreach::Engine::Executors::Wait do
         stage
       end
 
-      it 'transitions to next_stage_key with next_action_at in the present' do
-        freeze_time do
-          described_class.new(participant: participant, stage: stage).call
-          participant.reload
+      it 'parks the participant with next_action_at=stage_entered_at+hours when window still open' do
+        participant.update!(stage_entered_at: Time.current)
 
-          expect(participant.current_stage_key).to eq('reminder_send')
-          expect(participant.next_action_at).to eq(Time.current)
-          expect(participant.stage_entered_at).to eq(Time.current)
-          expect(participant.paused).to be(false)
-        end
+        described_class.new(participant: participant, stage: stage).call
+        participant.reload
+
+        expect(participant.current_stage_key).to eq('reminder_wait')
+        expect(participant.next_action_at).to be_within(5.seconds).of(120.hours.from_now)
+        expect(participant.paused).to be(false)
+      end
+
+      it 'transitions to next_stage_key once the window has elapsed' do
+        participant.update!(stage_entered_at: 121.hours.ago)
+
+        described_class.new(participant: participant, stage: stage).call
+        participant.reload
+
+        expect(participant.current_stage_key).to eq('reminder_send')
       end
     end
 
