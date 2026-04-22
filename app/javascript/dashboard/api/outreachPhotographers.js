@@ -29,6 +29,17 @@ class OutreachPhotographersAPI extends ApiClient {
   optOut(id, reason = 'operator_manual') {
     return axios.post(`${this.url}/${id}/opt_out`, { reason });
   }
+
+  create(payload, enroll = true) {
+    return axios.post(this.url, {
+      photographer_partner_profile: payload,
+      enroll,
+    });
+  }
+
+  enroll(id) {
+    return axios.post(`${this.url}/${id}/enroll`);
+  }
 }
 
 export default new OutreachPhotographersAPI();

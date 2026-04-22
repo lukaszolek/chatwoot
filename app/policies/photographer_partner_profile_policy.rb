@@ -11,6 +11,22 @@ class PhotographerPartnerProfilePolicy < ApplicationPolicy
     index?
   end
 
+  def create?
+    index?
+  end
+
+  def enroll?
+    index?
+  end
+
+  def search?
+    index?
+  end
+
+  def import?
+    index?
+  end
+
   def opt_out?
     @account_user.administrator?
   end

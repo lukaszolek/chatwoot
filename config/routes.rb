@@ -126,9 +126,10 @@ Rails.application.routes.draw do
                 post :archive
               end
             end
-            resources :photographer_partner_profiles, only: [:index, :show, :update] do
+            resources :photographer_partner_profiles, only: [:index, :show, :create, :update] do
               member do
                 post :opt_out
+                post :enroll
               end
             end
             resources :campaign_drafts, only: [:index, :show, :update] do
@@ -137,6 +138,8 @@ Rails.application.routes.draw do
                 post :reject
               end
             end
+            get 'directory/search', to: 'directory#search'
+            post 'directory/import', to: 'directory#import'
           end
           resources :dashboard_apps, only: [:index, :show, :create, :update, :destroy]
           namespace :channels do
