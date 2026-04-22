@@ -127,7 +127,7 @@ This plan covers **only the chatwoot side** (§6, §9.7–§9.12, §10 of the so
 
 ## Implementation Progress (2026-04-22)
 
-**Status**: C1 + C2 landed on `framky/main` (no branch, no worktree — explicit user preference). Ready for hands-on testing.
+**Status**: C1 + C2 + **C3 + C4 + C7.1–C7.4** landed on `framky/main` (no branch, no worktree — explicit user preference). Engine, LLM, webhook, unsubscribe, and consent-audit surfaces are all in place. UI (C5.1 REST controllers, C5.2–C5.4 Vue, C6.1 draft approve flow, C7.5 analytics, C7.6 smoke test) is the remaining work.
 
 ### Commits
 
@@ -139,8 +139,16 @@ This plan covers **only the chatwoot side** (§6, §9.7–§9.12, §10 of the so
 | `93fca97d8` | **C2.1** | Secondary DB connection to `photographer_directory` + `PhotographerDirectory::{ApplicationRecord,Photographer}` with `attr_readonly` on every non-consent column |
 | `3d9bd29a4` | **C2.2** | `Outreach::PhotographerDirectory::{Importer,SyncJob,ScheduledSyncJob}` + rake `outreach:photographers:import` + sidekiq `outreach` queue + cron (6h). Added `PhotographerDirectory::CampaignStatus` + `GRANT SELECT` on prod for Option C exclusion |
 | `3c6129679` | **C2.3** | `Outreach::PhotographerDirectory::ConsentWriter` (sole write path) + `PropagateConsentJob` (retry 5×). Idempotent 24h window. Synthetic-participant fallback for consent audit when no participant exists |
+| `ce0df0215` | **C3.1** | Engine runner + 5 executors (Send/Wait/ClassifyReply/Escalate/Terminal) + template renderer (Liquid) + conversation resolver (lazy Contact/Conversation) + `Outreach::TickSchedulerJob` cron `*/5 * * * *` + `Outreach::CampaignTickJob` |
+| `87e4fbc47` | **C3.2** | `Outreach::RateLimiter` (Redis fixed-window, 50/h/domain default) + `Outreach::UnsubscribeToken` (HMAC-SHA256, stateless, 180-day TTL) + `SendEmailJob` wiring footer + rate-limit reschedule |
+| `acb4d7d0a` | **C3.3** | `Outreach::ReplyListener` registered in `AsyncDispatcher`, routes inbound messages on campaign-linked conversations back to `reply_router` stage |
+| `(C4.1)`     | **C4.1** | `Outreach::Llm::{Client,IntroComposer,ReplyClassifier,DraftReplyComposer}` inherit from shared client wrapping `Llm::Config.with_api_key`; OpenRouter-compatible (`OUTREACH_LLM_*` env). `LlmFormatter::PhotographerPartnerLlmFormatter` shared prompt context. `Outreach::Llm::DecisionLogger` shared `CampaignLlmDecision` writer |
+| `(C7.1)`     | **C7.1** | `POST /webhooks/outreach/partnership_signup` + HMAC-SHA256 via `OUTREACH_PARTNERSHIP_WEBHOOK_SECRET`. `Outreach::Attribution::SignupRecorder` idempotent by `(participant, event_type)`; transitions profile→signed_up + participant→terminal+paused + private note + `CampaignAttributionEvent` |
+| `(C7.2)`     | **C7.2** | `GET/POST /unsubscribe/:token` (RFC 8058 one-click). `Outreach::UnsubscribesController` cascades profile DNC, pauses all participants for the profile, enqueues `PropagateConsentJob` async |
+| `8fd343f52`  | **C7.3** (partial) | `ClassifyReply` executor propagates `declined`≥0.85 replies to `ConsentWriter` via `PropagateConsentJob(reason: 'explicit_decline')`. Bounce-event listener deferred — chatwoot has no existing bounce emit point (incoming_email_validity_helper filters silently). Operator manual opt-out lands with `PhotographerPartnerProfilesController#opt_out` in C5.1 |
+| `(C7.4)`     | **C7.4** | `Outreach::ConsentAudit` service + `Outreach::ConsentAuditJob` daily cron `0 4 * * *`. Two-direction drift check between profile.do_not_contact and directory consent columns. Extended `CampaignAttributionEvent.event_type` enum with `consent_drift_detected=4` |
 
-**Suite**: 67/67 specs green, 0 rubocop offenses on new code.
+**Suite**: 146/146 outreach specs green, 0 rubocop offenses on new code.
 
 ### What's provisioned outside chatwoot
 
@@ -202,7 +210,45 @@ PHOTOGRAPHER_DIRECTORY_DATABASE_URL="postgresql://photographer_directory_outreac
 - Mass reapply of the blueprint currently deletes unlisted stages. This is intentional for engine wiring, but watch out if you start doing schema edits per-account.
 - Test suite for `PhotographerDirectory::Photographer` skips 5 of 6 examples when `PHOTOGRAPHER_DIRECTORY_DATABASE_URL` is unset. To run them all locally: `PHOTOGRAPHER_DIRECTORY_DATABASE_URL=... bundle exec rspec spec/models/photographer_directory/photographer_spec.rb`.
 
-### What C3 will need first
+### What remains (C5.1 onwards)
+
+Engine + LLM + webhook surfaces are all wired. The UI is what's left:
+
+- **C5.1 — REST controllers** (`api/v1/accounts/:account_id/outreach/*`): campaigns (CRUD + pause/resume/archive), templates, pipeline stages, participants (list, manual stage override), photographer_partner_profiles (list+filters, update tags/notes, `opt_out` member action calling `PropagateConsentJob`), campaign_drafts (list pending_review, approve, reject, edit), outreach_analytics. Follow `Api::V1::Accounts::BaseController` pattern; policies per-resource; routes nested under `scope :accounts do; resources :account do; namespace :outreach`. Operator manual opt-out from C7.3 lives in `PhotographerPartnerProfilesController#opt_out`.
+- **C5.2 — Vue sidebar + module scaffold** at `app/javascript/dashboard/modules/outreach/` (routes.js, stores, api, pages/OutreachIndex.vue shell). Sidebar entry in `components-next/sidebar/Sidebar.vue` behind a feature flag.
+- **C5.3 — Photographers list + detail** (table + filters, timeline, manual stage override, notes/tags editor, operator opt-out button calling C5.1).
+- **C5.4 — Campaign detail** (tabs: Overview / Pipeline kanban / Templates / Participants / Logs). Template editor per-locale.
+- **C6.1 — Draft approve flow** — `DraftsToReview.vue`, `DraftReviewCard.vue`, `DraftEditorDialog.vue`. `Outreach::Drafts::SendService` on approve: convert `CampaignDraft`→real outgoing `Message` + advance participant; on reject: transition to escalated. `DraftReplyComposer` is already available — swap into the `ClassifyReply` executor's `operator_draft` branch (currently falls back to escalation).
+- **C7.5 — Analytics** `OutreachAnalytics.vue` page + `Outreach::Analytics::FunnelCalculator` service. Metrics: reach, open_rate (needs email channel open tracking — may need a stub), reply_rate, signup_rate, conversion_to_first_order (blocked by Django signal — stub as 0 until framky-backend lands).
+- **C7.6 — Smoke test** `rake outreach:photographers:smoke_test[account_id]` + `docs/solutions/<ts>-outreach-smoke-test.md` runbook. Seed 20 test fixtures (team emails), walk intro → reminder → reply-classify → draft-review → signup webhook end-to-end.
+
+### Outstanding infra items before smoke test
+
+- `OUTREACH_LLM_API_KEY` value — currently empty in both `.env` files. Without it, the classifier returns `unclear/0.0` fallback (engine keeps running, escalates safely).
+- `OUTREACH_UNSUBSCRIBE_SECRET` — currently empty. Without it, `SendEmailJob` logs a warning and sends mail without the unsubscribe footer; tokens cannot be signed.
+- `OUTREACH_PARTNERSHIP_WEBHOOK_SECRET` value — currently empty.
+- Operator `User` (for `OutboundCampaign.sender_user_id`) — escalate executor posts notes with this user as sender, and assigns conversations to them. Without one, escalation still pauses the participant but leaves the conversation unassigned.
+- Bounce event hook — chatwoot has no built-in hard-bounce event. Post-MVP option: subscribe to SendGrid/SES event webhooks and call `Outreach::PhotographerDirectory::PropagateConsentJob.perform_later(profile_id, 'bounce', reason: 'hard_bounce')`. The `ConsentWriter.propagate_bounce` method is ready; only the trigger is missing.
+
+### Current test commands
+
+```bash
+cd /Users/lukasz/Development/framky/chatwoot
+export PATH="$HOME/.rbenv/shims:$PATH"
+
+# Full outreach suite (146 examples)
+bundle exec rspec spec/services/outreach/ spec/jobs/outreach/ \
+                  spec/listeners/outreach/ spec/controllers/webhooks/outreach/ \
+                  spec/controllers/outreach/ spec/services/llm_formatter/ \
+                  spec/models/campaign_participant_spec.rb \
+                  spec/models/outbound_campaign_spec.rb \
+                  spec/models/photographer_partner_profile_spec.rb
+
+# Smoke-test a single tick in rails c (after seeding a participant):
+bundle exec rails runner "Outreach::TickSchedulerJob.perform_now"
+```
+
+### What the old "What C3 will need first" section said (kept for history)
 
 - Decision on LLM provider wiring in `ruby_llm` (OpenRouter via `openai` adapter with custom base URL is the working assumption; `OUTREACH_LLM_*` env already set).
 - `OUTREACH_LLM_API_KEY` value (currently empty in both `.env` files).
@@ -550,7 +596,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C3.1: Engine runner + stage executors**
+- [x] **Unit C3.1: Engine runner + stage executors** — `ce0df0215`
 
 **Goal:** The core `Runner#tick` loop that advances participants through stages.
 
@@ -604,7 +650,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C3.2: SendEmailJob wrapper + per-domain rate limiting**
+- [x] **Unit C3.2: SendEmailJob wrapper + per-domain rate limiting** — `87e4fbc47`
 
 **Goal:** Send outbound mail through an existing inbox with RFC 8058 unsubscribe headers and 50/h/domain throttle.
 
@@ -647,7 +693,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C3.3: Inbound reply observer → engine handoff**
+- [x] **Unit C3.3: Inbound reply observer → engine handoff** — `acb4d7d0a`
 
 **Goal:** When a reply arrives on a campaign-linked conversation, the participant transitions to `reply_router`.
 
@@ -682,7 +728,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C4.1: LLM services (compose / classify / draft) + audit trail**
+- [x] **Unit C4.1: LLM services (compose / classify / draft) + audit trail** — landed this session
 
 **Goal:** Three services that all inherit from `base_ai_service.rb` and log every decision.
 
@@ -922,7 +968,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C7.1: Attribution webhook — POST /webhooks/outreach/partnership_signup**
+- [x] **Unit C7.1: Attribution webhook — POST /webhooks/outreach/partnership_signup** — landed this session
 
 **Goal:** Django signals a signup; chatwoot updates the participant + audit.
 
@@ -964,7 +1010,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C7.2: One-click unsubscribe endpoint (RFC 8058) + full opt-out propagation**
+- [x] **Unit C7.2: One-click unsubscribe endpoint (RFC 8058) + full opt-out propagation** — landed this session
 
 **Goal:** Bulk-sender compliance + consistent opt-out across chatwoot + photographer-directory.
 
@@ -1002,7 +1048,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C7.3: Bounce handler + operator manual opt-out + explicit-decline propagation**
+- [~] **Unit C7.3: Bounce handler + operator manual opt-out + explicit-decline propagation** — `8fd343f52` (declined propagation only; bounce needs event source, manual opt-out lands in C5.1)
 
 **Goal:** Every other opt-out trigger goes through `ConsentWriter` with consistent audit.
 
@@ -1036,7 +1082,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C7.4: Daily cross-system consent audit job**
+- [x] **Unit C7.4: Daily cross-system consent audit job** — landed this session
 
 **Goal:** Report drift between chatwoot and photographer-directory; confirm consistency SLA.
 
