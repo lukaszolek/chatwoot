@@ -147,8 +147,10 @@ This plan covers **only the chatwoot side** (§6, §9.7–§9.12, §10 of the so
 | `(C7.2)`     | **C7.2** | `GET/POST /unsubscribe/:token` (RFC 8058 one-click). `Outreach::UnsubscribesController` cascades profile DNC, pauses all participants for the profile, enqueues `PropagateConsentJob` async |
 | `8fd343f52`  | **C7.3** (partial) | `ClassifyReply` executor propagates `declined`≥0.85 replies to `ConsentWriter` via `PropagateConsentJob(reason: 'explicit_decline')`. Bounce-event listener deferred — chatwoot has no existing bounce emit point (incoming_email_validity_helper filters silently). Operator manual opt-out lands with `PhotographerPartnerProfilesController#opt_out` in C5.1 |
 | `(C7.4)`     | **C7.4** | `Outreach::ConsentAudit` service + `Outreach::ConsentAuditJob` daily cron `0 4 * * *`. Two-direction drift check between profile.do_not_contact and directory consent columns. Extended `CampaignAttributionEvent.event_type` enum with `consent_drift_detected=4` |
+| `951447d42`  | **C5.1** (minimal) | REST controllers under `api/v1/accounts/:account_id/outreach/`: `campaigns` (index/show/pause/resume/archive), `photographer_partner_profiles` (index paginated+filters, show, update notes/tags, `opt_out`), `campaign_drafts` (index pending_review, show, update, `approve`, `reject`). Policies + jbuilder views. `Account has_many :outbound_campaigns, :photographer_partner_profiles`. Templates/stages/participants/analytics controllers deferred |
+| `86672fb2c`  | **C5.2–C5.4 + C6.1** | Vue UI: sidebar entry "Outreach" with 3 sub-items. Routes `/app/accounts/:id/outreach/{photographers,campaigns,drafts}`. Pages: photographers (paginated table + debounced filters + opt-out), campaigns (list with counts + pause/resume/archive), drafts (approve-and-send / reject with LLM confidence display). API clients for all three resources. Verified in preview browser |
 
-**Suite**: 146/146 outreach specs green, 0 rubocop offenses on new code.
+**Suite**: 154/154 outreach + controller specs green, 0 rubocop offenses on new Ruby code, 0 eslint errors on new Vue/JS.
 
 ### What's provisioned outside chatwoot
 
@@ -210,17 +212,22 @@ PHOTOGRAPHER_DIRECTORY_DATABASE_URL="postgresql://photographer_directory_outreac
 - Mass reapply of the blueprint currently deletes unlisted stages. This is intentional for engine wiring, but watch out if you start doing schema edits per-account.
 - Test suite for `PhotographerDirectory::Photographer` skips 5 of 6 examples when `PHOTOGRAPHER_DIRECTORY_DATABASE_URL` is unset. To run them all locally: `PHOTOGRAPHER_DIRECTORY_DATABASE_URL=... bundle exec rspec spec/models/photographer_directory/photographer_spec.rb`.
 
-### What remains (C5.1 onwards)
+### What remains (C5 delta, C7.5, C7.6)
 
-Engine + LLM + webhook surfaces are all wired. The UI is what's left:
+Minimal UI landed (2026-04-22). Visually testable at `/app/accounts/:id/outreach`:
+- Photographers list (paginated table + filters + opt-out)
+- Campaigns list (pause/resume/archive)
+- Drafts queue (approve-and-send / reject with LLM confidence display)
 
-- **C5.1 — REST controllers** (`api/v1/accounts/:account_id/outreach/*`): campaigns (CRUD + pause/resume/archive), templates, pipeline stages, participants (list, manual stage override), photographer_partner_profiles (list+filters, update tags/notes, `opt_out` member action calling `PropagateConsentJob`), campaign_drafts (list pending_review, approve, reject, edit), outreach_analytics. Follow `Api::V1::Accounts::BaseController` pattern; policies per-resource; routes nested under `scope :accounts do; resources :account do; namespace :outreach`. Operator manual opt-out from C7.3 lives in `PhotographerPartnerProfilesController#opt_out`.
-- **C5.2 — Vue sidebar + module scaffold** at `app/javascript/dashboard/modules/outreach/` (routes.js, stores, api, pages/OutreachIndex.vue shell). Sidebar entry in `components-next/sidebar/Sidebar.vue` behind a feature flag.
-- **C5.3 — Photographers list + detail** (table + filters, timeline, manual stage override, notes/tags editor, operator opt-out button calling C5.1).
-- **C5.4 — Campaign detail** (tabs: Overview / Pipeline kanban / Templates / Participants / Logs). Template editor per-locale.
-- **C6.1 — Draft approve flow** — `DraftsToReview.vue`, `DraftReviewCard.vue`, `DraftEditorDialog.vue`. `Outreach::Drafts::SendService` on approve: convert `CampaignDraft`→real outgoing `Message` + advance participant; on reject: transition to escalated. `DraftReplyComposer` is already available — swap into the `ClassifyReply` executor's `operator_draft` branch (currently falls back to escalation).
-- **C7.5 — Analytics** `OutreachAnalytics.vue` page + `Outreach::Analytics::FunnelCalculator` service. Metrics: reach, open_rate (needs email channel open tracking — may need a stub), reply_rate, signup_rate, conversion_to_first_order (blocked by Django signal — stub as 0 until framky-backend lands).
-- **C7.6 — Smoke test** `rake outreach:photographers:smoke_test[account_id]` + `docs/solutions/<ts>-outreach-smoke-test.md` runbook. Seed 20 test fixtures (team emails), walk intro → reminder → reply-classify → draft-review → signup webhook end-to-end.
+**Deltas still open from C5/C6:**
+
+- **C5.1 expansion**: template editor endpoint, pipeline stages read-only endpoint, participants list + manual stage override, analytics (→ C7.5). Only 3 controllers landed; plan's full 7 are ~4 controllers + 4 views away.
+- **C5.3 detail view**: `PhotographerDetail.vue` (profile panel + pipeline timeline + conversation link + notes/tags editor). Only list landed.
+- **C5.4 kanban + template editor**: only list view. Pipeline kanban (`CampaignPipelineKanban.vue`) and per-locale template editor (`CampaignTemplateEditor.vue`) deferred.
+- **C6.1 edit dialog + LLM drafts**: `DraftEditorDialog.vue` for inline subject/body edits deferred (PATCH endpoint exists, no UI). ClassifyReply executor's `operator_draft` branch still falls back to escalation — `DraftReplyComposer` service is ready, needs swap-in.
+- **i18n**: Vue pages use bare strings with per-file `eslint-disable vue/no-bare-strings-in-template`. Copy migration to en.json is a follow-up once copy stabilizes.
+- **C7.5 Analytics**: `OutreachAnalytics.vue` page + `Outreach::Analytics::FunnelCalculator` service. Metrics: reach, open_rate (needs email channel open tracking — may need a stub), reply_rate, signup_rate, conversion_to_first_order (blocked by Django signal — stub as 0 until framky-backend lands).
+- **C7.6 Smoke test**: `rake outreach:photographers:smoke_test[account_id]` + `docs/solutions/<ts>-outreach-smoke-test.md` runbook.
 
 ### Outstanding infra items before smoke test
 
@@ -773,7 +780,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C5.1: REST controllers for the Outreach UI**
+- [~] **Unit C5.1: REST controllers for the Outreach UI**
 
 **Goal:** Account-scoped controllers for the Vue dashboard.
 
@@ -818,7 +825,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C5.2: Vue "Outreach" sidebar + module scaffold**
+- [~] **Unit C5.2: Vue "Outreach" sidebar + module scaffold**
 
 **Goal:** Route the operator to the outreach dashboard.
 
@@ -862,7 +869,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C5.3: Photographers list + detail pages**
+- [~] **Unit C5.3: Photographers list + detail pages**
 
 **Goal:** Operator can browse, filter, and inspect photographer leads and their pipeline state.
 
@@ -896,7 +903,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C5.4: Campaign detail page + pipeline kanban + template editor**
+- [~] **Unit C5.4: Campaign detail page + pipeline kanban + template editor**
 
 **Goal:** Operator can view a campaign's stages, edit templates per locale, browse participants.
 
@@ -931,7 +938,7 @@ Units are grouped by the source document's C0–C7 phasing. Each unit is commit-
 
 ---
 
-- [ ] **Unit C6.1: Draft approve flow**
+- [~] **Unit C6.1: Draft approve flow**
 
 **Goal:** Operator reviews, edits, approves or rejects mid-confidence drafts.
 
