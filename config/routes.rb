@@ -628,6 +628,8 @@ Rails.application.routes.draw do
   post 'webhooks/tiktok', to: 'webhooks/tiktok#events'
   post 'webhooks/shopify', to: 'webhooks/shopify#events'
   post 'webhooks/outreach/partnership_signup', to: 'webhooks/outreach/partnership_signups#create'
+  get 'unsubscribe/:token', to: 'outreach/unsubscribes#show', as: :outreach_unsubscribe
+  post 'unsubscribe/:token', to: 'outreach/unsubscribes#one_click'
 
   namespace :twitter do
     resource :callback, only: [:show]
