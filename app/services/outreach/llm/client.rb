@@ -24,8 +24,8 @@ class Outreach::Llm::Client
     Llm::Config.initialize!
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-    response = Llm::Config.with_api_key(api_key, api_base: api_base) do |context|
-      chat = context.chat(model: model).with_temperature(temperature)
+    response = with_outreach_context(model: model) do |chat|
+      chat.with_temperature(temperature)
       chat.with_instructions(system)
       chat.ask(user)
     end
@@ -41,6 +41,23 @@ class Outreach::Llm::Client
       },
       latency_ms: latency_ms
     }
+  end
+
+  # Scopes RubyLLM config to outreach credentials for the duration of
+  # the block. Routes by provider — OpenRouter (default) uses its own
+  # env keys (openrouter_api_key / openrouter_api_base), OpenAI-compat
+  # falls back to Llm::Config.with_api_key which wires openai_*.
+  def with_outreach_context(model:)
+    if openrouter?
+      context = RubyLLM.context do |config|
+        config.openrouter_api_key = api_key
+      end
+      yield context.chat(model: model, provider: :openrouter, assume_model_exists: true)
+    else
+      Llm::Config.with_api_key(api_key, api_base: api_base) do |context|
+        yield context.chat(model: model)
+      end
+    end
   end
 
   def compose_model
@@ -63,6 +80,10 @@ class Outreach::Llm::Client
 
   def api_base
     ENV.fetch('OUTREACH_LLM_BASE_URL', 'https://openrouter.ai/api/v1')
+  end
+
+  def openrouter?
+    ENV.fetch('OUTREACH_LLM_PROVIDER', 'openrouter').to_s.downcase == 'openrouter'
   end
 
   def parse_json!(content)

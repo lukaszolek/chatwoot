@@ -25,7 +25,7 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
   MAX_OUTBOUND = 3
   MIN_GAP = 7.days
 
-  # rubocop:disable Metrics/MethodLength
+  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
   def call
     return skip_replied! if already_replied?
     return skip_cap! if outbound_count >= MAX_OUTBOUND
@@ -41,22 +41,63 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
       template: template, participant: participant
     ).render
 
+    body = personalize_body(rendered[:body], template)
+
     conversation = Outreach::Engine::ConversationResolver.new(participant).conversation
 
     Outreach::SendEmailJob.perform_later(
       participant_id: participant.id,
       conversation_id: conversation.id,
       subject: rendered[:subject],
-      body: rendered[:body],
+      body: body,
       template_slot: template.slot,
       locale: template.locale
     )
 
     advance_after_send
   end
-  # rubocop:enable Metrics/MethodLength
+  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
   private
+
+  # ---------- personalization (intro only) ----------
+
+  # If the template contains a {{personal_opener}} placeholder, ask the
+  # LLM IntroComposer for a concrete 1–2 sentence opener grounded in
+  # the photographer's crawled website snippet + profile, and
+  # string-replace it into the pre-Liquid-rendered body. LLM failures
+  # fall back to a locale-neutral opener — the mail always goes out.
+  def personalize_body(rendered_body, template)
+    return rendered_body unless rendered_body.to_s.include?(PERSONAL_OPENER_PLACEHOLDER)
+
+    opener = compose_intro_opener
+    logger_record_opener_decision(opener, template)
+    rendered_body.sub(PERSONAL_OPENER_PLACEHOLDER, opener.fetch(:opener))
+  end
+
+  def compose_intro_opener
+    Outreach::Llm::IntroComposer.new(
+      participant: participant,
+      locale: participant.participatable.try(:preferred_language)
+    ).call
+  end
+
+  def logger_record_opener_decision(outcome, template)
+    Outreach::Llm::DecisionLogger.record!(
+      participant: participant,
+      decision_type: :compose_intro,
+      input: outcome[:input_digest] || "fallback:#{template.slot}:#{template.locale}",
+      output: outcome[:output],
+      model: outcome[:model],
+      prompt_version: outcome[:prompt_version],
+      token_usage: outcome[:token_usage],
+      latency_ms: outcome[:latency_ms]
+    )
+  rescue StandardError => e
+    Rails.logger.warn("[outreach.send_template] decision_log_failed=#{e.class}: #{e.message.truncate(200)}")
+  end
+
+  PERSONAL_OPENER_PLACEHOLDER = '{{personal_opener}}'.freeze
 
   # ---------- pacing guards ----------
 

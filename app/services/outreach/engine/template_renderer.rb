@@ -46,7 +46,14 @@ class Outreach::Engine::TemplateRenderer
       }.compact
     end
 
-    profile_context.merge(metadata)
+    # `personal_opener` is filled by SendTemplate executor post-Liquid,
+    # via Outreach::Llm::IntroComposer (LLM-generated + website snippet).
+    # Map it to itself so Liquid leaves the placeholder intact for the
+    # caller's string-replace step. Without this mapping, strict_variables
+    # being false would collapse the placeholder to an empty string.
+    { 'personal_opener' => '{{personal_opener}}' }
+      .merge(profile_context)
+      .merge(metadata)
   end
 
   def first_name_from(profile)

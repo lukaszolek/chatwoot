@@ -7,6 +7,7 @@
 #
 #   {
 #     profile: "Alex Example, Studio Alex, https://alex.photo, …",
+#     website_snippet: { title:, excerpt:, page_type:, source_url: } or nil,
 #     last_intro_summary: "Subject: …\nBody: …",
 #     reply_text: "Tak, chcę dołączyć!",
 #     conversation_history: ["OUT: …", "IN: …", …],
@@ -24,6 +25,7 @@ class LlmFormatter::PhotographerPartnerLlmFormatter
   def format
     {
       profile: format_profile,
+      website_snippet: fetch_website_snippet,
       last_intro_summary: last_outreach_message_summary,
       reply_text: last_incoming_message&.truncate(MAX_MESSAGE_CHARS),
       conversation_history: conversation_history,
@@ -80,5 +82,9 @@ class LlmFormatter::PhotographerPartnerLlmFormatter
       profile_model.try(:preferred_language).presence ||
       (@participant.outbound_campaign.config || {})['default_locale'].presence ||
       'en'
+  end
+
+  def fetch_website_snippet
+    Outreach::Llm::WebsiteSnippet.for(profile_model)
   end
 end
