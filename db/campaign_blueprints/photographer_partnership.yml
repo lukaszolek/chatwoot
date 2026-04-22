@@ -1,0 +1,344 @@
+# Photographer Partnership outbound campaign blueprint.
+# Declarative definition of pipeline stages + templates. Applied via
+#   bundle exec rake "outreach:blueprints:apply[<account_id>]"
+# The applier is idempotent: re-running leaves unchanged rows untouched,
+# updates edited bodies, and soft-deactivates templates removed from YAML.
+#
+# Stages follow the source plan §6.4. Reply router branches are keyed by
+# LLM intent class; min_confidence gates the auto-path vs escalation.
+# Template bodies are stubs for C1 — the LLM prompts and final copy are
+# tuned during C4 smoke testing.
+
+program_key: photographer_partnership
+name: Photographer Partnership
+default_locale: en
+
+stages:
+  - key: intro
+    on_enter_action: send_template
+    template_slot: intro
+    position: 1
+    next_stage_key: reminder_wait
+
+  - key: reminder_wait
+    on_enter_action: wait
+    auto_advance_after_hours: 120
+    position: 2
+    next_stage_key: reminder_send
+
+  - key: reminder_send
+    on_enter_action: send_template
+    template_slot: reminder
+    position: 3
+    next_stage_key: breakup_wait
+
+  - key: breakup_wait
+    on_enter_action: wait
+    auto_advance_after_hours: 216
+    position: 4
+    next_stage_key: breakup_send
+
+  - key: breakup_send
+    on_enter_action: send_template
+    template_slot: breakup
+    position: 5
+    next_stage_key: terminal
+
+  - key: reply_router
+    on_enter_action: classify_reply
+    position: 6
+    branch_rules:
+      interested_signup: { target: escalated, min_confidence: 0.85 }
+      interested_commission: { target: auto_reply_commission, min_confidence: 0.90 }
+      asks_showroom: { target: escalated, min_confidence: 0.0 }
+      asks_product: { target: auto_reply_product, min_confidence: 0.85 }
+      declined: { target: terminal, min_confidence: 0.85 }
+      out_of_office: { target: reminder_wait, min_confidence: 0.70 }
+      spam: { target: terminal, min_confidence: 0.80 }
+      unclear: { target: escalated, min_confidence: 0.0 }
+
+  - key: auto_reply_commission
+    on_enter_action: send_template
+    template_slot: reply_interested_commission
+    position: 7
+    next_stage_key: terminal
+
+  - key: auto_reply_product
+    on_enter_action: send_template
+    template_slot: reply_asks_product
+    position: 8
+    next_stage_key: terminal
+
+  - key: escalated
+    on_enter_action: escalate_to_user
+    position: 9
+
+  - key: terminal
+    on_enter_action: terminal
+    position: 10
+
+templates:
+  # --- intro × 3 locales ---
+  - slot: intro
+    locale: en
+    subject: "{{first_name}}, your photos + frames on your client's wall?"
+    body: |
+      Hi {{first_name}},
+
+      I came across your work on {{source_context}} and love the sessions you run.
+
+      I'm from Framky — we make framed photo galleries for walls. Photographers
+      whose clients hang their session on the wall tend to book more repeat
+      sessions and more referrals.
+
+      That's why we launched our partner program:
+      • Your clients get a discount with your code
+      • You earn a commission on every order
+      • You also get a deeper personal discount for your own gallery
+
+      Interested? Just reply "yes", or visit framky.com/partnerships/photographers.
+
+      Best,
+      Łukasz
+      Framky
+    llm_guidance: |
+      Personalize the first paragraph with a concrete detail from the photographer's
+      profile (business_name, style hint, city). Keep it under 200 words. Do not
+      mention specific percentages — those live in the partner panel post-signup.
+
+  - slot: intro
+    locale: de
+    subject: "{{first_name}}, Ihre Fotos + Rahmen an der Wand Ihrer Kunden?"
+    body: |
+      Hallo {{first_name}},
+
+      ich bin auf Ihre Arbeit auf {{source_context}} gestoßen und mag die
+      Sessions, die Sie fotografieren.
+
+      Ich bin von Framky — wir machen Fotogalerien für die Wand. Fotografen,
+      deren Kunden ihre Sessions an die Wand hängen, bekommen mehr Folgebuchungen
+      und mehr Empfehlungen.
+
+      Deshalb gibt es unser Partnerprogramm:
+      • Ihre Kunden bekommen einen Rabatt mit Ihrem Code
+      • Sie erhalten eine Provision auf jede Bestellung
+      • Plus ein tieferer persönlicher Rabatt für Ihre eigene Galerie
+
+      Interesse? Antworten Sie einfach mit "ja", oder besuchen Sie
+      framky.com/de-de/partnerprogramm/fotografen.
+
+      Beste Grüße,
+      Łukasz
+      Framky
+    llm_guidance: |
+      Personalisieren Sie den ersten Absatz mit einem konkreten Detail aus dem
+      Fotografenprofil. Unter 200 Wörtern. Keine konkreten Prozentsätze nennen.
+
+  - slot: intro
+    locale: pl
+    subject: "{{first_name}}, Twoje zdjęcia w ramkach na ścianie klienta?"
+    body: |
+      Cześć {{first_name}},
+
+      Trafiłem na Twój profil na {{source_context}} i podobają mi się sesje,
+      które robisz.
+
+      Jestem z Framky — robimy galerie zdjęć w ramkach na ścianę. Fotografowie,
+      których klienci wieszają sesje na ścianie, częściej wracają na kolejne
+      sesje i częściej polecają fotografa znajomym.
+
+      Stąd nasz program partnerski:
+      • Twoi klienci dostają rabat z Twoim kodem
+      • Ty dostajesz prowizję od każdego zamówienia
+      • Plus głębszy rabat osobisty na Twoje własne zamówienia
+
+      Zainteresowany? Odpisz "tak", albo wejdź na
+      framky.com/pl-pl/program-partnerski/dla-fotografow.
+
+      Pozdrawiam,
+      Łukasz
+      Framky
+    llm_guidance: |
+      Spersonalizuj pierwszy akapit konkretnym detalem z profilu fotografa.
+      Mniej niż 200 słów. Nie podawaj konkretnych procentów.
+
+  # --- reminder × 3 locales ---
+  - slot: reminder
+    locale: en
+    subject: "Re: {{first_name}}, your photos + frames"
+    body: |
+      Hi {{first_name}},
+
+      Circling back — did the partnership email from last week reach you? No
+      pressure either way; just making sure it didn't land in spam.
+
+      Quick summary: your clients get a discount with your code, you get a
+      commission, and a personal discount for your own gallery.
+
+      Worth a chat?
+
+      Łukasz
+  - slot: reminder
+    locale: de
+    subject: "Re: {{first_name}}, Ihre Fotos + Rahmen"
+    body: |
+      Hallo {{first_name}},
+
+      kurzes Follow-up — hat Sie meine E-Mail von letzter Woche zum
+      Partnerprogramm erreicht? Kein Stress, falls nein — ich wollte nur
+      sichergehen, dass sie nicht im Spam gelandet ist.
+
+      Kurz: Ihre Kunden bekommen Rabatt, Sie Provision, plus persönlicher
+      Rabatt für Ihre eigene Galerie.
+
+      Lust auf ein Gespräch?
+
+      Łukasz
+  - slot: reminder
+    locale: pl
+    subject: "Re: {{first_name}}, zdjęcia + ramki na ścianie"
+    body: |
+      Cześć {{first_name}},
+
+      Wracam jeszcze raz — czy dotarł do Ciebie mój mail sprzed tygodnia
+      o programie partnerskim? Bez presji — chciałem tylko upewnić się,
+      że nie wpadł do spamu.
+
+      Krótko: klienci dostają rabat, Ty prowizję, plus osobisty rabat
+      na własne zamówienia.
+
+      Możemy pogadać?
+
+      Łukasz
+
+  # --- breakup × 3 locales ---
+  - slot: breakup
+    locale: en
+    subject: "Last one, {{first_name}}"
+    body: |
+      Hi {{first_name}},
+
+      I'll stop following up on this one. If the timing ever feels right,
+      reply to this email and I'll pick it back up.
+
+      Łukasz
+  - slot: breakup
+    locale: de
+    subject: "Letzte Nachricht, {{first_name}}"
+    body: |
+      Hallo {{first_name}},
+
+      ich lasse es dabei bewenden. Wenn der Moment irgendwann passt,
+      antworten Sie einfach auf diese E-Mail.
+
+      Łukasz
+  - slot: breakup
+    locale: pl
+    subject: "Ostatnia wiadomość, {{first_name}}"
+    body: |
+      Cześć {{first_name}},
+
+      Przestaję się dopytywać. Jeśli kiedyś będzie dobry moment, odpisz
+      na tego maila — wrócę do tematu.
+
+      Łukasz
+
+  # --- auto-reply: interested in commission details × 3 locales ---
+  - slot: reply_interested_commission
+    locale: en
+    subject: "Re: Framky Partnership — commission details"
+    body: |
+      Hi {{first_name}},
+
+      Short version: your commission is paid on every order placed with your
+      code, calculated after the client discount. Exact percentages live in
+      the Partner Panel once you register at
+      framky.com/partnerships/register.
+
+      Questions — just reply.
+
+      Łukasz
+    llm_guidance: |
+      Keep under 120 words. Do not state specific percentages; point to the
+      Partner Panel. If the reply asked something specific, answer that
+      concretely; otherwise stick to the default body.
+  - slot: reply_interested_commission
+    locale: de
+    subject: "Re: Framky Partnerprogramm — Provision"
+    body: |
+      Hallo {{first_name}},
+
+      Kurz: Ihre Provision wird auf jede Bestellung mit Ihrem Code berechnet,
+      nach Abzug des Kundenrabatts. Die genauen Prozentsätze sehen Sie im
+      Partner-Panel nach der Registrierung auf
+      framky.com/de-de/partnerprogramm/anmelden.
+
+      Fragen? Einfach antworten.
+
+      Łukasz
+    llm_guidance: |
+      Unter 120 Wörtern. Keine konkreten Prozentsätze nennen.
+  - slot: reply_interested_commission
+    locale: pl
+    subject: "Re: Program partnerski Framky — prowizja"
+    body: |
+      Cześć {{first_name}},
+
+      Krótko: prowizja naliczana jest od każdego zamówienia z Twoim kodem,
+      po rabacie dla klienta. Konkretne procenty widzisz w Panelu Partnera
+      po rejestracji na
+      framky.com/pl-pl/program-partnerski/rejestracja.
+
+      Pytania — odpisz śmiało.
+
+      Łukasz
+    llm_guidance: |
+      Poniżej 120 słów. Bez konkretnych procentów.
+
+  # --- auto-reply: asks about product × 3 locales ---
+  - slot: reply_asks_product
+    locale: en
+    subject: "Re: Framky — how it works"
+    body: |
+      Hi {{first_name}},
+
+      Framky galleries are curated sets of framed photos for a wall — MDF
+      frames, pigment print on matte photo paper, no glass (so no reflections).
+      Self-adhesive hangers included; 2-nail mount optional.
+
+      More details: framky.com/photo-gallery-walls
+
+      Łukasz
+    llm_guidance: |
+      Mirror Framky product terminology exactly. Keep under 140 words.
+  - slot: reply_asks_product
+    locale: de
+    subject: "Re: Framky — wie es funktioniert"
+    body: |
+      Hallo {{first_name}},
+
+      Framky-Galerien sind kuratierte Sets gerahmter Fotos für die Wand —
+      MDF-Rahmen, Pigmentdruck auf mattem Fotopapier, ohne Glas (keine
+      Reflexionen). Selbstklebende Aufhänger dabei; 2-Nagel-Montage optional.
+
+      Mehr: framky.com/de-de/fotogalerie-an-der-wand
+
+      Łukasz
+    llm_guidance: |
+      Framky-Produktterminologie exakt übernehmen. Unter 140 Wörtern.
+  - slot: reply_asks_product
+    locale: pl
+    subject: "Re: Framky — jak to działa"
+    body: |
+      Cześć {{first_name}},
+
+      Galerie Framky to zestawy zdjęć w ramkach na ścianę — ramki z MDF,
+      druk pigmentowy na matowym papierze fotograficznym, bez szkła (brak
+      odbłysków). Wieszaki samoprzylepne w zestawie; montaż na 2 gwoździe
+      opcjonalnie.
+
+      Więcej: framky.com/pl-pl/galerie-zdjec-w-ramkach
+
+      Łukasz
+    llm_guidance: |
+      Używaj dokładnej terminologii produktu Framky. Poniżej 140 słów.
