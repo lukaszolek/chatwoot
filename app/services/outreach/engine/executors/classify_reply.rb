@@ -15,10 +15,12 @@
 class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::Base
   ESCALATED_STAGE_KEY = 'escalated'.freeze
   MIN_DRAFT_CONFIDENCE = 0.5
+  DECLINE_PROPAGATION_CONFIDENCE = 0.85
 
   def call
     outcome = classifier_outcome
     decision = record_decision(outcome)
+    propagate_decline_if_applicable(outcome)
     route_to!(outcome, decision)
   end
 
@@ -91,6 +93,17 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
     metadata = (participant.metadata || {}).merge('escalation_reason' => reason)
     participant.update!(metadata: metadata)
     transition_to!(ESCALATED_STAGE_KEY)
+  end
+
+  def propagate_decline_if_applicable(outcome)
+    return unless outcome[:intent_class] == 'declined'
+    return if outcome[:confidence].to_f < DECLINE_PROPAGATION_CONFIDENCE
+
+    profile = participant.participatable
+    return unless profile.is_a?(PhotographerPartnerProfile)
+
+    Outreach::PhotographerDirectory::PropagateConsentJob
+      .perform_later(profile.id, 'opt_out', reason: 'explicit_decline')
   end
 
   def participant_locale

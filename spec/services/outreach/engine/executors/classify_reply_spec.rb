@@ -100,6 +100,27 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
       end
     end
 
+    context 'with declined intent at >= 0.85 confidence (C7.3)' do
+      it 'enqueues PropagateConsentJob and transitions to the declined target (terminal)' do
+        stub_classifier(intent_class: 'declined', confidence: 0.9, model: 'stub-1')
+
+        expect do
+          described_class.new(participant: participant, stage: router_stage).call
+        end.to have_enqueued_job(Outreach::PhotographerDirectory::PropagateConsentJob)
+          .with(profile.id, 'opt_out', reason: 'explicit_decline')
+
+        expect(participant.reload.current_stage_key).to eq('terminal')
+      end
+
+      it 'does NOT enqueue propagation for declined below threshold' do
+        stub_classifier(intent_class: 'declined', confidence: 0.6, model: 'stub-1')
+
+        expect do
+          described_class.new(participant: participant, stage: router_stage).call
+        end.not_to have_enqueued_job(Outreach::PhotographerDirectory::PropagateConsentJob)
+      end
+    end
+
     context 'when the intent class has no matching branch rule' do
       it 'escalates without crashing' do
         stub_classifier(intent_class: 'asks_showroom', confidence: 0.9, model: 'stub-1')
