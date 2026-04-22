@@ -74,3 +74,10 @@ remove_orphan_conversations_job:
   cron: '0 */12 * * *'
   class: 'Internal::RemoveOrphanConversationsJob'
   queue: housekeeping
+
+# Photographer partnerships: pull fresh leads from photographer-directory every 6h.
+# Fans out to SyncJob per account with an active `photographer_partnership` campaign.
+outreach_photographer_directory_scheduled_sync_job:
+  cron: '0 */6 * * *'
+  class: 'Outreach::PhotographerDirectory::ScheduledSyncJob'
+  queue: outreach
