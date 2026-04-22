@@ -34,18 +34,16 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
 
   def record_decision(outcome)
     routed_to = resolve_routed_to(outcome)
-    CampaignLlmDecision.create!(
-      campaign_participant: participant,
-      outbound_campaign: campaign,
-      conversation: participant.conversation,
+    Outreach::Llm::DecisionLogger.record!(
+      participant: participant,
       decision_type: :classify_reply,
+      input: outcome[:input_digest] || outcome.fetch(:output, {}).to_json,
+      output: outcome.fetch(:output, {}),
       model: outcome.fetch(:model),
       prompt_version: outcome[:prompt_version],
-      input_digest: outcome[:input_digest],
-      output: outcome.fetch(:output, {}),
       confidence: outcome[:confidence],
       routed_to: routed_to,
-      token_usage: outcome[:token_usage] || {},
+      token_usage: outcome[:token_usage],
       latency_ms: outcome[:latency_ms]
     )
   end
