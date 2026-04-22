@@ -1,29 +1,35 @@
 # Search + import surface over the photographer-directory secondary DB.
-# Read-only search that applies `queryable_for_outreach` + optional text
-# search on email/business_name/owner_name/instagram_handle. Excludes
-# photographer-directory rows already enrolled in another active
-# directory campaign (Option C) so we never double-contact active
-# onboarding leads.
 #
-# Import endpoint delegates to Outreach::Enrollment::EnrollFromDirectory
-# which upserts profile + contact + campaign participant in a single
-# transaction per row.
+# The UI lets an operator browse the entire directory (not just the
+# narrow `queryable_for_outreach` set the cron importer uses). That
+# way the operator can find anyone by name / IG / country and decide
+# themselves — but we still flag each row with badges so they see:
+#
+#   - already_enrolled         → we already have a partnership profile
+#   - in_directory_campaign    → Option C: in another onboarding CRM
+#   - no_marketing_consent     → hasn't opted-in for marketing mail
+#   - email_invalid            → email not yet validated or bounced
+#
+# Base filter: has email, status=active, not unsubscribed, no GDPR
+# delete request. Everything else is informational.
 class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::BaseController
   before_action :check_authorization
 
   PER_PAGE = 30
 
   def search
-    scope = apply_search_filters(
-      PhotographerDirectory::Photographer
-        .queryable_for_outreach
-        .where.not(id: exclusion_ids)
-    )
+    scope = apply_search_filters(base_scope)
     @total = scope.count
     @results = scope.order(:business_name).limit(PER_PAGE).offset(offset)
+
+    ids = @results.map(&:id)
     @enrolled_ids = Current.account.photographer_partner_profiles
-                           .where(external_id: @results.map { |r| r.id.to_s })
-                           .pluck(:external_id)
+                           .where(external_id: ids.map(&:to_s))
+                           .pluck(:external_id).to_set
+    @in_directory_campaign_ids = PhotographerDirectory::CampaignStatus
+                                 .active_enrolment
+                                 .where(photographer_id: ids)
+                                 .pluck(:photographer_id).to_set
   end
 
   def import
@@ -38,6 +44,14 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
 
   private
 
+  def base_scope
+    PhotographerDirectory::Photographer
+      .where.not(email: [nil, ''])
+      .where(status: 'active')
+      .where(unsubscribed_from_all_campaigns: false)
+      .where(gdpr_delete_requested_at: nil)
+  end
+
   def apply_search_filters(scope)
     if params[:q].present?
       q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
@@ -49,10 +63,6 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
     scope = scope.where(country_code: params[:country_code].to_s.downcase) if params[:country_code].present?
     scope = scope.where(preferred_language: params[:locale]) if params[:locale].present?
     scope
-  end
-
-  def exclusion_ids
-    PhotographerDirectory::CampaignStatus.active_enrolment.select(:photographer_id)
   end
 
   def offset

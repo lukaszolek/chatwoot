@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import OutreachPhotographersAPI from 'dashboard/api/outreachPhotographers';
 import OutreachDirectoryAPI from 'dashboard/api/outreachDirectory';
 
@@ -138,6 +138,27 @@ const clearSelection = () => {
   directorySelected.value = new Set();
 };
 
+const importableVisible = computed(() =>
+  directoryResults.value.filter(r => !r.already_enrolled)
+);
+const allVisibleSelected = computed(
+  () =>
+    importableVisible.value.length > 0 &&
+    importableVisible.value.every(r => directorySelected.value.has(r.id))
+);
+const someVisibleSelected = computed(() =>
+  importableVisible.value.some(r => directorySelected.value.has(r.id))
+);
+const toggleSelectAllVisible = () => {
+  if (allVisibleSelected.value) {
+    const next = new Set(directorySelected.value);
+    importableVisible.value.forEach(r => next.delete(r.id));
+    directorySelected.value = next;
+  } else {
+    selectAllVisible();
+  }
+};
+
 const runImport = async (ids = null) => {
   const toImport = ids || Array.from(directorySelected.value);
   if (toImport.length === 0) return;
@@ -213,7 +234,7 @@ watch(
         v-model="filters.q"
         type="search"
         placeholder="Search email / business / owner…"
-        class="flex-1 max-w-sm px-3 py-2 text-sm bg-white border rounded border-n-weak focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
+        class="reset-base flex-none w-80 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10 focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
       />
       <select
         v-model="filters.status"
@@ -228,14 +249,14 @@ watch(
         type="text"
         placeholder="Country (PL…)"
         maxlength="2"
-        class="w-32 px-3 py-2 text-sm uppercase bg-white border rounded border-n-weak"
+        class="reset-base flex-none w-36 px-3 py-2 text-sm uppercase bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10"
       />
       <input
         v-model="filters.locale"
         type="text"
         placeholder="Locale (pl…)"
         maxlength="5"
-        class="w-32 px-3 py-2 text-sm bg-white border rounded border-n-weak"
+        class="reset-base flex-none w-36 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10"
       />
       <span class="ml-auto text-sm text-n-slate-11">{{ total }} total</span>
       <button
@@ -269,7 +290,7 @@ watch(
             v-model="addForm.email"
             type="email"
             required
-            class="px-2 py-1.5 border rounded border-n-weak"
+            class="reset-base px-2 py-1.5 bg-white border rounded border-n-weak"
           />
         </label>
         <label class="flex flex-col gap-1">
@@ -277,7 +298,7 @@ watch(
           <input
             v-model="addForm.business_name"
             type="text"
-            class="px-2 py-1.5 border rounded border-n-weak"
+            class="reset-base px-2 py-1.5 bg-white border rounded border-n-weak"
           />
         </label>
         <label class="flex flex-col gap-1">
@@ -285,7 +306,7 @@ watch(
           <input
             v-model="addForm.owner_name"
             type="text"
-            class="px-2 py-1.5 border rounded border-n-weak"
+            class="reset-base px-2 py-1.5 bg-white border rounded border-n-weak"
           />
         </label>
         <label class="flex flex-col gap-1">
@@ -293,7 +314,7 @@ watch(
           <input
             v-model="addForm.website"
             type="url"
-            class="px-2 py-1.5 border rounded border-n-weak"
+            class="reset-base px-2 py-1.5 bg-white border rounded border-n-weak"
           />
         </label>
         <label class="flex flex-col gap-1">
@@ -302,7 +323,7 @@ watch(
             v-model="addForm.country_code"
             type="text"
             maxlength="2"
-            class="px-2 py-1.5 uppercase border rounded border-n-weak"
+            class="reset-base px-2 py-1.5 bg-white uppercase border rounded border-n-weak"
           />
         </label>
         <label class="flex flex-col gap-1">
@@ -311,7 +332,7 @@ watch(
             v-model="addForm.preferred_language"
             type="text"
             maxlength="5"
-            class="px-2 py-1.5 border rounded border-n-weak"
+            class="reset-base px-2 py-1.5 bg-white border rounded border-n-weak"
           />
         </label>
         <label class="flex flex-col gap-1 col-span-2">
@@ -319,7 +340,7 @@ watch(
           <input
             v-model="addForm.instagram_handle"
             type="text"
-            class="px-2 py-1.5 border rounded border-n-weak"
+            class="reset-base px-2 py-1.5 bg-white border rounded border-n-weak"
           />
         </label>
         <label class="flex items-center gap-2 col-span-2">
@@ -374,22 +395,22 @@ watch(
         <input
           v-model="directoryFilters.q"
           type="search"
-          placeholder="Search name / email / instagram…"
-          class="flex-1 max-w-sm px-3 py-2 text-sm border rounded border-n-weak"
+          placeholder="Search name / email / Instagram handle…"
+          class="reset-base flex-none w-96 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10 focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
         />
         <input
           v-model="directoryFilters.country_code"
           type="text"
           maxlength="2"
           placeholder="Country (de…)"
-          class="w-32 px-3 py-2 text-sm uppercase border rounded border-n-weak"
+          class="reset-base flex-none w-36 px-3 py-2 text-sm uppercase bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10 focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
         />
         <input
           v-model="directoryFilters.locale"
           type="text"
           maxlength="5"
           placeholder="Locale (de…)"
-          class="w-32 px-3 py-2 text-sm border rounded border-n-weak"
+          class="reset-base flex-none w-36 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10 focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
         />
         <span class="ml-auto text-xs text-n-slate-11">
           {{ directoryTotal }} available · {{ directorySelected.size }} selected
@@ -427,7 +448,19 @@ watch(
       >
         <thead class="bg-n-slate-2 text-n-slate-11">
           <tr>
-            <th class="px-3 py-2 w-8" />
+            <th class="px-3 py-2 w-8">
+              <input
+                type="checkbox"
+                :checked="allVisibleSelected"
+                :indeterminate.prop="someVisibleSelected && !allVisibleSelected"
+                :title="
+                  allVisibleSelected
+                    ? 'Clear selection on this page'
+                    : 'Select all importable rows on this page'
+                "
+                @change="toggleSelectAllVisible"
+              />
+            </th>
             <th class="px-3 py-2 text-left font-medium">Business</th>
             <th class="px-3 py-2 text-left font-medium">Owner</th>
             <th class="px-3 py-2 text-left font-medium">Email</th>
@@ -452,7 +485,42 @@ watch(
               />
             </td>
             <td class="px-3 py-2 font-medium text-n-slate-12">
-              {{ r.business_name || '—' }}
+              <div class="flex items-center gap-2">
+                <span>{{ r.business_name || '—' }}</span>
+                <span
+                  v-if="r.already_enrolled"
+                  class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-teal-3 text-n-teal-11"
+                  title="Already in chatwoot outreach"
+                >
+                  Enrolled
+                </span>
+                <span
+                  v-if="r.in_directory_campaign"
+                  class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-amber-3 text-n-amber-11"
+                  title="Active onboarding CRM campaign — would double-contact"
+                >
+                  In directory CRM
+                </span>
+                <span
+                  v-if="r.marketing_consent"
+                  class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-teal-3 text-n-teal-11"
+                  title="Marketing consent recorded in directory"
+                >
+                  Marketing consent
+                </span>
+                <span
+                  v-if="
+                    r.email_validation_status &&
+                    r.email_validation_status.startsWith('invalid')
+                  "
+                  class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-ruby-3 text-n-ruby-11"
+                  :title="`Email bounced previously: ${r.email_validation_status}`"
+                >
+                  {{
+                    r.email_validation_status.replace('invalid_', 'Bounced: ')
+                  }}
+                </span>
+              </div>
             </td>
             <td class="px-3 py-2 text-n-slate-11">{{ r.owner_name || '—' }}</td>
             <td class="px-3 py-2 text-n-slate-11">{{ r.email }}</td>
@@ -463,13 +531,10 @@ watch(
               {{ r.preferred_language || '—' }}
             </td>
             <td class="px-3 py-2 text-right">
-              <span v-if="r.already_enrolled" class="text-xs text-n-slate-11">
-                Enrolled
-              </span>
               <button
-                v-else
+                v-if="!r.already_enrolled"
                 type="button"
-                class="text-xs font-medium text-n-brand hover:underline"
+                class="text-xs font-medium text-n-brand hover:underline disabled:opacity-50"
                 :disabled="importBusy"
                 @click="runImport([r.id])"
               >
