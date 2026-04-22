@@ -16,6 +16,7 @@ class AsyncDispatcher < BaseDispatcher
       HookListener.instance,
       InstallationWebhookListener.instance,
       NotificationListener.instance,
+      Outreach::ReplyListener.instance,
       ParticipationListener.instance,
       ReportingEventListener.instance,
       WebhookListener.instance
