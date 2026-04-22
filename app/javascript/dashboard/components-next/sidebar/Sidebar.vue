@@ -475,6 +475,31 @@ const menuItems = computed(() => {
       ],
     },
     {
+      name: 'Outreach',
+      label: 'Outreach',
+      icon: 'i-lucide-send',
+      children: [
+        {
+          name: 'Outreach Photographers',
+          label: 'Photographers',
+          to: accountScopedRoute('outreach_photographers'),
+          activeOn: ['outreach_photographers', 'outreach_dashboard_index'],
+        },
+        {
+          name: 'Outreach Campaigns',
+          label: 'Campaigns',
+          to: accountScopedRoute('outreach_campaigns'),
+          activeOn: ['outreach_campaigns'],
+        },
+        {
+          name: 'Outreach Drafts',
+          label: 'Drafts to review',
+          to: accountScopedRoute('outreach_drafts'),
+          activeOn: ['outreach_drafts'],
+        },
+      ],
+    },
+    {
       name: 'Companies',
       label: t('SIDEBAR.COMPANIES'),
       icon: 'i-lucide-building-2',

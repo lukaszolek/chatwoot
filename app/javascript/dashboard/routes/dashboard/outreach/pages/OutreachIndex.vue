@@ -1,0 +1,60 @@
+<script setup>
+import { computed } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute();
+
+const tabs = [
+  {
+    key: 'photographers',
+    label: 'Photographers',
+    route: 'outreach_photographers',
+  },
+  { key: 'campaigns', label: 'Campaigns', route: 'outreach_campaigns' },
+  { key: 'drafts', label: 'Drafts to review', route: 'outreach_drafts' },
+];
+
+const activeKey = computed(() => {
+  if (route.name === 'outreach_campaigns') return 'campaigns';
+  if (route.name === 'outreach_drafts') return 'drafts';
+  return 'photographers';
+});
+</script>
+
+<!-- eslint-disable vue/no-bare-strings-in-template -->
+<template>
+  <div class="flex flex-col w-full h-full overflow-hidden bg-n-background">
+    <header
+      class="flex items-center justify-between flex-shrink-0 gap-4 px-6 py-4 border-b border-n-weak"
+    >
+      <div class="flex flex-col gap-1">
+        <h1 class="text-xl font-semibold text-n-slate-12">Outreach</h1>
+        <p class="text-sm text-n-slate-11">
+          Photographer partnership outbound campaigns
+        </p>
+      </div>
+    </header>
+
+    <nav
+      class="flex items-center gap-1 px-6 border-b border-n-weak flex-shrink-0"
+    >
+      <router-link
+        v-for="tab in tabs"
+        :key="tab.key"
+        :to="{ name: tab.route }"
+        class="px-4 py-3 text-sm font-medium transition border-b-2"
+        :class="
+          activeKey === tab.key
+            ? 'border-n-brand text-n-brand'
+            : 'border-transparent text-n-slate-11 hover:text-n-slate-12'
+        "
+      >
+        {{ tab.label }}
+      </router-link>
+    </nav>
+
+    <main class="flex-1 overflow-auto">
+      <router-view />
+    </main>
+  </div>
+</template>
