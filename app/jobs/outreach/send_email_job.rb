@@ -4,17 +4,20 @@
 #   1. Reserve a per-recipient-domain rate-limit token (Outreach::RateLimiter)
 #      — if the hourly bucket is exhausted, re-enqueue with a 10-minute delay
 #      and return without creating a Message.
-#   2. Mint a one-click unsubscribe URL (Outreach::UnsubscribeToken) and
-#      append a footer to the body so recipients always have a way out.
+#   2. Set the conversation's `mail_subject` so chatwoot's reply mailer
+#      uses the outreach template's subject instead of its generic
+#      "[#1542] New messages" fallback.
 #   3. Create the outgoing Message on the participant's Conversation; the
 #      mailer that fires off outgoing messages in chatwoot handles actual
 #      SMTP delivery, including the campaign's configured email inbox.
 #   4. Stamp participant.last_outbound_at and message.additional_attributes
-#      with outreach metadata for downstream audits and bounce handling.
+#      with outreach metadata for downstream audits.
 #
-# Kept as a distinct job (rather than calling ConversationReplyMailer
-# inline) so that rate-limit + unsubscribe-token logic lives in one place
-# and outreach sends never mix with generic chatwoot replies.
+# Note on unsubscribe: outreach mails are personal — we don't append a
+# List-Unsubscribe footer. If a recipient wants off, they reply and the
+# operator flips them to do_not_contact. The unsubscribe endpoint + token
+# service still exists (used by programmatic opt-outs and audits), but is
+# not surfaced in outbound copy.
 class Outreach::SendEmailJob < ApplicationJob
   queue_as :outreach
 
@@ -39,12 +42,11 @@ class Outreach::SendEmailJob < ApplicationJob
       return
     end
 
-    unsubscribe_url = build_unsubscribe_url(participant)
+    set_conversation_mail_subject!(conversation, subject)
     message = create_outgoing_message!(
       participant: participant, conversation: conversation,
-      subject: subject, body: append_unsubscribe_footer(body, unsubscribe_url, locale),
-      template_slot: template_slot, locale: locale,
-      unsubscribe_url: unsubscribe_url
+      subject: subject, body: body,
+      template_slot: template_slot, locale: locale
     )
 
     # update_columns skips validations/callbacks — last_outbound_at is an
@@ -80,27 +82,20 @@ class Outreach::SendEmailJob < ApplicationJob
     self.class.set(wait: RATE_LIMIT_RETRY_DELAY).perform_later(**kwargs)
   end
 
-  def build_unsubscribe_url(participant)
-    token = Outreach::UnsubscribeToken.sign(
-      participant_id: participant.id,
-      campaign_id: participant.outbound_campaign_id
-    )
-    host = ENV.fetch('FRONTEND_URL', 'http://localhost:3000').chomp('/')
-    "#{host}/unsubscribe/#{token}"
-  rescue Outreach::UnsubscribeToken::SecretMissing => e
-    Rails.logger.warn("[outreach.send_email] unsubscribe disabled: #{e.message}")
-    nil
-  end
+  # Setting mail_subject on the conversation gets picked up by
+  # ConversationReplyMailer#mail_subject, which prefixes "Re: " when
+  # there's already chat history so reminder/breakup mails thread as
+  # expected under the intro subject.
+  def set_conversation_mail_subject!(conversation, subject)
+    attrs = conversation.additional_attributes.to_h
+    return if attrs['mail_subject'] == subject
 
-  def append_unsubscribe_footer(body, url, _locale)
-    return body if url.blank?
-
-    footer = "\n\n---\nAby zrezygnować z tej korespondencji kliknij: #{url}\nTo unsubscribe from this outreach click: #{url}\n"
-    "#{body}#{footer}"
+    attrs['mail_subject'] = subject
+    conversation.update_columns(additional_attributes: attrs, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
   end
 
   # rubocop:disable Metrics/ParameterLists
-  def create_outgoing_message!(participant:, conversation:, subject:, body:, template_slot:, locale:, unsubscribe_url:)
+  def create_outgoing_message!(participant:, conversation:, subject:, body:, template_slot:, locale:)
     conversation.messages.create!(
       account: conversation.account,
       inbox: conversation.inbox,
@@ -114,9 +109,8 @@ class Outreach::SendEmailJob < ApplicationJob
           'outbound_campaign_id' => participant.outbound_campaign_id,
           'template_slot' => template_slot,
           'locale' => locale,
-          'subject' => subject,
-          'unsubscribe_url' => unsubscribe_url
-        }.compact
+          'subject' => subject
+        }
       }
     )
   end

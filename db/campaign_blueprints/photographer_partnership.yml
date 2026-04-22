@@ -22,7 +22,7 @@ stages:
 
   - key: reminder_wait
     on_enter_action: wait
-    auto_advance_after_hours: 120
+    auto_advance_after_hours: 168   # 7 days — personal-outreach cadence
     position: 2
     next_stage_key: reminder_send
 
@@ -34,7 +34,7 @@ stages:
 
   - key: breakup_wait
     on_enter_action: wait
-    auto_advance_after_hours: 216
+    auto_advance_after_hours: 168   # 7 days — personal-outreach cadence
     position: 4
     next_stage_key: breakup_send
 

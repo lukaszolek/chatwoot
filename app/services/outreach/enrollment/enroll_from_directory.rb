@@ -90,13 +90,36 @@ class Outreach::Enrollment::EnrollFromDirectory
     profile.assign_attributes(
       email: source.email, business_name: source.business_name, owner_name: source.owner_name,
       website: source.website, country_code: source.country_code&.upcase,
-      preferred_language: source.preferred_language || source.native_language,
+      preferred_language: resolve_locale(source),
       instagram_handle: source.instagram_handle, marketing_consent: source.marketing_consent,
       source_status: source.status, contact_id: contact&.id, last_synced_at: Time.current
     )
     profile.partnership_status = :imported if profile.new_record?
     profile.save!
     profile
+  end
+
+  # Resolution rule: photographer-directory's `preferred_language` stores
+  # the UI edit-interface language (e.g. a Polish photographer who read
+  # the directory UI in English has preferred_language='en'). For
+  # outreach mails we need the language the PERSON speaks, so:
+  #   1. `native_language` first (most reliable when set)
+  #   2. country_code → locale map (PL→pl, DE→de, FR→fr, …)
+  #   3. `preferred_language` (least reliable, but better than nothing)
+  #   4. 'en' as a safe last resort
+  COUNTRY_TO_LOCALE = {
+    'pl' => 'pl', 'de' => 'de', 'at' => 'de', 'ch' => 'de',
+    'fr' => 'fr', 'be' => 'fr', 'gb' => 'en', 'us' => 'en', 'ie' => 'en',
+    'es' => 'es', 'it' => 'it', 'nl' => 'nl', 'cz' => 'cs',
+    'sk' => 'sk', 'hu' => 'hu', 'ro' => 'ro', 'hr' => 'hr',
+    'dk' => 'da', 'fi' => 'fi', 'se' => 'sv', 'gr' => 'el'
+  }.freeze
+
+  def resolve_locale(source)
+    source.native_language.presence ||
+      COUNTRY_TO_LOCALE[source.country_code.to_s.downcase] ||
+      source.preferred_language.presence ||
+      'en'
   end
 
   def ensure_contact(source)

@@ -31,26 +31,20 @@ RSpec.describe Outreach::SendEmailJob do
   end
 
   describe '#perform' do
-    it 'creates an outgoing message with unsubscribe footer + metadata' do
-      with_modified_env('OUTREACH_UNSUBSCRIBE_SECRET' => secret, 'FRONTEND_URL' => 'https://crm.framky.test') do
-        expect { perform! }.to change { conversation.reload.messages.count }.by(1)
-      end
+    it 'creates an outgoing message with raw body (no unsubscribe footer) + outreach metadata' do
+      expect { perform! }.to change { conversation.reload.messages.count }.by(1)
 
       message = conversation.messages.last
-      expect(message.content).to include('Body')
-      expect(message.content).to include('unsubscribe')
-      expect(message.additional_attributes.dig('outreach', 'unsubscribe_url')).to start_with('https://crm.framky.test/unsubscribe/')
+      expect(message.content).to eq('Body')
+      expect(message.content).not_to include('unsubscribe')
       expect(message.additional_attributes.dig('outreach', 'template_slot')).to eq('intro')
+      expect(message.additional_attributes.dig('outreach', 'subject')).to eq('Hi')
       expect(participant.reload.last_outbound_at).to be_present
     end
 
-    it 'still sends (without a footer) when the unsubscribe secret is missing' do
-      with_modified_env('OUTREACH_UNSUBSCRIBE_SECRET' => nil) do
-        expect { perform! }.to change { conversation.reload.messages.count }.by(1)
-      end
-
-      expect(conversation.messages.last.content).to eq('Body')
-      expect(conversation.messages.last.additional_attributes.dig('outreach', 'unsubscribe_url')).to be_nil
+    it 'sets conversation.additional_attributes.mail_subject so chatwoot mailer uses the outreach subject' do
+      perform!
+      expect(conversation.reload.additional_attributes['mail_subject']).to eq('Hi')
     end
 
     it 'reschedules itself when the recipient-domain rate limit is exhausted' do
