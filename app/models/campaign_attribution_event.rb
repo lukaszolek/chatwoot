@@ -5,7 +5,8 @@ class CampaignAttributionEvent < ApplicationRecord
     partnership_signup: 0,
     unsubscribe: 1,
     email_bounce: 2,
-    gdpr_delete: 3
+    gdpr_delete: 3,
+    consent_drift_detected: 4
   }, prefix: :event
 
   validates :occurred_at, presence: true

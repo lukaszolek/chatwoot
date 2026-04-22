@@ -88,3 +88,10 @@ outreach_tick_scheduler_job:
   cron: '*/5 * * * *'
   class: 'Outreach::TickSchedulerJob'
   queue: outreach
+
+# Outreach engine: daily consent audit at 04:00 UTC. Self-heals drift
+# between chatwoot DNC state and photographer-directory consent columns.
+outreach_consent_audit_job:
+  cron: '0 4 * * *'
+  class: 'Outreach::ConsentAuditJob'
+  queue: outreach
