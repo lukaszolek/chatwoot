@@ -1,0 +1,18 @@
+json.id resource.id
+json.external_id resource.external_id
+json.email resource.email
+json.business_name resource.business_name
+json.owner_name resource.owner_name
+json.website resource.website
+json.country_code resource.country_code
+json.preferred_language resource.preferred_language
+json.instagram_handle resource.instagram_handle
+json.marketing_consent resource.marketing_consent
+json.partnership_status resource.partnership_status
+json.partnership_status_changed_at resource.partnership_status_changed_at&.to_i
+json.tags(resource.try(:tags) || [])
+json.notes resource.notes
+json.last_synced_at resource.last_synced_at&.to_i
+json.contact_id resource.contact_id
+json.created_at resource.created_at.to_i
+json.updated_at resource.updated_at.to_i

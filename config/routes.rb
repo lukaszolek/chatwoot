@@ -118,6 +118,26 @@ Rails.application.routes.draw do
             end
           end
           resources :campaigns, only: [:index, :create, :show, :update, :destroy]
+          namespace :outreach do
+            resources :campaigns, only: [:index, :show] do
+              member do
+                post :pause
+                post :resume
+                post :archive
+              end
+            end
+            resources :photographer_partner_profiles, only: [:index, :show, :update] do
+              member do
+                post :opt_out
+              end
+            end
+            resources :campaign_drafts, only: [:index, :show, :update] do
+              member do
+                post :approve
+                post :reject
+              end
+            end
+          end
           resources :dashboard_apps, only: [:index, :show, :create, :update, :destroy]
           namespace :channels do
             resource :twilio_channel, only: [:create]
