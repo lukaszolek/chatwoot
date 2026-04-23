@@ -94,9 +94,20 @@ class Outreach::Enrollment::EnrollFromDirectory
       instagram_handle: source.instagram_handle, marketing_consent: source.marketing_consent,
       source_status: source.status, contact_id: contact&.id, last_synced_at: Time.current
     )
+    # Consent state only set when (re)importing fresh. Never overwrite
+    # operator-set state — once someone manually flips granted/declined
+    # in chatwoot UI, importer should not silently revert it.
+    profile.marketing_consent_state = derive_consent_state(source) if profile.new_record?
     profile.partnership_status = :imported if profile.new_record?
     profile.save!
     profile
+  end
+
+  def derive_consent_state(source)
+    return :declined if source.unsubscribed_from_all_campaigns
+    return :granted if source.marketing_consent
+
+    :unknown
   end
 
   # Resolution rule: photographer-directory's `preferred_language` stores

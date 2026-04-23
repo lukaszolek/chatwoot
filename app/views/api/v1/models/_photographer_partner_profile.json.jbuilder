@@ -8,6 +8,7 @@ json.country_code resource.country_code
 json.preferred_language resource.preferred_language
 json.instagram_handle resource.instagram_handle
 json.marketing_consent resource.marketing_consent
+json.marketing_consent_state resource.marketing_consent_state
 json.partnership_status resource.partnership_status
 json.partnership_status_changed_at resource.partnership_status_changed_at&.to_i
 json.tags(resource.try(:tags) || [])

@@ -75,7 +75,11 @@ class Api::V1::Accounts::Outreach::PhotographerPartnerProfilesController < Api::
   end
 
   def profile_params
-    params.require(:photographer_partner_profile).permit(:notes, tags: [])
+    params.require(:photographer_partner_profile).permit(
+      :notes, :business_name, :owner_name, :email, :website, :country_code,
+      :preferred_language, :instagram_handle, :marketing_consent_state,
+      :partnership_status, tags: []
+    )
   end
 
   def create_params

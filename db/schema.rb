@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_22_120700) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_23_090036) do
   # These extensions should be enabled to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -1346,10 +1346,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_22_120700) do
     t.jsonb "metadata", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "marketing_consent_state", default: 0, null: false
     t.index ["account_id", "email"], name: "idx_photographer_profiles_account_email", unique: true
     t.index ["account_id", "external_id"], name: "idx_photographer_profiles_account_external", unique: true
     t.index ["account_id"], name: "index_photographer_partner_profiles_on_account_id"
     t.index ["contact_id"], name: "index_photographer_partner_profiles_on_contact_id"
+    t.index ["marketing_consent_state"], name: "index_photographer_partner_profiles_on_marketing_consent_state"
     t.index ["partnership_status"], name: "index_photographer_partner_profiles_on_partnership_status"
   end
 

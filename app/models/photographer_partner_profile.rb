@@ -2,6 +2,18 @@ class PhotographerPartnerProfile < ApplicationRecord
   belongs_to :account
   belongs_to :contact, optional: true
 
+  # Tri-state consent, source of truth on the chatwoot side.
+  #   unknown  — operator has not asked / photographer has not answered
+  #   granted  — explicit yes for partnership outreach
+  #   declined — explicit no / unsubscribed
+  # boolean `marketing_consent` stays on the row for interop with
+  # photographer-directory (which only has a bool + unsubscribed flag).
+  enum :marketing_consent_state, {
+    unknown: 0,
+    granted: 1,
+    declined: 2
+  }, prefix: :consent
+
   enum :partnership_status, {
     imported: 0,
     qualified: 1,

@@ -3,11 +3,15 @@ import { computed, ref, onMounted, watch } from 'vue';
 import OutreachPhotographersAPI from 'dashboard/api/outreachPhotographers';
 import OutreachDirectoryAPI from 'dashboard/api/outreachDirectory';
 
+// ---------- Unified search state ----------
 const profiles = ref([]);
-const total = ref(0);
+const profilesTotal = ref(0);
+const directoryResults = ref([]);
+const directoryTotal = ref(0);
 const loading = ref(false);
 const error = ref(null);
-const page = ref(1);
+const busyRowKey = ref(null);
+const importSummary = ref(null);
 
 const filters = ref({ q: '', status: '', country_code: '', locale: '' });
 
@@ -24,16 +28,38 @@ const STATUSES = [
   { value: 'completed', label: 'Completed' },
 ];
 
-const fetchPage = async () => {
+const fetchProfiles = async () => {
+  const { data } = await OutreachPhotographersAPI.get(1, filters.value);
+  profiles.value = data.data || [];
+  profilesTotal.value = data.meta?.total || 0;
+};
+
+const fetchDirectory = async () => {
+  // Only hit the directory when the operator has typed a query —
+  // otherwise we'd pull the entire directory on every page load.
+  if (
+    !filters.value.q &&
+    !filters.value.country_code &&
+    !filters.value.locale
+  ) {
+    directoryResults.value = [];
+    directoryTotal.value = 0;
+    return;
+  }
+  const { data } = await OutreachDirectoryAPI.search(1, {
+    q: filters.value.q,
+    country_code: filters.value.country_code,
+    locale: filters.value.locale,
+  });
+  directoryResults.value = data.data || [];
+  directoryTotal.value = data.meta?.total || 0;
+};
+
+const runSearch = async () => {
   loading.value = true;
   error.value = null;
   try {
-    const { data } = await OutreachPhotographersAPI.get(
-      page.value,
-      filters.value
-    );
-    profiles.value = data.data || [];
-    total.value = data.meta?.total || 0;
+    await Promise.all([fetchProfiles(), fetchDirectory()]);
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
   } finally {
@@ -41,13 +67,69 @@ const fetchPage = async () => {
   }
 };
 
+// Unified row list — local profiles first, then directory rows that
+// aren't already enrolled (those are collapsed into the profile row).
+const rows = computed(() => {
+  const out = [];
+  const seenExternalIds = new Set();
+  profiles.value.forEach(p => {
+    out.push({
+      key: `profile-${p.id}`,
+      type: 'profile',
+      profile: p,
+      email: p.email,
+      business_name: p.business_name,
+      owner_name: p.owner_name,
+      country_code: p.country_code,
+      preferred_language: p.preferred_language,
+    });
+    if (p.external_id) seenExternalIds.add(String(p.external_id));
+  });
+  directoryResults.value.forEach(r => {
+    if (seenExternalIds.has(String(r.id))) return;
+    if (r.already_enrolled) return;
+    out.push({
+      key: `dir-${r.id}`,
+      type: 'directory',
+      directory: r,
+      email: r.email,
+      business_name: r.business_name,
+      owner_name: r.owner_name,
+      country_code: r.country_code,
+      preferred_language: r.preferred_language,
+    });
+  });
+  return out;
+});
+
+const totalShown = computed(() => rows.value.length);
+
+// ---------- Actions ----------
 const optOut = async profile => {
   if (!window.confirm(`Opt ${profile.email} out of outreach?`)) return;
+  busyRowKey.value = `profile-${profile.id}`;
   try {
     await OutreachPhotographersAPI.optOut(profile.id);
-    await fetchPage();
+    await runSearch();
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
+  } finally {
+    busyRowKey.value = null;
+  }
+};
+
+const startCampaign = async row => {
+  busyRowKey.value = row.key;
+  importSummary.value = null;
+  error.value = null;
+  try {
+    const { data } = await OutreachDirectoryAPI.import([row.directory.id]);
+    importSummary.value = data.result;
+    await runSearch();
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    busyRowKey.value = null;
   }
 };
 
@@ -75,7 +157,7 @@ const submitAdd = async () => {
     await OutreachPhotographersAPI.create(payload, enroll);
     showAddForm.value = false;
     addForm.value = blankAddForm();
-    await fetchPage();
+    await runSearch();
   } catch (e) {
     error.value =
       e.response?.data?.error || e.response?.data?.message || e.message;
@@ -84,113 +166,63 @@ const submitAdd = async () => {
   }
 };
 
-// ---------- Import from directory ----------
-const showDirectory = ref(false);
-const directoryLoading = ref(false);
-const directoryResults = ref([]);
-const directoryTotal = ref(0);
-const directoryPage = ref(1);
-const directoryFilters = ref({ q: '', country_code: '', locale: '' });
-const directorySelected = ref(new Set());
-const importBusy = ref(false);
-const importSummary = ref(null);
+// ---------- Edit sidebar ----------
+const CONSENT_OPTIONS = [
+  { value: 'unknown', label: 'No answer yet', tone: 'slate' },
+  { value: 'granted', label: 'Consent given', tone: 'teal' },
+  { value: 'declined', label: 'Refused', tone: 'ruby' },
+];
 
-const runDirectorySearch = async () => {
-  directoryLoading.value = true;
+const editingProfile = ref(null);
+const editForm = ref({});
+const editSaving = ref(false);
+const openEdit = profile => {
+  editingProfile.value = profile;
+  editForm.value = {
+    email: profile.email,
+    business_name: profile.business_name,
+    owner_name: profile.owner_name,
+    website: profile.website,
+    country_code: profile.country_code,
+    preferred_language: profile.preferred_language,
+    instagram_handle: profile.instagram_handle,
+    marketing_consent_state: profile.marketing_consent_state || 'unknown',
+    partnership_status: profile.partnership_status,
+    notes: profile.notes,
+  };
+};
+const closeEdit = () => {
+  editingProfile.value = null;
+  editForm.value = {};
+};
+const saveEdit = async () => {
+  if (!editingProfile.value) return;
+  editSaving.value = true;
   error.value = null;
   try {
-    const { data } = await OutreachDirectoryAPI.search(
-      directoryPage.value,
-      directoryFilters.value
+    await OutreachPhotographersAPI.update(
+      editingProfile.value.id,
+      editForm.value
     );
-    directoryResults.value = data.data || [];
-    directoryTotal.value = data.meta?.total || 0;
+    closeEdit();
+    await runSearch();
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
   } finally {
-    directoryLoading.value = false;
+    editSaving.value = false;
   }
 };
 
-const openDirectory = () => {
-  showDirectory.value = true;
-  directorySelected.value = new Set();
-  importSummary.value = null;
-  runDirectorySearch();
-};
-
-const toggleSelect = id => {
-  const next = new Set(directorySelected.value);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  directorySelected.value = next;
-};
-
-const selectAllVisible = () => {
-  const next = new Set(directorySelected.value);
-  directoryResults.value.forEach(r => {
-    if (!r.already_enrolled) next.add(r.id);
-  });
-  directorySelected.value = next;
-};
-
-const clearSelection = () => {
-  directorySelected.value = new Set();
-};
-
-const importableVisible = computed(() =>
-  directoryResults.value.filter(r => !r.already_enrolled)
-);
-const allVisibleSelected = computed(
-  () =>
-    importableVisible.value.length > 0 &&
-    importableVisible.value.every(r => directorySelected.value.has(r.id))
-);
-const someVisibleSelected = computed(() =>
-  importableVisible.value.some(r => directorySelected.value.has(r.id))
-);
-const toggleSelectAllVisible = () => {
-  if (allVisibleSelected.value) {
-    const next = new Set(directorySelected.value);
-    importableVisible.value.forEach(r => next.delete(r.id));
-    directorySelected.value = next;
-  } else {
-    selectAllVisible();
-  }
-};
-
-const runImport = async (ids = null) => {
-  const toImport = ids || Array.from(directorySelected.value);
-  if (toImport.length === 0) return;
-  importBusy.value = true;
-  importSummary.value = null;
-  error.value = null;
-  try {
-    const { data } = await OutreachDirectoryAPI.import(toImport);
-    importSummary.value = data.result;
-    await Promise.all([runDirectorySearch(), fetchPage()]);
-    directorySelected.value = new Set();
-  } catch (e) {
-    error.value = e.response?.data?.error || e.message;
-  } finally {
-    importBusy.value = false;
-  }
-};
-
-// ---------- Reactivity ----------
 const formatDate = ts => (ts ? new Date(ts * 1000).toLocaleString() : '—');
 
-onMounted(fetchPage);
+onMounted(runSearch);
 
 let searchTimer = null;
 watch(
   () => filters.value.q,
   () => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      page.value = 1;
-      fetchPage();
-    }, 300);
+    searchTimer = setTimeout(runSearch, 300);
   }
 );
 
@@ -200,29 +232,7 @@ watch(
     filters.value.country_code,
     filters.value.locale,
   ],
-  () => {
-    page.value = 1;
-    fetchPage();
-  }
-);
-
-let dirSearchTimer = null;
-watch(
-  () => directoryFilters.value.q,
-  () => {
-    clearTimeout(dirSearchTimer);
-    dirSearchTimer = setTimeout(() => {
-      directoryPage.value = 1;
-      runDirectorySearch();
-    }, 300);
-  }
-);
-watch(
-  () => [directoryFilters.value.country_code, directoryFilters.value.locale],
-  () => {
-    directoryPage.value = 1;
-    runDirectorySearch();
-  }
+  runSearch
 );
 </script>
 
@@ -233,8 +243,8 @@ watch(
       <input
         v-model="filters.q"
         type="search"
-        placeholder="Search email / business / owner…"
-        class="reset-base flex-none w-80 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10 focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
+        placeholder="Search photographer-directory and current campaign…"
+        class="reset-base flex-1 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10 focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
       />
       <select
         v-model="filters.status"
@@ -247,25 +257,17 @@ watch(
       <input
         v-model="filters.country_code"
         type="text"
-        placeholder="Country (PL…)"
+        placeholder="Country"
         maxlength="2"
-        class="reset-base flex-none w-36 px-3 py-2 text-sm uppercase bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10"
+        class="reset-base flex-none w-28 px-3 py-2 text-sm uppercase bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10"
       />
       <input
         v-model="filters.locale"
         type="text"
-        placeholder="Locale (pl…)"
+        placeholder="Locale"
         maxlength="5"
-        class="reset-base flex-none w-36 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10"
+        class="reset-base flex-none w-24 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10"
       />
-      <span class="ml-auto text-sm text-n-slate-11">{{ total }} total</span>
-      <button
-        type="button"
-        class="px-3 py-2 text-sm font-medium border rounded border-n-weak hover:bg-n-slate-2"
-        @click="openDirectory"
-      >
-        Import from directory
-      </button>
       <button
         type="button"
         class="px-3 py-2 text-sm font-medium text-white rounded bg-n-brand hover:opacity-90"
@@ -275,13 +277,25 @@ watch(
       </button>
     </div>
 
+    <div class="flex items-center gap-4 mb-3 text-xs text-n-slate-11">
+      <span>
+        In campaign: <strong>{{ profilesTotal }}</strong>
+      </span>
+      <span v-if="directoryTotal > 0">
+        Directory matches: <strong>{{ directoryTotal }}</strong>
+      </span>
+      <span v-if="totalShown" class="ml-auto">
+        Showing {{ totalShown }} row{{ totalShown === 1 ? '' : 's' }}
+      </span>
+    </div>
+
     <!-- Add-photographer panel -->
     <div
       v-if="showAddForm"
       class="p-4 mb-4 bg-white border rounded border-n-weak"
     >
       <h3 class="mb-3 text-sm font-semibold text-n-slate-12">
-        Add a photographer and enroll in the partnership campaign
+        Add a photographer manually
       </h3>
       <form class="grid grid-cols-2 gap-3 text-sm" @submit.prevent="submitAdd">
         <label class="flex flex-col gap-1">
@@ -373,241 +387,15 @@ watch(
       </form>
     </div>
 
-    <!-- Directory import panel -->
     <div
-      v-if="showDirectory"
-      class="p-4 mb-4 bg-white border rounded border-n-weak"
+      v-if="importSummary"
+      class="p-3 mb-3 text-xs rounded bg-n-teal-3 text-n-teal-11"
     >
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-semibold text-n-slate-12">
-          Import from photographer-directory
-        </h3>
-        <button
-          type="button"
-          class="text-xs text-n-slate-11 hover:underline"
-          @click="showDirectory = false"
-        >
-          Close
-        </button>
-      </div>
-
-      <div class="flex items-center gap-3 mb-3">
-        <input
-          v-model="directoryFilters.q"
-          type="search"
-          placeholder="Search name / email / Instagram handle…"
-          class="reset-base flex-none w-96 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10 focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
-        />
-        <input
-          v-model="directoryFilters.country_code"
-          type="text"
-          maxlength="2"
-          placeholder="Country (de…)"
-          class="reset-base flex-none w-36 px-3 py-2 text-sm uppercase bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10 focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
-        />
-        <input
-          v-model="directoryFilters.locale"
-          type="text"
-          maxlength="5"
-          placeholder="Locale (de…)"
-          class="reset-base flex-none w-36 px-3 py-2 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10 focus:border-n-brand focus:ring-1 focus:ring-n-brand outline-none"
-        />
-        <span class="ml-auto text-xs text-n-slate-11">
-          {{ directoryTotal }} available · {{ directorySelected.size }} selected
-        </span>
-      </div>
-
-      <div
-        v-if="importSummary"
-        class="p-3 mb-3 text-xs rounded bg-n-teal-3 text-n-teal-11"
-      >
-        Imported: <strong>{{ importSummary.enrolled }}</strong> · re-enrolled:
-        <strong>{{ importSummary.re_enrolled }}</strong> · already enrolled:
-        <strong>{{ importSummary.already_enrolled }}</strong> · skipped DNC:
-        <strong>{{ importSummary.skipped_dnc }}</strong> · failed:
-        <strong>{{ importSummary.failed }}</strong>
-      </div>
-
-      <div
-        v-if="directoryLoading"
-        class="py-8 text-sm text-center text-n-slate-11"
-      >
-        Searching directory…
-      </div>
-
-      <div
-        v-else-if="directoryResults.length === 0"
-        class="py-8 text-sm text-center text-n-slate-11"
-      >
-        No directory rows match (or all current matches are already excluded).
-      </div>
-
-      <table
-        v-else
-        class="w-full text-sm border rounded border-n-weak overflow-hidden"
-      >
-        <thead class="bg-n-slate-2 text-n-slate-11">
-          <tr>
-            <th class="px-3 py-2 w-8">
-              <input
-                type="checkbox"
-                :checked="allVisibleSelected"
-                :indeterminate.prop="someVisibleSelected && !allVisibleSelected"
-                :title="
-                  allVisibleSelected
-                    ? 'Clear selection on this page'
-                    : 'Select all importable rows on this page'
-                "
-                @change="toggleSelectAllVisible"
-              />
-            </th>
-            <th class="px-3 py-2 text-left font-medium">Business</th>
-            <th class="px-3 py-2 text-left font-medium">Owner</th>
-            <th class="px-3 py-2 text-left font-medium">Email</th>
-            <th class="px-3 py-2 text-left font-medium">Country</th>
-            <th class="px-3 py-2 text-left font-medium">Locale</th>
-            <th class="px-3 py-2 text-right font-medium">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="r in directoryResults"
-            :key="r.id"
-            class="border-t border-n-weak hover:bg-n-slate-2/40"
-            :class="r.already_enrolled ? 'opacity-60' : ''"
-          >
-            <td class="px-3 py-2">
-              <input
-                type="checkbox"
-                :checked="directorySelected.has(r.id)"
-                :disabled="r.already_enrolled"
-                @change="toggleSelect(r.id)"
-              />
-            </td>
-            <td class="px-3 py-2 font-medium text-n-slate-12">
-              <div class="flex items-center gap-2">
-                <span>{{ r.business_name || '—' }}</span>
-                <span
-                  v-if="r.already_enrolled"
-                  class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-teal-3 text-n-teal-11"
-                  title="Already in chatwoot outreach"
-                >
-                  Enrolled
-                </span>
-                <span
-                  v-if="r.in_directory_campaign"
-                  class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-amber-3 text-n-amber-11"
-                  title="Active onboarding CRM campaign — would double-contact"
-                >
-                  In directory CRM
-                </span>
-                <span
-                  v-if="r.marketing_consent"
-                  class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-teal-3 text-n-teal-11"
-                  title="Marketing consent recorded in directory"
-                >
-                  Marketing consent
-                </span>
-                <span
-                  v-if="
-                    r.email_validation_status &&
-                    r.email_validation_status.startsWith('invalid')
-                  "
-                  class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-ruby-3 text-n-ruby-11"
-                  :title="`Email bounced previously: ${r.email_validation_status}`"
-                >
-                  {{
-                    r.email_validation_status.replace('invalid_', 'Bounced: ')
-                  }}
-                </span>
-              </div>
-            </td>
-            <td class="px-3 py-2 text-n-slate-11">{{ r.owner_name || '—' }}</td>
-            <td class="px-3 py-2 text-n-slate-11">{{ r.email }}</td>
-            <td class="px-3 py-2 uppercase text-n-slate-11">
-              {{ r.country_code || '—' }}
-            </td>
-            <td class="px-3 py-2 text-n-slate-11">
-              {{ r.preferred_language || '—' }}
-            </td>
-            <td class="px-3 py-2 text-right">
-              <button
-                v-if="!r.already_enrolled"
-                type="button"
-                class="text-xs font-medium text-n-brand hover:underline disabled:opacity-50"
-                :disabled="importBusy"
-                @click="runImport([r.id])"
-              >
-                Import
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="flex items-center justify-between mt-4 text-sm">
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            class="px-3 py-1.5 text-xs border rounded border-n-weak"
-            :disabled="importBusy"
-            @click="selectAllVisible"
-          >
-            Select all visible
-          </button>
-          <button
-            type="button"
-            class="px-3 py-1.5 text-xs border rounded border-n-weak"
-            :disabled="importBusy || directorySelected.size === 0"
-            @click="clearSelection"
-          >
-            Clear
-          </button>
-          <button
-            type="button"
-            class="px-3 py-1.5 text-xs font-medium text-white rounded bg-n-brand hover:opacity-90 disabled:opacity-60"
-            :disabled="importBusy || directorySelected.size === 0"
-            @click="runImport()"
-          >
-            {{
-              importBusy
-                ? 'Importing…'
-                : `Import ${directorySelected.size} selected`
-            }}
-          </button>
-        </div>
-        <div
-          v-if="directoryTotal > directoryResults.length"
-          class="flex items-center gap-2"
-        >
-          <button
-            type="button"
-            :disabled="directoryPage === 1 || directoryLoading"
-            class="px-3 py-1.5 text-xs border rounded border-n-weak disabled:opacity-50"
-            @click="
-              directoryPage -= 1;
-              runDirectorySearch();
-            "
-          >
-            Previous
-          </button>
-          <span class="text-xs text-n-slate-11">Page {{ directoryPage }}</span>
-          <button
-            type="button"
-            class="px-3 py-1.5 text-xs border rounded border-n-weak"
-            :disabled="directoryLoading"
-            @click="
-              directoryPage += 1;
-              runDirectorySearch();
-            "
-          >
-            Next
-          </button>
-        </div>
-      </div>
+      {{
+        `Started campaign for ${importSummary.enrolled} (re-enrolled ${importSummary.re_enrolled}, already enrolled ${importSummary.already_enrolled}, skipped DNC ${importSummary.skipped_dnc}, failed ${importSummary.failed})`
+      }}
     </div>
 
-    <!-- Current enrolled list -->
     <div
       v-if="error"
       class="p-3 mb-4 text-sm rounded bg-n-ruby-3 text-n-ruby-11"
@@ -620,12 +408,11 @@ watch(
     </div>
 
     <div
-      v-else-if="profiles.length === 0"
+      v-else-if="rows.length === 0"
       class="py-12 text-sm text-center text-n-slate-11"
     >
-      No photographers match the current filters. Use
-      <strong>Import from directory</strong> or
-      <strong>+ Add photographer</strong> above.
+      No results. Type a name, email or Instagram handle to search the
+      photographer-directory, or use <strong>+ Add photographer</strong>.
     </div>
 
     <table
@@ -646,80 +433,306 @@ watch(
       </thead>
       <tbody>
         <tr
-          v-for="profile in profiles"
-          :key="profile.id"
+          v-for="row in rows"
+          :key="row.key"
           class="border-t border-n-weak hover:bg-n-slate-2/40"
+          :class="[
+            row.type === 'profile' ? 'cursor-pointer' : '',
+            editingProfile &&
+            row.profile &&
+            editingProfile.id === row.profile.id
+              ? 'bg-n-brand-3'
+              : '',
+          ]"
+          @click="row.type === 'profile' && openEdit(row.profile)"
         >
           <td class="px-3 py-2 font-medium text-n-slate-12">
-            {{ profile.business_name || '—' }}
+            <div class="flex items-center gap-2 flex-wrap">
+              <span>{{ row.business_name || '—' }}</span>
+              <span
+                v-if="row.type === 'directory'"
+                class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-slate-3 text-n-slate-11"
+                title="From photographer-directory, not yet in a campaign"
+              >
+                Directory
+              </span>
+              <span
+                v-if="
+                  row.profile &&
+                  row.profile.marketing_consent_state === 'granted'
+                "
+                class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-teal-3 text-n-teal-11"
+                title="Marketing consent: granted"
+              >
+                ✓ consent
+              </span>
+              <span
+                v-else-if="
+                  row.profile &&
+                  row.profile.marketing_consent_state === 'declined'
+                "
+                class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-ruby-3 text-n-ruby-11"
+                title="Marketing consent: refused"
+              >
+                ✕ consent
+              </span>
+              <span
+                v-if="row.directory && row.directory.marketing_consent"
+                class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-teal-3 text-n-teal-11"
+                title="Marketing consent recorded in directory"
+              >
+                Marketing consent
+              </span>
+              <span
+                v-if="row.directory && row.directory.in_directory_campaign"
+                class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-amber-3 text-n-amber-11"
+                title="Active onboarding CRM campaign — would double-contact"
+              >
+                In directory CRM
+              </span>
+              <span
+                v-if="
+                  row.directory &&
+                  row.directory.email_validation_status &&
+                  row.directory.email_validation_status.startsWith('invalid')
+                "
+                class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-ruby-3 text-n-ruby-11"
+                :title="`Email bounced previously: ${row.directory.email_validation_status}`"
+              >
+                {{
+                  row.directory.email_validation_status.replace(
+                    'invalid_',
+                    'Bounced: '
+                  )
+                }}
+              </span>
+            </div>
           </td>
-          <td class="px-3 py-2 text-n-slate-11">
-            {{ profile.owner_name || '—' }}
-          </td>
-          <td class="px-3 py-2 text-n-slate-11">{{ profile.email }}</td>
+          <td class="px-3 py-2 text-n-slate-11">{{ row.owner_name || '—' }}</td>
+          <td class="px-3 py-2 text-n-slate-11">{{ row.email }}</td>
           <td class="px-3 py-2 uppercase text-n-slate-11">
-            {{ profile.country_code || '—' }}
+            {{ row.country_code || '—' }}
           </td>
           <td class="px-3 py-2 text-n-slate-11">
-            {{ profile.preferred_language || '—' }}
+            {{ row.preferred_language || '—' }}
           </td>
           <td class="px-3 py-2">
             <span
+              v-if="row.type === 'profile'"
               class="px-2 py-0.5 text-xs font-medium rounded-full"
               :class="
-                profile.partnership_status === 'signed_up'
+                row.profile.partnership_status === 'signed_up'
                   ? 'bg-n-teal-3 text-n-teal-11'
-                  : profile.partnership_status === 'do_not_contact'
+                  : row.profile.partnership_status === 'do_not_contact'
                     ? 'bg-n-ruby-3 text-n-ruby-11'
                     : 'bg-n-slate-3 text-n-slate-11'
               "
             >
-              {{ profile.partnership_status }}
+              {{ row.profile.partnership_status }}
             </span>
+            <span v-else class="text-xs text-n-slate-11">—</span>
           </td>
           <td class="px-3 py-2 text-n-slate-11">
-            {{ formatDate(profile.partnership_status_changed_at) }}
+            <template v-if="row.type === 'profile'">
+              {{ formatDate(row.profile.partnership_status_changed_at) }}
+            </template>
+            <template v-else>—</template>
           </td>
           <td class="px-3 py-2 text-right">
             <button
-              v-if="profile.partnership_status !== 'do_not_contact'"
+              v-if="
+                row.type === 'profile' &&
+                row.profile.partnership_status !== 'do_not_contact'
+              "
               type="button"
-              class="text-xs font-medium text-n-ruby-11 hover:underline"
-              @click="optOut(profile)"
+              class="text-xs font-medium text-n-ruby-11 hover:underline disabled:opacity-50"
+              :disabled="busyRowKey === row.key"
+              @click.stop="optOut(row.profile)"
             >
               Opt out
+            </button>
+            <button
+              v-else-if="row.type === 'directory'"
+              type="button"
+              class="text-xs font-medium text-n-brand hover:underline disabled:opacity-50"
+              :disabled="busyRowKey === row.key"
+              @click.stop="startCampaign(row)"
+            >
+              {{ busyRowKey === row.key ? 'Starting…' : 'Start campaign' }}
             </button>
           </td>
         </tr>
       </tbody>
     </table>
 
-    <div
-      v-if="total > profiles.length"
-      class="flex items-center justify-between mt-4 text-sm"
-    >
-      <button
-        type="button"
-        :disabled="page === 1"
-        class="px-3 py-1.5 border rounded border-n-weak disabled:opacity-50"
-        @click="
-          page -= 1;
-          fetchPage();
-        "
+    <!-- Edit sidebar drawer -->
+    <transition name="drawer">
+      <aside
+        v-if="editingProfile"
+        class="fixed top-0 right-0 bottom-0 z-50 w-[480px] max-w-[90vw] flex flex-col bg-white border-l border-n-weak shadow-2xl"
       >
-        Previous
-      </button>
-      <span class="text-n-slate-11">Page {{ page }}</span>
-      <button
-        type="button"
-        class="px-3 py-1.5 border rounded border-n-weak"
-        @click="
-          page += 1;
-          fetchPage();
-        "
-      >
-        Next
-      </button>
-    </div>
+        <header
+          class="flex items-center justify-between px-4 py-3 border-b border-n-weak"
+        >
+          <div>
+            <div class="text-sm font-semibold text-n-slate-12">
+              Edit photographer
+            </div>
+            <div class="text-xs text-n-slate-11">
+              {{ editingProfile.email }}
+            </div>
+          </div>
+          <button
+            type="button"
+            class="text-xs text-n-slate-11 hover:underline"
+            @click="closeEdit"
+          >
+            Close
+          </button>
+        </header>
+
+        <form
+          class="flex-1 overflow-y-auto p-4 grid grid-cols-2 gap-3 text-sm"
+          @submit.prevent="saveEdit"
+        >
+          <label class="flex flex-col gap-1 col-span-2">
+            <span class="text-xs text-n-slate-11">Email</span>
+            <input
+              v-model="editForm.email"
+              type="email"
+              class="reset-base px-3 py-2 bg-white border rounded border-n-weak"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-n-slate-11">Business name</span>
+            <input
+              v-model="editForm.business_name"
+              type="text"
+              class="reset-base px-3 py-2 bg-white border rounded border-n-weak"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-n-slate-11">Owner name</span>
+            <input
+              v-model="editForm.owner_name"
+              type="text"
+              class="reset-base px-3 py-2 bg-white border rounded border-n-weak"
+            />
+          </label>
+          <label class="flex flex-col gap-1 col-span-2">
+            <span class="text-xs text-n-slate-11">Website</span>
+            <input
+              v-model="editForm.website"
+              type="url"
+              class="reset-base px-3 py-2 bg-white border rounded border-n-weak"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-n-slate-11">Country code</span>
+            <input
+              v-model="editForm.country_code"
+              type="text"
+              maxlength="2"
+              class="reset-base px-3 py-2 bg-white uppercase border rounded border-n-weak"
+            />
+          </label>
+          <label class="flex flex-col gap-1">
+            <span class="text-xs text-n-slate-11">Preferred language</span>
+            <input
+              v-model="editForm.preferred_language"
+              type="text"
+              maxlength="5"
+              class="reset-base px-3 py-2 bg-white border rounded border-n-weak"
+            />
+          </label>
+          <label class="flex flex-col gap-1 col-span-2">
+            <span class="text-xs text-n-slate-11">Instagram handle</span>
+            <input
+              v-model="editForm.instagram_handle"
+              type="text"
+              class="reset-base px-3 py-2 bg-white border rounded border-n-weak"
+            />
+          </label>
+
+          <fieldset
+            class="col-span-2 flex flex-col gap-2 pt-3 border-t border-n-weak"
+          >
+            <legend class="text-xs text-n-slate-11 mb-1">
+              Marketing consent
+            </legend>
+            <div class="flex flex-col gap-1">
+              <label
+                v-for="opt in CONSENT_OPTIONS"
+                :key="opt.value"
+                class="flex items-center gap-2 cursor-pointer"
+              >
+                <input
+                  v-model="editForm.marketing_consent_state"
+                  type="radio"
+                  :value="opt.value"
+                  name="consent-state"
+                />
+                <span
+                  class="px-2 py-0.5 text-xs font-medium rounded-full"
+                  :class="{
+                    'bg-n-teal-3 text-n-teal-11': opt.tone === 'teal',
+                    'bg-n-ruby-3 text-n-ruby-11': opt.tone === 'ruby',
+                    'bg-n-slate-3 text-n-slate-11': opt.tone === 'slate',
+                  }"
+                >
+                  {{ opt.label }}
+                </span>
+              </label>
+            </div>
+          </fieldset>
+
+          <label class="flex flex-col gap-1 col-span-2">
+            <span class="text-xs text-n-slate-11">Notes</span>
+            <textarea
+              v-model="editForm.notes"
+              rows="4"
+              class="reset-base px-3 py-2 bg-white border rounded border-n-weak"
+            />
+          </label>
+        </form>
+
+        <footer
+          class="flex items-center justify-between gap-2 px-4 py-3 border-t border-n-weak"
+        >
+          <span class="text-xs text-n-slate-11">
+            Status: <strong>{{ editingProfile.partnership_status }}</strong>
+          </span>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="px-3 py-1.5 text-sm border rounded border-n-weak"
+              :disabled="editSaving"
+              @click="closeEdit"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="px-3 py-1.5 text-sm font-medium text-white rounded bg-n-brand hover:opacity-90 disabled:opacity-60"
+              :disabled="editSaving"
+              @click="saveEdit"
+            >
+              {{ editSaving ? 'Saving…' : 'Save' }}
+            </button>
+          </div>
+        </footer>
+      </aside>
+    </transition>
   </div>
 </template>
+
+<style scoped>
+.drawer-enter-active,
+.drawer-leave-active {
+  transition: transform 0.18s ease;
+}
+.drawer-enter-from,
+.drawer-leave-to {
+  transform: translateX(100%);
+}
+</style>
