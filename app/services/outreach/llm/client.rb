@@ -56,11 +56,18 @@ class Outreach::Llm::Client
     else
       # OpenAI-compatible gateways (eurouter.ai, custom proxies, etc.)
       # use OpenAI's request shape but with their own model IDs.
-      # assume_model_exists bypasses RubyLLM's built-in model registry
-      # so arbitrary model slugs work.
-      Llm::Config.with_api_key(api_key, api_base: api_base) do |context|
-        yield context.chat(model: model, provider: :openai, assume_model_exists: true)
+      # - assume_model_exists bypasses RubyLLM's built-in model registry
+      #   so arbitrary model slugs (mistral-large-3, deepseek-v3, …) work
+      # - openai_use_system_role = true forces role="system" for
+      #   instructions; otherwise RubyLLM sends role="developer" (newer
+      #   OpenAI API) which non-OpenAI models (mistral, deepseek)
+      #   reject with 400/502.
+      context = RubyLLM.context do |config|
+        config.openai_api_key = api_key
+        config.openai_api_base = api_base if api_base.present?
+        config.openai_use_system_role = true
       end
+      yield context.chat(model: model, provider: :openai, assume_model_exists: true)
     end
   end
 

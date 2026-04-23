@@ -98,13 +98,20 @@ class Outreach::Llm::WebsiteSnippet
   def clip(markdown)
     return nil if markdown.blank?
 
-    # Strip markdown links/images/headers noise to a degree — LLM will
-    # still understand the text but tokens go further.
-    text = markdown.gsub(/!\[[^\]]*\]\([^)]*\)/, '')  # images
-                   .gsub(/\[([^\]]+)\]\([^)]*\)/, '\1') # links → label
-                   .gsub(/^#+\s*/m, '')                # heading markers
-                   .gsub(/\n{3,}/m, "\n\n")            # collapse blank lines
-                   .strip
+    # Strip markdown noise that burns tokens without adding signal,
+    # and drop control/escape chars that confuse downstream LLM
+    # gateways (EUrouter returned 400 on raw crawl markdown that
+    # contained escaped underscores and image URLs).
+    text = markdown
+           .gsub(/!\[[^\]]*\]\([^)]*\)/, '')  # images
+           .gsub(/\[([^\]]+)\]\([^)]*\)/, '\1') # links → label
+           .gsub(/^#+\s*/m, '')                # heading markers
+           .gsub(%r{https?://\S+}, '')         # bare URLs
+           .gsub(/\\([_*])/, '\1')             # un-escape markdown underscores/asterisks
+           .gsub(/[\u0000-\u001F]/) { |c| c == "\n" ? "\n" : ' ' } # strip control chars (keep newlines)
+           .gsub(/[ \t]{2,}/, ' ')             # collapse runs of spaces
+           .gsub(/\n{3,}/m, "\n\n")            # collapse blank lines
+           .strip
     text.length > MAX_CHARS ? "#{text[0, MAX_CHARS]}…" : text
   end
 end
