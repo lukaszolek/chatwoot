@@ -21,7 +21,7 @@
 #   - Social proof avoided until we have honest numbers; swapped for
 #     product-confidence via concrete production details
 #   - Clean signature block: "Pozdrawiam," then blank line, then name
-#     and "z Framky" / "at Framky" / "von Framky" on separate lines
+#     and "Framky Founder" / "Framky Founder" / "Framky Founder" on separate lines
 #
 # Formality per language (source: email-personalization.service.ts:166):
 #   - very-formal: de, fr   → Sie/Vous, "Mit freundlichen Grüßen"
@@ -135,7 +135,7 @@ templates:
       Pozdrawiam,
 
       Łukasz
-      z Framky
+      Framky Founder
     llm_guidance: |
       Polski — rejestr moderate, Ty (nie Pan). Personalizuj TYLKO
       placeholder {{personal_opener}} konkretnym detalem z website
@@ -175,7 +175,7 @@ templates:
       Best,
 
       Łukasz
-      at Framky
+      Framky Founder
     llm_guidance: |
       English — moderate, first-name basis. Personalize ONLY the
       {{personal_opener}} placeholder with 1–2 concrete sentences
@@ -216,14 +216,14 @@ templates:
       Mit freundlichen Grüßen,
 
       Łukasz Olek
-      von Framky
+      Framky Founder
     llm_guidance: |
       Deutsch — very-formal, Sie/Ihre. "Guten Tag" statt "Hallo" für
       den Erstkontakt. Personalisieren Sie AUSSCHLIESSLICH den
       Platzhalter {{personal_opener}} mit 1–2 konkreten Sätzen aus
       dem Website-Snippet (Stil, Nische, Bildsprache). Der Rest des
       Templates — Zahlen, Bullets, Signatur — bleibt UNVERÄNDERT.
-      Signatur: "Łukasz Olek, von Framky" (voller Name in formalen
+      Signatur: "Łukasz Olek, Framky Founder" (voller Name in formalen
       Märkten).
 
   # ==========================================================================
@@ -249,7 +249,7 @@ templates:
       Pozdrawiam,
 
       Łukasz
-      z Framky
+      Framky Founder
 
   - slot: reminder
     locale: en
@@ -269,7 +269,7 @@ templates:
       Best,
 
       Łukasz
-      at Framky
+      Framky Founder
 
   - slot: reminder
     locale: de
@@ -290,7 +290,7 @@ templates:
       Mit freundlichen Grüßen,
 
       Łukasz
-      von Framky
+      Framky Founder
 
   # ==========================================================================
   # BREAKUP — 14 days, graceful exit, door left open with a concrete hook
@@ -311,7 +311,7 @@ templates:
       Tym razem — wszystkiego dobrego w pracy.
 
       Łukasz
-      z Framky
+      Framky Founder
 
   - slot: breakup
     locale: en
@@ -328,7 +328,7 @@ templates:
       Best of luck with the work in the meantime.
 
       Łukasz
-      at Framky
+      Framky Founder
 
   - slot: breakup
     locale: de
@@ -346,7 +346,7 @@ templates:
       Alles Gute bis dahin.
 
       Łukasz
-      von Framky
+      Framky Founder
 
   # ==========================================================================
   # REPLY AUTO-ANSWERS — only fire when classifier ≥ 0.85/0.90 confidence
@@ -370,7 +370,7 @@ templates:
       Pozdrawiam,
 
       Łukasz
-      z Framky
+      Framky Founder
     llm_guidance: |
       Polski moderate. Pod 120 słów. Bez konkretnych procentów —
       kieruj do Panelu Partnera. Jeśli pytanie było konkretne,
@@ -394,7 +394,7 @@ templates:
       Best,
 
       Łukasz
-      at Framky
+      Framky Founder
     llm_guidance: |
       English moderate. Under 120 words. No specific percentages —
       point to the Partner Panel.
@@ -417,7 +417,7 @@ templates:
       Mit freundlichen Grüßen,
 
       Łukasz
-      von Framky
+      Framky Founder
     llm_guidance: |
       Deutsch very-formal, Sie. Unter 120 Wörtern. Keine konkreten
       Prozentsätze — auf das Partner-Panel verweisen.
@@ -438,7 +438,7 @@ templates:
       Pozdrawiam,
 
       Łukasz
-      z Framky
+      Framky Founder
     llm_guidance: |
       Używaj dokładnej terminologii produktu Framky (MDF, pigment,
       matowy papier). Poniżej 140 słów.
@@ -459,7 +459,7 @@ templates:
       Best,
 
       Łukasz
-      at Framky
+      Framky Founder
     llm_guidance: |
       Mirror Framky product terminology exactly (MDF, pigment print,
       matte). Under 140 words.
@@ -480,7 +480,7 @@ templates:
       Mit freundlichen Grüßen,
 
       Łukasz
-      von Framky
+      Framky Founder
     llm_guidance: |
       Framky-Produktterminologie exakt übernehmen (MDF-Rahmen,
       Pigmentdruck, mattes Fotopapier). Unter 140 Wörtern.
