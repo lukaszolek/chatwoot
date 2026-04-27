@@ -1,13 +1,24 @@
+# Chatwoot-side outreach state for one photographer. PII (email, name,
+# website, IG, phone, country, language, source consent) lives ONLY in
+# photographer_directory.photographer_photographers; this row just holds:
+#   - external_id   : pointer to the directory row (string because
+#                     directory primary key is legacy)
+#   - outreach state: partnership_status, tri-state marketing_consent_state,
+#                     notes, tags, metadata, contact_id
+#
+# Reads of .email / .business_name / .owner_name / etc. fan out to the
+# secondary DB through #source. If the directory is unreachable (VPN,
+# crashed secondary) those readers return nil — the callers MUST handle
+# it. Single-source-of-truth is the goal; offline behavior is the
+# trade-off.
 class PhotographerPartnerProfile < ApplicationRecord
   belongs_to :account
   belongs_to :contact, optional: true
 
-  # Tri-state consent, source of truth on the chatwoot side.
-  #   unknown  — operator has not asked / photographer has not answered
-  #   granted  — explicit yes for partnership outreach
-  #   declined — explicit no / unsubscribed
-  # boolean `marketing_consent` stays on the row for interop with
-  # photographer-directory (which only has a bool + unsubscribed flag).
+  # Tri-state consent — source of truth on the chatwoot side.
+  # (photographer-directory still has its own boolean consent, which
+  # writes flow back to via ConsentWriter; the tri-state exists so
+  # operators can capture the uncertain middle explicitly.)
   enum :marketing_consent_state, {
     unknown: 0,
     granted: 1,
@@ -28,10 +39,101 @@ class PhotographerPartnerProfile < ApplicationRecord
 
   validates :external_id, presence: true,
                           uniqueness: { scope: :account_id }
-  validates :email, presence: true,
-                    uniqueness: { scope: :account_id, case_sensitive: false }
 
   scope :active_outreach, -> { where.not(partnership_status: %i[do_not_contact completed]) }
+
+  # PII delegation — all of these read live from the directory row.
+  DIRECTORY_DELEGATED_FIELDS = %i[
+    email
+    business_name
+    owner_name
+    website
+    country_code
+    phone
+    instagram_handle
+    marketing_consent
+    unsubscribed_from_all_campaigns
+    gdpr_delete_requested_at
+    status
+  ].freeze
+
+  delegate(*DIRECTORY_DELEGATED_FIELDS, to: :source, allow_nil: true)
+
+  # preferred_language is a computed field (not a direct directory
+  # column). We derive it from directory's native_language + country_code,
+  # with a safe fallback.
+  COUNTRY_TO_LOCALE = {
+    'pl' => 'pl', 'de' => 'de', 'at' => 'de', 'ch' => 'de',
+    'fr' => 'fr', 'be' => 'fr', 'gb' => 'en', 'us' => 'en', 'ie' => 'en',
+    'es' => 'es', 'it' => 'it', 'nl' => 'nl', 'cz' => 'cs',
+    'sk' => 'sk', 'hu' => 'hu', 'ro' => 'ro', 'hr' => 'hr',
+    'dk' => 'da', 'fi' => 'fi', 'se' => 'sv', 'gr' => 'el'
+  }.freeze
+
+  def preferred_language
+    return nil unless source
+
+    source.native_language.presence ||
+      COUNTRY_TO_LOCALE[source.country_code.to_s.downcase] ||
+      source.preferred_language.presence ||
+      'en'
+  end
+
+  # The directory row. Memoized per instance; instance-level cache reset
+  # with #reload. If the secondary DB is down, returns nil and delegated
+  # PII readers become nil.
+  def source
+    @source ||= PhotographerDirectory::Photographer.find_by(id: external_id)
+  rescue StandardError => e
+    Rails.logger.warn("[photographer_partner_profile##{id}] directory lookup failed: #{e.class}: #{e.message}")
+    nil
+  end
+
+  # Batch preloader for listings — avoids N+1 directory hits. Caller
+  # hands us a Relation of profiles; we pull all source rows in one IN
+  # query and pre-fill each profile's memoized @source.
+  def self.preload_sources!(profiles)
+    ids = profiles.map(&:external_id).compact.uniq
+    return profiles if ids.empty?
+
+    sources_by_id = PhotographerDirectory::Photographer.where(id: ids).index_by { |s| s.id.to_s }
+    profiles.each do |p|
+      p.instance_variable_set(:@source, sources_by_id[p.external_id.to_s])
+    end
+    profiles
+  end
+
+  def reload(*)
+    @source = nil
+    super
+  end
+
+  # ------------------------------------------------------------------
+  # Outreach pipeline (chatwoot-only state, not propagated)
+  # ------------------------------------------------------------------
+
+  PIPELINE_STAGES = %w[new interested signed_up first_order active dormant_30d dormant_90d].freeze
+
+  def pipeline_stage
+    return nil if %w[do_not_contact declined completed].include?(partnership_status)
+
+    total = orders_total.to_i
+    last_at = last_order_completed_at
+    days = last_at ? ((Time.current - last_at) / 1.day).to_i : nil
+
+    if total >= 1 && days
+      return 'dormant_90d' if days >= 90
+      return 'dormant_30d' if days >= 30
+      return 'active'      if total >= 2
+      return 'first_order'
+    end
+
+    case partnership_status
+    when 'signed_up' then 'signed_up'
+    when 'interested', 'replied' then 'interested'
+    else 'new'
+    end
+  end
 
   def transition_to!(new_status)
     update!(

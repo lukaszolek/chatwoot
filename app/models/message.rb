@@ -117,6 +117,28 @@ class Message < ApplicationRecord
   scope :non_activity_messages, -> { where.not(message_type: :activity).reorder('created_at desc') }
   scope :today, -> { where("date_trunc('day', created_at) = ?", Date.current) }
   scope :voice_calls, -> { where(content_type: :voice_call) }
+  scope :outreach_drafts, -> { where("additional_attributes ? 'outreach_draft'") }
+  scope :pending_outreach_drafts, lambda {
+    outreach_drafts.where(
+      "(additional_attributes->>'draft_status' = 'pending' OR NOT (additional_attributes ? 'draft_status'))"
+    )
+  }
+
+  def outreach_draft?
+    additional_attributes.is_a?(Hash) && additional_attributes['outreach_draft'] == true
+  end
+
+  def outreach_draft_status
+    return nil unless outreach_draft?
+
+    additional_attributes['draft_status'].presence || 'pending'
+  end
+
+  def outreach_draft_subject
+    return nil unless outreach_draft?
+
+    content_attributes&.dig('email', 'subject')
+  end
 
   # TODO: Get rid of default scope
   # https://stackoverflow.com/a/1834250/939299

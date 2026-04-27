@@ -40,6 +40,18 @@ class OutreachPhotographersAPI extends ApiClient {
   enroll(id) {
     return axios.post(`${this.url}/${id}/enroll`);
   }
+
+  facets() {
+    return axios.get(`${this.url}/facets`);
+  }
+
+  pipeline() {
+    return axios.get(`${this.url}/pipeline`);
+  }
+
+  refreshStats() {
+    return axios.post(`${this.url}/refresh_stats`);
+  }
 }
 
 export default new OutreachPhotographersAPI();

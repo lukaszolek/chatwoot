@@ -42,6 +42,7 @@ import FormBubble from './bubbles/Form.vue';
 import VoiceCallBubble from './bubbles/VoiceCall.vue';
 
 import MessageError from './MessageError.vue';
+import OutreachDraftCard from './OutreachDraftCard.vue';
 import ContextMenu from 'dashboard/modules/conversations/components/MessageContextMenu.vue';
 import { useBranding } from 'shared/composables/useBranding';
 
@@ -128,6 +129,7 @@ const props = defineProps({
   inboxSupportsReplyTo: { type: Object, default: () => ({}) },
   inReplyTo: { type: Object, default: null }, // eslint-disable-line vue/no-unused-properties
   isEmailInbox: { type: Boolean, default: false },
+  additionalAttributes: { type: Object, default: () => ({}) },
   private: { type: Boolean, default: false },
   sender: { type: Object, default: null },
   senderId: { type: Number, default: null },
@@ -347,6 +349,19 @@ const isBubble = computed(() => {
   return props.messageType !== MESSAGE_TYPES.ACTIVITY;
 });
 
+const isOutreachDraft = computed(
+  () => props.additionalAttributes?.outreachDraft === true
+);
+
+// Approved drafts are represented by the actual outgoing message that
+// SendEmailJob creates; showing the draft-as-private-note next to it
+// would be double-rendering the same content. Hide entirely.
+const isApprovedOutreachDraft = computed(
+  () =>
+    isOutreachDraft.value &&
+    props.additionalAttributes?.draftStatus === 'approved'
+);
+
 const isMessageDeleted = computed(() => {
   return props.contentAttributes?.deleted;
 });
@@ -386,6 +401,8 @@ const contextMenuEnabledOptions = computed(() => {
 });
 
 const shouldRenderMessage = computed(() => {
+  if (isApprovedOutreachDraft.value) return false;
+
   const hasAttachments = !!(props.attachments && props.attachments.length > 0);
   const isEmailContentType = props.contentType === CONTENT_TYPES.INCOMING_EMAIL;
   const isUnsupported = props.contentAttributes?.isUnsupported;
@@ -523,7 +540,19 @@ provideMessageContext({
       },
     ]"
   >
-    <div v-if="variant === MESSAGE_VARIANTS.ACTIVITY">
+    <template v-if="isApprovedOutreachDraft">
+      <!-- collapsed — the sibling outgoing Message already renders the sent copy -->
+    </template>
+    <OutreachDraftCard
+      v-else-if="isOutreachDraft"
+      :message-id="id"
+      :conversation-id="conversationId"
+      :content="content"
+      :content-attributes="contentAttributes"
+      :additional-attributes="additionalAttributes"
+      @updated="$emit('retry')"
+    />
+    <div v-else-if="variant === MESSAGE_VARIANTS.ACTIVITY">
       <ActivityBubble :content="content" />
     </div>
     <div

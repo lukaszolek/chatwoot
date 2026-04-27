@@ -10,13 +10,17 @@ const tabs = [
     label: 'Photographers',
     route: 'outreach_photographers',
   },
+  { key: 'pipeline', label: 'Pipeline', route: 'outreach_pipeline' },
   { key: 'campaigns', label: 'Campaigns', route: 'outreach_campaigns' },
-  { key: 'drafts', label: 'Drafts to review', route: 'outreach_drafts' },
+  { key: 'knowledge', label: 'Knowledge', route: 'outreach_knowledge' },
+  { key: 'learnings', label: 'Learnings', route: 'outreach_learnings' },
 ];
 
 const activeKey = computed(() => {
+  if (route.name === 'outreach_pipeline') return 'pipeline';
   if (route.name === 'outreach_campaigns') return 'campaigns';
-  if (route.name === 'outreach_drafts') return 'drafts';
+  if (route.name === 'outreach_knowledge') return 'knowledge';
+  if (route.name === 'outreach_learnings') return 'learnings';
   return 'photographers';
 });
 </script>

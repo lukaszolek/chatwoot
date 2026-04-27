@@ -43,6 +43,43 @@ class Outreach::Llm::Client
     }
   end
 
+  # Same as ask_json! but registers a set of RubyLLM::Tool subclasses so
+  # the model can invoke them mid-turn. Tools are pre-constructed by the
+  # caller so they already carry the scoped_sender_email + account context
+  # — the LLM can never widen scope through params (the tool ignores any
+  # email/profile_id it disagrees with and refuses with success: false).
+  #
+  # Returns the same shape as ask_json! plus :tool_calls (array of
+  # {name, params, result, success}) for audit trace inspection.
+  def ask_with_tools!(model:, system:, user:, tools:, temperature: 0.3)
+    raise ApiKeyMissing, 'OUTREACH_LLM_API_KEY is not set' if api_key.blank?
+
+    Llm::Config.initialize!
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    captured_calls = []
+
+    response = with_outreach_context(model: model) do |chat|
+      chat.with_temperature(temperature)
+      chat.with_instructions(system)
+      tools.each { |tool| chat.with_tool(tool) }
+      chat.on_tool_call { |tc| captured_calls << { name: tc.name, params: tc.arguments } }
+      chat.ask(user)
+    end
+
+    latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
+
+    {
+      parsed: try_parse_json(response.content),
+      raw_content: response.content,
+      tool_calls: captured_calls,
+      token_usage: {
+        'prompt_tokens' => response.input_tokens,
+        'completion_tokens' => response.output_tokens
+      },
+      latency_ms: latency_ms
+    }
+  end
+
   # Scopes RubyLLM config to outreach credentials for the duration of
   # the block. Routes by provider — OpenRouter (default) uses its own
   # env keys (openrouter_api_key / openrouter_api_base), OpenAI-compat
@@ -102,5 +139,14 @@ class Outreach::Llm::Client
     JSON.parse(stripped)
   rescue JSON::ParserError => e
     raise InvalidJson, "LLM returned non-JSON response (#{e.message}): #{content.truncate(200)}"
+  end
+
+  # Soft variant for ask_with_tools — when the model responds with prose
+  # after a tool chain, that's expected (it's the answer to the user). We
+  # still try to parse JSON in case the composer happens to emit one.
+  def try_parse_json(content)
+    parse_json!(content)
+  rescue InvalidJson
+    nil
   end
 end

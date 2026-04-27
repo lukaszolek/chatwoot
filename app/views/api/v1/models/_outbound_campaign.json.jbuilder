@@ -20,8 +20,10 @@ if resource.sender_user
 end
 json.config resource.config
 json.audience_source_config resource.audience_source_config
+json.manual_review_mode resource.manual_review_mode
 json.participants_count resource.participants.count
 json.pipeline_stages_count resource.pipeline_stages.count
-json.templates_count resource.templates.where(active: true).count
+json.knowledge_documents_count resource.knowledge_documents.where(active: true).count
+json.learnings_count resource.learnings.where(active: true).count
 json.created_at resource.created_at.to_i
 json.updated_at resource.updated_at.to_i

@@ -6,7 +6,6 @@ class CampaignParticipant < ApplicationRecord
   belongs_to :contact, optional: true
 
   has_many :llm_decisions, class_name: 'CampaignLlmDecision', dependent: :destroy
-  has_many :drafts, class_name: 'CampaignDraft', dependent: :destroy
   has_many :attribution_events, class_name: 'CampaignAttributionEvent', dependent: :destroy
 
   validates :current_stage_key, presence: true

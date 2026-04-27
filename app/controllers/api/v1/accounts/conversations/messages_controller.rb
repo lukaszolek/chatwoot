@@ -54,6 +54,48 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render json: { content: translated_content }
   end
 
+  def approve_outreach_draft
+    result = Outreach::Drafts::ApproveService.new(draft_message: message, user: Current.user).call
+    render json: { ok: true, sent_message_id: result[:sent_message_id], draft_message_id: message.id }
+  rescue Outreach::Drafts::ApproveService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def regenerate_outreach_draft
+    result = Outreach::Drafts::RegenerateService.new(
+      draft_message: message,
+      user: Current.user,
+      operator_prompt: params[:operator_prompt].to_s
+    ).call
+    render json: result
+  rescue Outreach::Drafts::RegenerateService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def reject_outreach_draft
+    Outreach::Drafts::RejectService.new(
+      draft_message: message,
+      user: Current.user,
+      reason: params[:reason].to_s
+    ).call
+    render json: { ok: true, draft_message_id: message.id }
+  rescue Outreach::Drafts::RejectService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  def edit_outreach_draft
+    Outreach::Drafts::EditService.new(
+      draft_message: message,
+      user: Current.user,
+      subject: params[:subject],
+      body: params[:body],
+      learning_note: params[:learning_note]
+    ).call
+    render json: { ok: true, draft_message_id: message.id }
+  rescue Outreach::Drafts::EditService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   private
 
   def message

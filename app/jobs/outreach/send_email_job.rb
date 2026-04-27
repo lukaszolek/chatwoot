@@ -84,11 +84,17 @@ class Outreach::SendEmailJob < ApplicationJob
 
   # Setting mail_subject on the conversation gets picked up by
   # ConversationReplyMailer#mail_subject, which prefixes "Re: " when
-  # there's already chat history so reminder/breakup mails thread as
-  # expected under the intro subject.
+  # there's already chat history so reminder/breakup/reply mails thread
+  # as expected under the intro subject.
+  #
+  # IMPORTANT: set ONLY ONCE per conversation. If we overwrote it on
+  # every send, a reply (whose composer-generated subject differs from
+  # intro's) would produce "Re: <new subject>" — Gmail and other clients
+  # group threads by normalized subject, so a different subject lands
+  # in a brand-new conversation in the recipient's inbox. Thread broken.
   def set_conversation_mail_subject!(conversation, subject)
     attrs = conversation.additional_attributes.to_h
-    return if attrs['mail_subject'] == subject
+    return if attrs['mail_subject'].present?
 
     attrs['mail_subject'] = subject
     conversation.update_columns(additional_attributes: attrs, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
@@ -100,7 +106,7 @@ class Outreach::SendEmailJob < ApplicationJob
       account: conversation.account,
       inbox: conversation.inbox,
       message_type: :outgoing,
-      content: body,
+      content: normalize_for_email(body),
       content_type: 'text',
       sender: participant.outbound_campaign.sender_user,
       additional_attributes: {
@@ -115,4 +121,61 @@ class Outreach::SendEmailJob < ApplicationJob
     )
   end
   # rubocop:enable Metrics/ParameterLists
+
+  # The chatwoot reply mailer renders message.content through CommonMark
+  # (ChatwootMarkdownRenderer). CommonMark collapses single-newline runs
+  # into one paragraph, so a body like
+  #
+  #   Co z tego masz:
+  #   • punkt 1
+  #   • punkt 2
+  #
+  # ends up as a single mashed-together paragraph in the recipient's
+  # inbox. We normalize defensively here so the receiver always sees
+  # paragraph breaks, regardless of how disciplined the LLM was about
+  # following the markdown rules in `tone` / `intro_seed`.
+  #
+  # Two transforms:
+  #   1. Replace '•' Unicode bullets with '-' so CommonMark renders a
+  #      proper <ul><li>.
+  #   2. Insert a blank line before any contiguous bullet block and
+  #      after it (only when missing) so the list is a separate
+  #      markdown construct.
+  #   3. For non-list runs of single-newline lines (e.g. a signature),
+  #      append two trailing spaces to each non-blank line so CommonMark
+  #      emits <br>.
+  def normalize_for_email(body)
+    return body if body.blank?
+
+    text = body.gsub(/^[ \t]*•[ \t]+/, '- ')
+
+    lines = text.split("\n", -1)
+    out = []
+    in_list = false
+    lines.each_with_index do |line, idx|
+      bullet = line.lstrip.start_with?('- ')
+      prev_blank = (idx.zero? || lines[idx - 1].strip.empty?)
+      next_line = lines[idx + 1] || ''
+
+      if bullet && !in_list
+        out << '' unless prev_blank || out.last == ''
+        in_list = true
+      elsif !bullet && in_list && !line.strip.empty?
+        out << '' if out.last != ''
+        in_list = false
+      elsif !bullet && line.strip.empty?
+        in_list = false
+      end
+
+      # Markdown line-break (two trailing spaces) for non-list, non-blank
+      # lines whose neighbour is also a non-blank, non-list line — keeps
+      # signature blocks on separate visible lines.
+      decorated = line
+      if !bullet && !line.strip.empty? && next_line.present? && !next_line.strip.empty? && !next_line.lstrip.start_with?('- ')
+        decorated = line.rstrip + '  '
+      end
+      out << decorated
+    end
+    out.join("\n")
+  end
 end

@@ -37,8 +37,11 @@ class Outreach::Llm::WebsiteSnippet
       page_type: page.try(:read_attribute, :page_type)&.to_s,
       source_url: "https://#{domain}"
     }.compact
-  rescue ActiveRecord::StatementInvalid => e
-    # Missing grants or secondary DB down — fail soft, no personalization.
+  rescue ActiveRecord::StatementInvalid,
+         ActiveRecord::ConnectionNotEstablished,
+         ActiveRecord::DatabaseConnectionError,
+         PG::ConnectionBad => e
+    # Missing grants or secondary DB / VPN down — fail soft, no personalization.
     Rails.logger.warn("[outreach.website_snippet] #{e.class}: #{e.message.truncate(200)}")
     nil
   end

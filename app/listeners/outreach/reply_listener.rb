@@ -31,6 +31,8 @@ class Outreach::ReplyListener < BaseListener
       last_inbound_at: Time.current
     )
 
+    bump_status_to_replied!(participant)
+
     Rails.logger.info(
       "[outreach.reply_listener] participant=#{participant.id} conversation=#{message.conversation_id} " \
       "routed=reply_router message=#{message.id}"
@@ -38,6 +40,24 @@ class Outreach::ReplyListener < BaseListener
   end
 
   private
+
+  # Rough/non-semantic bump just because they replied at all. The
+  # downstream ClassifyReply executor will further refine the status
+  # based on intent ('interested' for interested_*/asks_*; 'declined'
+  # for declined). Status hierarchy (from least to most committed):
+  #   imported → contacted → replied → interested → signed_up → completed
+  # We only ever move forward; never overwrite a more committed state.
+  REPLIED_BUMP_FROM = %w[imported qualified contacted].freeze
+
+  def bump_status_to_replied!(participant)
+    profile = participant.participatable
+    return unless profile.is_a?(PhotographerPartnerProfile)
+    return unless REPLIED_BUMP_FROM.include?(profile.partnership_status.to_s)
+
+    profile.transition_to!(:replied)
+  rescue StandardError => e
+    Rails.logger.warn("[outreach.reply_listener] partnership_status bump failed: #{e.class}: #{e.message}")
+  end
 
   def reply_message?(message)
     return false unless message

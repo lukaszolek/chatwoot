@@ -35,7 +35,7 @@ class Api::V1::Accounts::Outreach::CampaignsController < Api::V1::Accounts::Base
   end
 
   def campaign_params
-    params.require(:outbound_campaign).permit(:inbox_id, :sender_user_id)
+    params.require(:outbound_campaign).permit(:inbox_id, :sender_user_id, :manual_review_mode)
   end
 
   def check_authorization

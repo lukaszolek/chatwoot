@@ -1,8 +1,10 @@
 import { frontendURL } from '../../../helper/URLHelper';
 import OutreachIndex from './pages/OutreachIndex.vue';
 import OutreachPhotographers from './pages/OutreachPhotographers.vue';
+import OutreachPipeline from './pages/OutreachPipeline.vue';
 import OutreachCampaigns from './pages/OutreachCampaigns.vue';
-import OutreachDrafts from './pages/OutreachDrafts.vue';
+import OutreachKnowledge from './pages/OutreachKnowledge.vue';
+import OutreachLearnings from './pages/OutreachLearnings.vue';
 
 const commonMeta = {
   permissions: ['administrator', 'agent'],
@@ -27,15 +29,27 @@ export const routes = [
         meta: commonMeta,
       },
       {
+        path: 'pipeline',
+        name: 'outreach_pipeline',
+        component: OutreachPipeline,
+        meta: commonMeta,
+      },
+      {
         path: 'campaigns',
         name: 'outreach_campaigns',
         component: OutreachCampaigns,
         meta: commonMeta,
       },
       {
-        path: 'drafts',
-        name: 'outreach_drafts',
-        component: OutreachDrafts,
+        path: 'knowledge',
+        name: 'outreach_knowledge',
+        component: OutreachKnowledge,
+        meta: commonMeta,
+      },
+      {
+        path: 'learnings',
+        name: 'outreach_learnings',
+        component: OutreachLearnings,
         meta: commonMeta,
       },
     ],

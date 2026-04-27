@@ -1,19 +1,22 @@
 # Idempotent enrollment from the photographer-directory secondary DB into
-# the chatwoot outreach pipeline. For each directory row it:
+# the chatwoot outreach pipeline.
 #
-#   1. Finds or creates a PhotographerPartnerProfile (scoped per account,
-#      keyed on directory.id as external_id).
-#   2. Creates a chatwoot Contact if missing (same identifier pattern as
-#      the bulk Importer so future syncs line up).
-#   3. Creates a CampaignParticipant in the `photographer_partnership`
-#      campaign at stage=intro, next_action_at=now, so the next engine
-#      tick picks it up.
+# Since SSOT for PII lives in photographer-directory, we no longer copy
+# photographer fields into chatwoot. The local profile row is now just a
+# pointer (external_id) + outreach state (partnership_status,
+# marketing_consent_state, notes, tags). PII is read live via delegation
+# through PhotographerPartnerProfile#source.
 #
-# Returns a Result with per-row outcomes so the UI can show what
-# happened. Skips rows already enrolled (participant exists) and rows
-# whose profile is in do_not_contact.
+# This service still:
+#   1. Finds or creates a PhotographerPartnerProfile keyed on external_id.
+#   2. Ensures a chatwoot Contact exists (used for conversation threading;
+#      independent concept from the directory row).
+#   3. Creates a CampaignParticipant at stage=intro so the engine tick
+#      will generate and (depending on manual_review_mode) send or queue
+#      the intro mail.
 class Outreach::Enrollment::EnrollFromDirectory
-  Result = Struct.new(:enrolled, :re_enrolled, :already_enrolled, :skipped_dnc, :failed, :errors, keyword_init: true)
+  Result = Struct.new(:enrolled, :re_enrolled, :already_enrolled, :skipped_dnc,
+                      :failed, :errors, keyword_init: true)
 
   CONTACT_IDENTIFIER_PREFIX = 'photographer_directory'.freeze
 
@@ -23,7 +26,8 @@ class Outreach::Enrollment::EnrollFromDirectory
   end
 
   def perform
-    result = Result.new(enrolled: 0, re_enrolled: 0, already_enrolled: 0, skipped_dnc: 0, failed: 0, errors: [])
+    result = Result.new(enrolled: 0, re_enrolled: 0, already_enrolled: 0,
+                        skipped_dnc: 0, failed: 0, errors: [])
     campaign = find_partnership_campaign!
 
     PhotographerDirectory::Photographer.where(id: @directory_ids).find_each do |source|
@@ -86,19 +90,19 @@ class Outreach::Enrollment::EnrollFromDirectory
 
   def upsert_profile(source)
     profile = account.photographer_partner_profiles.find_or_initialize_by(external_id: source.id.to_s)
-    contact = ensure_contact(source)
-    profile.assign_attributes(
-      email: source.email, business_name: source.business_name, owner_name: source.owner_name,
-      website: source.website, country_code: source.country_code&.upcase,
-      preferred_language: resolve_locale(source),
-      instagram_handle: source.instagram_handle, marketing_consent: source.marketing_consent,
-      source_status: source.status, contact_id: contact&.id, last_synced_at: Time.current
-    )
-    # Consent state only set when (re)importing fresh. Never overwrite
-    # operator-set state — once someone manually flips granted/declined
-    # in chatwoot UI, importer should not silently revert it.
-    profile.marketing_consent_state = derive_consent_state(source) if profile.new_record?
-    profile.partnership_status = :imported if profile.new_record?
+
+    if profile.new_record?
+      # On first import: snap up the operator-side state defaults. Once
+      # we save, PII reads are live from the directory via delegation.
+      profile.contact = ensure_contact(source)
+      profile.partnership_status = :imported
+      profile.marketing_consent_state = derive_consent_state(source)
+    elsif profile.contact_id.blank?
+      # Existing profile without contact — ensure one (older imports may
+      # have had contact creation fail).
+      profile.contact = ensure_contact(source)
+    end
+
     profile.save!
     profile
   end
@@ -110,37 +114,28 @@ class Outreach::Enrollment::EnrollFromDirectory
     :unknown
   end
 
-  # Resolution rule: photographer-directory's `preferred_language` stores
-  # the UI edit-interface language (e.g. a Polish photographer who read
-  # the directory UI in English has preferred_language='en'). For
-  # outreach mails we need the language the PERSON speaks, so:
-  #   1. `native_language` first (most reliable when set)
-  #   2. country_code → locale map (PL→pl, DE→de, FR→fr, …)
-  #   3. `preferred_language` (least reliable, but better than nothing)
-  #   4. 'en' as a safe last resort
-  COUNTRY_TO_LOCALE = {
-    'pl' => 'pl', 'de' => 'de', 'at' => 'de', 'ch' => 'de',
-    'fr' => 'fr', 'be' => 'fr', 'gb' => 'en', 'us' => 'en', 'ie' => 'en',
-    'es' => 'es', 'it' => 'it', 'nl' => 'nl', 'cz' => 'cs',
-    'sk' => 'sk', 'hu' => 'hu', 'ro' => 'ro', 'hr' => 'hr',
-    'dk' => 'da', 'fi' => 'fi', 'se' => 'sv', 'gr' => 'el'
-  }.freeze
-
-  def resolve_locale(source)
-    source.native_language.presence ||
-      COUNTRY_TO_LOCALE[source.country_code.to_s.downcase] ||
-      source.preferred_language.presence ||
-      'en'
-  end
-
   def ensure_contact(source)
     identifier = "#{CONTACT_IDENTIFIER_PREFIX}:#{source.id}"
+    # Identifier-first: the canonical link when chatwoot has already
+    # imported this directory row before.
     contact = account.contacts.find_by(identifier: identifier)
-    contact || account.contacts.create!(
+    return contact if contact
+
+    # Email fallback: a prior import (or manual contact creation) may
+    # have left a row with the same email but different identifier.
+    # Adopt it by stamping the identifier on and reusing.
+    by_email = account.contacts.where('LOWER(email) = ?', source.email.to_s.downcase).first
+    if by_email
+      by_email.update!(identifier: identifier) if by_email.identifier != identifier
+      return by_email
+    end
+
+    account.contacts.create!(
       identifier: identifier, email: source.email,
       name: (source.owner_name.presence || source.business_name.presence || source.email)
     )
-  rescue ActiveRecord::RecordInvalid
+  rescue ActiveRecord::RecordInvalid => e
+    Rails.logger.warn("[outreach.enroll] ensure_contact failed: #{e.message}")
     nil
   end
 end

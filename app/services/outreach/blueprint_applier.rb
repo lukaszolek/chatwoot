@@ -1,20 +1,18 @@
 # Applies a YAML campaign blueprint to an Account.
 #
-# Idempotent: re-running does not duplicate rows. Template bodies are
-# updated in place when (slot, locale) matches; templates absent from the
-# YAML are soft-deactivated (active: false) rather than deleted, preserving
-# an audit trail. Stages are upserted by (program_key, stage.key) and
-# wrapped in a single transaction per campaign — partial failures roll
-# back cleanly.
+# Idempotent: re-running does not duplicate rows. Stages are upserted by
+# (program_key, stage.key) and wrapped in a single transaction per campaign
+# — partial failures roll back cleanly. Knowledge documents are seeded
+# only on first apply (when the campaign has no documents yet); subsequent
+# runs leave them alone so operator edits in the UI aren't clobbered.
 #
 # Usage:
 #   Outreach::BlueprintApplier.new(account: account, path: path).apply!
 class Outreach::BlueprintApplier
   class BlueprintError < StandardError; end
 
-  REQUIRED_KEYS = %w[program_key name stages templates].freeze
+  REQUIRED_KEYS = %w[program_key name stages].freeze
   REQUIRED_STAGE_KEYS = %w[key on_enter_action position].freeze
-  REQUIRED_TEMPLATE_KEYS = %w[slot locale subject body].freeze
 
   def initialize(account:, path:)
     @account = account
@@ -27,7 +25,7 @@ class Outreach::BlueprintApplier
     ActiveRecord::Base.transaction do
       campaign = upsert_campaign(blueprint)
       upsert_stages(campaign, blueprint.fetch('stages'))
-      upsert_templates(campaign, blueprint.fetch('templates'))
+      seed_knowledge_documents(campaign) if campaign.knowledge_documents.empty?
       campaign
     end
   end
@@ -56,7 +54,6 @@ class Outreach::BlueprintApplier
     raise BlueprintError, "Blueprint at #{path} missing required keys: #{missing.join(', ')}" if missing.any?
 
     validate_stages!(raw.fetch('stages'))
-    validate_templates!(raw.fetch('templates'))
     raw
   end
 
@@ -68,17 +65,6 @@ class Outreach::BlueprintApplier
       next if missing.empty?
 
       raise BlueprintError, "#{path}: stage ##{idx} missing keys: #{missing.join(', ')}"
-    end
-  end
-
-  def validate_templates!(templates)
-    raise BlueprintError, "#{path}: 'templates' must be a non-empty array" unless templates.is_a?(Array) && templates.any?
-
-    templates.each_with_index do |template, idx|
-      missing = REQUIRED_TEMPLATE_KEYS - template.keys
-      next if missing.empty?
-
-      raise BlueprintError, "#{path}: template ##{idx} missing keys: #{missing.join(', ')}"
     end
   end
 
@@ -96,12 +82,10 @@ class Outreach::BlueprintApplier
   end
 
   def upsert_stages(campaign, stages)
-    # Two-pass save: core attrs first, cross-stage wiring second. This avoids
-    # tripping the next_stage_key validation during partial application.
+    # Two-pass save: core attrs first, cross-stage wiring second. Avoids
+    # tripping next_stage_key validation during partial application.
     stages.each { |attrs| upsert_stage_core!(campaign, attrs) }
 
-    # Remove stages no longer in YAML before wiring cross-references, so
-    # dangling next_stage_key / branch_rule targets fail validation loudly.
     yaml_keys = stages.map { |s| s.fetch('key') }
     campaign.pipeline_stages.reload.where.not(key: yaml_keys).destroy_all
 
@@ -129,29 +113,7 @@ class Outreach::BlueprintApplier
     )
   end
 
-  def upsert_templates(campaign, templates)
-    yaml_slot_locales = templates.map { |t| [t.fetch('slot'), t.fetch('locale')] }
-
-    templates.each do |template_attrs|
-      slot = template_attrs.fetch('slot')
-      locale = template_attrs.fetch('locale')
-
-      template = campaign.templates.where(slot: slot, locale: locale).order(active: :desc, updated_at: :desc).first ||
-                 campaign.templates.build(slot: slot, locale: locale)
-      template.assign_attributes(
-        subject: template_attrs.fetch('subject'),
-        body: template_attrs.fetch('body'),
-        llm_guidance: template_attrs['llm_guidance'],
-        active: true
-      )
-      template.save!
-    end
-
-    # Soft-deactivate any active template whose (slot, locale) is no longer in YAML.
-    campaign.templates.where(active: true).find_each do |template|
-      next if yaml_slot_locales.include?([template.slot, template.locale])
-
-      template.update!(active: false)
-    end
+  def seed_knowledge_documents(campaign)
+    Outreach::KnowledgeSeeds::PhotographerPartnership.seed!(campaign)
   end
 end

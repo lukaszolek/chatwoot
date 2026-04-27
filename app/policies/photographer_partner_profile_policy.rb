@@ -27,6 +27,20 @@ class PhotographerPartnerProfilePolicy < ApplicationPolicy
     index?
   end
 
+  def facets?
+    index?
+  end
+
+  def pipeline?
+    index?
+  end
+
+  # Fetching from the external Framky orders endpoint is a privileged
+  # operation — it touches prod data and an outbound HTTPS call.
+  def refresh_stats?
+    @account_user.administrator?
+  end
+
   def opt_out?
     @account_user.administrator?
   end

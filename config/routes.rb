@@ -125,17 +125,18 @@ Rails.application.routes.draw do
                 post :resume
                 post :archive
               end
+              resources :knowledge_documents, only: [:index, :create, :update, :destroy]
+              resources :learnings, only: [:index, :update, :destroy]
             end
             resources :photographer_partner_profiles, only: [:index, :show, :create, :update] do
               member do
                 post :opt_out
                 post :enroll
               end
-            end
-            resources :campaign_drafts, only: [:index, :show, :update] do
-              member do
-                post :approve
-                post :reject
+              collection do
+                get :facets
+                get :pipeline
+                post :refresh_stats
               end
             end
             get 'directory/search', to: 'directory#search'
@@ -158,6 +159,10 @@ Rails.application.routes.draw do
                 member do
                   post :translate
                   post :retry
+                  post :approve_outreach_draft
+                  post :regenerate_outreach_draft
+                  post :reject_outreach_draft
+                  patch :edit_outreach_draft
                 end
               end
               resources :assignments, only: [:create]

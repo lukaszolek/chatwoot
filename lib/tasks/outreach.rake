@@ -23,7 +23,7 @@ namespace :outreach do
       puts "Applied #{applied.size} blueprint(s) to account ##{account.id} (#{account.name}):"
       applied.each do |campaign|
         puts "  - #{campaign.program_key} (#{campaign.pipeline_stages.count} stages, " \
-             "#{campaign.templates.active_templates.count} active templates)"
+             "#{campaign.knowledge_documents.where(active: true).count} knowledge docs)"
       end
     end
   end

@@ -96,7 +96,8 @@ onMounted(async () => {
               program: <code>{{ c.program_key }}</code> ·
               {{ c.participants_count }} participants ·
               {{ c.pipeline_stages_count }} stages ·
-              {{ c.templates_count }} active templates
+              {{ c.knowledge_documents_count }} knowledge docs ·
+              {{ c.learnings_count }} learnings
             </div>
           </div>
           <div class="flex items-center gap-3">
@@ -177,6 +178,26 @@ onMounted(async () => {
           Campaign will not send mails until both an inbox and a sender are
           picked.
         </p>
+
+        <label
+          class="flex items-start gap-2 mt-3 pt-3 text-sm border-t border-n-weak cursor-pointer"
+        >
+          <input
+            type="checkbox"
+            :checked="c.manual_review_mode"
+            :disabled="savingId === c.id"
+            class="mt-1"
+            @change="saveField(c, 'manual_review_mode', $event.target.checked)"
+          />
+          <div>
+            <div class="font-medium text-n-slate-12">Manual review mode</div>
+            <div class="text-xs text-n-slate-11">
+              When on, every LLM-generated outreach (intro / reminder / breakup
+              / reply) appears as a draft in the conversation thread for an
+              operator to approve, regenerate, or reject. Off = autopilot.
+            </div>
+          </div>
+        </label>
       </div>
     </div>
   </div>

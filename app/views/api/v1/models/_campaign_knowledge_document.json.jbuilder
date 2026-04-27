@@ -1,0 +1,10 @@
+json.id resource.id
+json.outbound_campaign_id resource.outbound_campaign_id
+json.kind resource.kind
+json.title resource.title
+json.content resource.content
+json.locale resource.locale
+json.position resource.position
+json.active resource.active
+json.created_at resource.created_at.to_i
+json.updated_at resource.updated_at.to_i

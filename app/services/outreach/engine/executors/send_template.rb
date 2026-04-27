@@ -1,29 +1,33 @@
-# SendTemplate executor: renders the stage's template for the
-# participant's locale, ensures Contact + Conversation exist, enqueues
-# Outreach::SendEmailJob with the rendered subject/body, and transitions
-# the participant to the stage's `next_stage_key`.
+# SendTemplate executor (LLM-first edition).
 #
-# Pacing guards before sending (requirements — photographer outreach is
-# personal, not marketing):
-#   - min gap: last_outbound_at must be >= MIN_GAP ago (or absent)
-#   - reply-stop: if last_inbound_at > last_outbound_at, don't send;
-#     the participant already replied, reply_router will pick it up
-#   - cap: total outbound messages on this conversation < MAX_OUTBOUND
+# Despite the historical name, this executor no longer renders a Liquid
+# template. The stage's `template_slot` (intro / reminder / breakup) is
+# the routing key for an Outreach::Llm::MessageComposer subclass that
+# generates the entire mail from the campaign knowledge base + recent
+# operator learnings + conversation history. (The slot name is preserved
+# for blueprint compatibility — renaming would be a YAML breaker.)
 #
-# When a guard trips we either (a) push next_action_at to the earliest
-# allowed time and stay in the stage, or (b) pause terminally when the
-# cap is hit / the participant replied. That way a stuck pipeline is
-# always either waiting or terminal — never silently dropping messages.
+# Pacing guards (the same as before):
+#   - already_replied → pause terminal
+#   - outbound_count >= MAX_OUTBOUND → pause terminal
+#   - last_outbound_at within MIN_GAP → park, retry later
 #
-# Locale resolution: participant.metadata['locale'] > participant's
-# profile.preferred_language > campaign config default_locale > 'en'.
-# When no template exists for the resolved (slot, locale) AND no
-# fallback for the campaign default_locale exists, the executor pauses
-# the participant terminally — this is a blueprint bug the operator
-# needs to fix.
+# Output path:
+#   - campaign.manual_review_mode? → create a Message with
+#     private: true + additional_attributes['outreach_draft'] = true
+#     INSIDE the conversation thread. Stage does NOT advance; advancement
+#     happens when the operator approves the draft (Messages::ApproveOutreachDraft).
+#   - autopilot → enqueue Outreach::SendEmailJob, advance stage,
+#     stamp last_outbound_at.
 class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::Base
   MAX_OUTBOUND = 3
   MIN_GAP = 7.days
+
+  COMPOSERS = {
+    'intro' => Outreach::Llm::MessageComposer::Intro,
+    'reminder' => Outreach::Llm::MessageComposer::Reminder,
+    'breakup' => Outreach::Llm::MessageComposer::Breakup
+  }.freeze
 
   # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
   def call
@@ -31,75 +35,81 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
     return skip_cap! if outbound_count >= MAX_OUTBOUND
     return park_until_gap_elapsed! if gap_not_elapsed?
 
-    template = resolve_template
-    unless template
-      pause_terminal!(reason: "no_template_for_slot:#{stage.template_slot}")
+    composer_class = COMPOSERS[stage.template_slot]
+    unless composer_class
+      pause_terminal!(reason: "no_composer_for_slot:#{stage.template_slot}")
       return
     end
 
-    rendered = Outreach::Engine::TemplateRenderer.new(
-      template: template, participant: participant
-    ).render
-
-    body = personalize_body(rendered[:body], template)
+    composed = composer_class.new(participant: participant).call
+    log_decision!(composed)
 
     conversation = Outreach::Engine::ConversationResolver.new(participant).conversation
 
-    Outreach::SendEmailJob.perform_later(
-      participant_id: participant.id,
-      conversation_id: conversation.id,
-      subject: rendered[:subject],
-      body: body,
-      template_slot: template.slot,
-      locale: template.locale
-    )
-
-    advance_after_send
+    if campaign.manual_review_mode?
+      create_outreach_draft_message!(conversation, composed)
+      park_for_operator!
+      # Stage stays put. Operator will trigger approve/reject which
+      # advances or escalates the participant. We don't set
+      # last_outbound_at — nothing has actually been sent yet.
+    else
+      Outreach::SendEmailJob.perform_later(
+        participant_id: participant.id,
+        conversation_id: conversation.id,
+        subject: composed[:subject],
+        body: composed[:body],
+        template_slot: stage.template_slot,
+        locale: composed[:locale]
+      )
+      advance_after_send
+    end
   end
   # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
   private
 
-  # ---------- personalization (intro only) ----------
-
-  # If the template contains a {{personal_opener}} placeholder, ask the
-  # LLM IntroComposer for a concrete 1–2 sentence opener grounded in
-  # the photographer's crawled website snippet + profile, and
-  # string-replace it into the pre-Liquid-rendered body. LLM failures
-  # fall back to a locale-neutral opener — the mail always goes out.
-  def personalize_body(rendered_body, template)
-    return rendered_body unless rendered_body.to_s.include?(PERSONAL_OPENER_PLACEHOLDER)
-
-    opener = compose_intro_opener
-    logger_record_opener_decision(opener, template)
-    rendered_body.sub(PERSONAL_OPENER_PLACEHOLDER, opener.fetch(:opener))
+  def create_outreach_draft_message!(conversation, composed)
+    conversation.messages.create!(
+      account: conversation.account,
+      inbox: conversation.inbox,
+      message_type: :outgoing,
+      private: true,
+      sender: campaign.sender_user,
+      content: composed[:body],
+      content_type: 'text',
+      content_attributes: { email: { subject: composed[:subject] } },
+      additional_attributes: {
+        'outreach_draft' => true,
+        'draft_status' => 'pending',
+        'template_slot' => stage.template_slot,
+        'locale' => composed[:locale],
+        'composer_model' => composed[:model],
+        'composer_prompt_version' => composed[:prompt_version],
+        'composer_input_digest' => composed[:input_digest],
+        'iteration_count' => 1,
+        'regeneration_history' => [],
+        'campaign_participant_id' => participant.id,
+        'outbound_campaign_id' => campaign.id,
+        'fallback' => composed[:fallback]
+      }
+    )
   end
 
-  def compose_intro_opener
-    Outreach::Llm::IntroComposer.new(
-      participant: participant,
-      locale: participant.participatable.try(:preferred_language)
-    ).call
-  end
-
-  def logger_record_opener_decision(outcome, template)
+  def log_decision!(composed)
+    decision_type = "compose_#{stage.template_slot}".to_sym
     Outreach::Llm::DecisionLogger.record!(
       participant: participant,
-      decision_type: :compose_intro,
-      input: outcome[:input_digest] || "fallback:#{template.slot}:#{template.locale}",
-      output: outcome[:output],
-      model: outcome[:model],
-      prompt_version: outcome[:prompt_version],
-      token_usage: outcome[:token_usage],
-      latency_ms: outcome[:latency_ms]
+      decision_type: decision_type,
+      input: composed[:input_digest] || "fallback:#{stage.template_slot}",
+      output: composed[:output] || {},
+      model: composed[:model],
+      prompt_version: composed[:prompt_version],
+      token_usage: composed[:token_usage],
+      latency_ms: composed[:latency_ms]
     )
   rescue StandardError => e
     Rails.logger.warn("[outreach.send_template] decision_log_failed=#{e.class}: #{e.message.truncate(200)}")
   end
-
-  PERSONAL_OPENER_PLACEHOLDER = '{{personal_opener}}'.freeze
-
-  # ---------- pacing guards ----------
 
   def already_replied?
     participant.last_inbound_at.present? &&
@@ -134,28 +144,16 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
     participant.update!(next_action_at: due_at)
   end
 
-  # ---------- template resolution ----------
-
-  def resolve_template
-    slot = stage.template_slot
-    locale = participant_locale
-    template = CampaignTemplate.lookup(outbound_campaign: campaign, slot: slot, locale: locale)
-    return template if template
-
-    default_locale = campaign_default_locale
-    return nil if default_locale.blank? || default_locale == locale
-
-    CampaignTemplate.lookup(outbound_campaign: campaign, slot: slot, locale: default_locale)
-  end
-
-  def participant_locale
-    (participant.metadata || {})['locale'].presence ||
-      participant.participatable.try(:preferred_language).presence ||
-      campaign_default_locale
-  end
-
-  def campaign_default_locale
-    (campaign.config || {})['default_locale'].presence || 'en'
+  # Parks the participant indefinitely while a draft awaits operator
+  # review. Setting next_action_at = nil takes the participant out of
+  # CampaignParticipant.due_for_tick (the scope filters on
+  # `next_action_at <= now`), so the runner stops re-generating drafts
+  # every tick. The Outreach::Drafts::ApproveService /
+  # RegenerateService / RejectService re-arm next_action_at when the
+  # operator acts.
+  def park_for_operator!
+    metadata = (participant.metadata || {}).merge('parked_for_operator_at' => Time.current.iso8601)
+    participant.update!(next_action_at: nil, metadata: metadata)
   end
 
   def advance_after_send

@@ -13,6 +13,7 @@ import { useWindowSize, useEventListener } from '@vueuse/core';
 import { emitter } from 'shared/helpers/mitt';
 import { BUS_EVENTS } from 'shared/constants/busEvents';
 
+import OutreachCampaignsAPI from 'dashboard/api/outreachCampaigns';
 import Button from 'dashboard/components-next/button/Button.vue';
 import SidebarGroup from './SidebarGroup.vue';
 import SidebarProfileMenu from './SidebarProfileMenu.vue';
@@ -165,6 +166,17 @@ const conversationCustomViews = useMapGetter(
   'customViews/getConversationCustomViews'
 );
 
+const outreachCampaigns = ref([]);
+
+const fetchOutreachCampaigns = async () => {
+  try {
+    const { data } = await OutreachCampaignsAPI.get();
+    outreachCampaigns.value = data || [];
+  } catch {
+    outreachCampaigns.value = [];
+  }
+};
+
 onMounted(() => {
   store.dispatch('labels/get');
   store.dispatch('inboxes/get');
@@ -173,11 +185,56 @@ onMounted(() => {
   store.dispatch('attributes/get');
   store.dispatch('customViews/get', 'conversation');
   store.dispatch('customViews/get', 'contact');
+  fetchOutreachCampaigns();
 });
 
 const sortedInboxes = computed(() =>
   inboxes.value.slice().sort((a, b) => a.name.localeCompare(b.name))
 );
+
+const outreachInboxIds = computed(
+  () =>
+    new Set(
+      outreachCampaigns.value
+        .map(c => c.inbox_id)
+        .filter(id => id !== null && id !== undefined)
+    )
+);
+
+const outreachInboxes = computed(() =>
+  sortedInboxes.value.filter(i => outreachInboxIds.value.has(i.id))
+);
+
+const outreachInboxMenuItem = computed(() => {
+  const list = outreachInboxes.value;
+  if (list.length === 0) return null;
+  if (list.length === 1) {
+    const [inbox] = list;
+    return {
+      name: 'Outreach Inbox',
+      label: 'Inbox',
+      to: accountScopedRoute('inbox_dashboard', { inbox_id: inbox.id }),
+      activeOn: [],
+    };
+  }
+  return {
+    name: 'Outreach Inboxes',
+    label: 'Inbox',
+    activeOn: ['conversation_through_inbox'],
+    children: list.map(inbox => ({
+      name: `outreach-inbox-${inbox.id}`,
+      label: inbox.name,
+      icon: h(ChannelIcon, { inbox, class: 'size-[16px]' }),
+      to: accountScopedRoute('inbox_dashboard', { inbox_id: inbox.id }),
+      component: leafProps =>
+        h(ChannelLeaf, {
+          label: leafProps.label,
+          active: leafProps.active,
+          inbox,
+        }),
+    })),
+  };
+});
 
 const closeMobileSidebar = () => {
   if (!props.isMobileSidebarOpen) return;
@@ -486,17 +543,30 @@ const menuItems = computed(() => {
           activeOn: ['outreach_photographers', 'outreach_dashboard_index'],
         },
         {
+          name: 'Outreach Pipeline',
+          label: 'Pipeline',
+          to: accountScopedRoute('outreach_pipeline'),
+          activeOn: ['outreach_pipeline'],
+        },
+        {
           name: 'Outreach Campaigns',
           label: 'Campaigns',
           to: accountScopedRoute('outreach_campaigns'),
           activeOn: ['outreach_campaigns'],
         },
         {
-          name: 'Outreach Drafts',
-          label: 'Drafts to review',
-          to: accountScopedRoute('outreach_drafts'),
-          activeOn: ['outreach_drafts'],
+          name: 'Outreach Knowledge',
+          label: 'Knowledge',
+          to: accountScopedRoute('outreach_knowledge'),
+          activeOn: ['outreach_knowledge'],
         },
+        {
+          name: 'Outreach Learnings',
+          label: 'Learnings',
+          to: accountScopedRoute('outreach_learnings'),
+          activeOn: ['outreach_learnings'],
+        },
+        ...(outreachInboxMenuItem.value ? [outreachInboxMenuItem.value] : []),
       ],
     },
     {
