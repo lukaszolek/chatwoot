@@ -69,7 +69,7 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
   private
 
   def create_outreach_draft_message!(conversation, composed)
-    conversation.messages.create!(
+    message = conversation.messages.create!(
       account: conversation.account,
       inbox: conversation.inbox,
       message_type: :outgoing,
@@ -93,6 +93,8 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
         'fallback' => composed[:fallback]
       }
     )
+    Outreach::TranslateForAgents.call(message: message, source_locale: composed[:locale])
+    message
   end
 
   def log_decision!(composed)

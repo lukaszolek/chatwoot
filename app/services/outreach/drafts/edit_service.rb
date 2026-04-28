@@ -55,6 +55,10 @@ class Outreach::Drafts::EditService
       content_attributes: draft_message.content_attributes.deep_merge('email' => { 'subject' => subject }),
       additional_attributes: additional
     )
+    Outreach::TranslateForAgents.call(
+      message: draft_message,
+      source_locale: draft_message.additional_attributes['locale']
+    )
   end
 
   def record_learning!(prev_subject, prev_body)

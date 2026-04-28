@@ -48,6 +48,7 @@ class Outreach::SendEmailJob < ApplicationJob
       subject: subject, body: body,
       template_slot: template_slot, locale: locale
     )
+    Outreach::TranslateForAgents.call(message: message, source_locale: locale)
 
     # update_columns skips validations/callbacks — last_outbound_at is an
     # audit field that must not re-run side effects on message create.

@@ -2,6 +2,9 @@
 /* global axios */
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useUISettings } from 'dashboard/composables/useUISettings';
+import { useAccount } from 'dashboard/composables/useAccount';
+import { selectTranslation } from 'dashboard/composables/useTranslations';
 
 const props = defineProps({
   messageId: { type: Number, required: true },
@@ -47,6 +50,29 @@ const subject = ref(props.contentAttributes?.email?.subject || '');
 const body = ref(props.content || '');
 const bodyTextarea = ref(null);
 const editingBody = ref(false);
+
+// Operator-language preview — Outreach::TranslateForAgents populates
+// content_attributes.translations[<agentLocale>] each time the draft is
+// generated, regenerated, or edited; we render it read-only below the
+// body so a Polish operator can sanity-check a German/French draft
+// without round-tripping through Google Translate themselves.
+const { uiSettings } = useUISettings();
+const { currentAccount } = useAccount();
+const translations = computed(
+  () => props.contentAttributes?.translations || {}
+);
+const draftLocale = computed(() => props.additionalAttributes?.locale || '');
+const operatorTranslation = computed(() => {
+  const agentLocale = uiSettings.value?.locale;
+  // Don't show preview if the draft is already in the operator's language —
+  // they're reading the original.
+  if (!agentLocale || agentLocale === draftLocale.value) return null;
+  return selectTranslation(
+    translations.value,
+    agentLocale,
+    currentAccount.value?.locale
+  );
+});
 
 const autoResize = () => {
   const el = bodyTextarea.value;
@@ -248,6 +274,16 @@ const reject = async () => {
           @input="autoResize"
         />
       </label>
+
+      <div v-if="operatorTranslation" class="mb-3">
+        <span class="text-[11px] uppercase tracking-wide text-n-slate-11">
+          Podgląd tłumaczenia ({{ draftLocale }} → {{ uiSettings?.locale }})
+        </span>
+        <pre
+          class="w-full px-3 py-2 mt-1 font-mono text-[13px] border rounded border-n-weak bg-n-slate-2 text-n-slate-11 whitespace-pre-wrap leading-6"
+          >{{ operatorTranslation }}</pre
+        >
+      </div>
 
       <label v-if="editingBody" class="block mb-3">
         <span class="text-[11px] uppercase tracking-wide text-n-slate-11">

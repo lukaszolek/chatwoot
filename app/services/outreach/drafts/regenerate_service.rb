@@ -114,6 +114,7 @@ class Outreach::Drafts::RegenerateService
       content_attributes: draft_message.content_attributes.deep_merge('email' => { 'subject' => composed[:subject] }),
       additional_attributes: additional
     )
+    Outreach::TranslateForAgents.call(message: draft_message, source_locale: composed[:locale] || locale)
   end
 
   def record_learning!(participant, _composed)
