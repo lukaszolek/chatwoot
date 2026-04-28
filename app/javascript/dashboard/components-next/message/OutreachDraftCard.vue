@@ -129,7 +129,6 @@ const regenerate = async () => {
 };
 
 const approve = async () => {
-  if (!window.confirm('Wysłać tę treść do fotografa?')) return;
   busy.value = 'approve';
   error.value = null;
   try {
