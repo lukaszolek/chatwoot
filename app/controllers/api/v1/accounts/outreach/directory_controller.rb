@@ -53,16 +53,7 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
   end
 
   def apply_search_filters(scope)
-    if params[:q].present?
-      q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
-      scope = scope.where(
-        'email ILIKE :q OR business_name ILIKE :q OR owner_name ILIKE :q OR instagram_handle ILIKE :q',
-        q: q
-      )
-    end
-    scope = scope.where(country_code: params[:country_code].to_s.downcase) if params[:country_code].present?
-    scope = scope.where(preferred_language: params[:locale]) if params[:locale].present?
-    scope
+    Outreach::PhotographerDirectory::SearchFilters.apply(scope, params)
   end
 
   def offset

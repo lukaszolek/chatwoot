@@ -55,6 +55,8 @@ class PhotographerPartnerProfile < ApplicationRecord
     unsubscribed_from_all_campaigns
     gdpr_delete_requested_at
     status
+    google_rating
+    google_review_count
   ].freeze
 
   delegate(*DIRECTORY_DELEGATED_FIELDS, to: :source, allow_nil: true)

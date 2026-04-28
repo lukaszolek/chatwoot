@@ -14,16 +14,34 @@ const error = ref(null);
 const busyRowKey = ref(null);
 const importSummary = ref(null);
 
-const filters = ref({ q: '', status: '', country_code: '', locale: '' });
+const filters = ref({
+  q: '',
+  status: '',
+  country_code: '',
+  locale: '',
+  category: '',
+  min_rating: '',
+});
 
 const countryOptions = ref([]);
 const localeOptions = ref([]);
+const categoryOptions = ref([]);
+
+const RATING_OPTIONS = [
+  { value: '', label: 'Any rating' },
+  { value: '4.8', label: '★ 4.8+' },
+  { value: '4.5', label: '★ 4.5+' },
+  { value: '4.0', label: '★ 4.0+' },
+  { value: '3.5', label: '★ 3.5+' },
+  { value: '3.0', label: '★ 3.0+' },
+];
 
 const fetchFacets = async () => {
   try {
     const { data } = await OutreachPhotographersAPI.facets();
     countryOptions.value = data.country_codes || [];
     localeOptions.value = data.locales || [];
+    categoryOptions.value = data.categories || [];
   } catch (e) {
     // Non-critical — autocomplete just falls back to an empty list.
   }
@@ -54,7 +72,9 @@ const fetchDirectory = async () => {
   if (
     !filters.value.q &&
     !filters.value.country_code &&
-    !filters.value.locale
+    !filters.value.locale &&
+    !filters.value.category &&
+    !filters.value.min_rating
   ) {
     directoryResults.value = [];
     directoryTotal.value = 0;
@@ -64,6 +84,8 @@ const fetchDirectory = async () => {
     q: filters.value.q,
     country_code: filters.value.country_code,
     locale: filters.value.locale,
+    category: filters.value.category,
+    min_rating: filters.value.min_rating,
   });
   directoryResults.value = data.data || [];
   directoryTotal.value = data.meta?.total || 0;
@@ -97,6 +119,8 @@ const rows = computed(() => {
       website: p.website,
       country_code: p.country_code,
       preferred_language: p.preferred_language,
+      google_rating: p.google_rating,
+      google_review_count: p.google_review_count,
     });
     if (p.external_id) seenExternalIds.add(String(p.external_id));
   });
@@ -113,6 +137,8 @@ const rows = computed(() => {
       website: r.website,
       country_code: r.country_code,
       preferred_language: r.preferred_language,
+      google_rating: r.google_rating,
+      google_review_count: r.google_review_count,
     });
   });
   return out;
@@ -220,6 +246,8 @@ watch(
     filters.value.status,
     filters.value.country_code,
     filters.value.locale,
+    filters.value.category,
+    filters.value.min_rating,
   ],
   runSearch
 );
@@ -265,6 +293,25 @@ watch(
       <datalist id="photographer-locales">
         <option v-for="l in localeOptions" :key="l" :value="l" />
       </datalist>
+      <select
+        v-model="filters.category"
+        class="!w-40 !mb-0 flex-none h-10 text-sm bg-white border rounded border-n-weak"
+        title="Filter by photographer specialty (wedding, maternity, …)"
+      >
+        <option value="">All specialties</option>
+        <option v-for="c in categoryOptions" :key="c" :value="c">
+          {{ c }}
+        </option>
+      </select>
+      <select
+        v-model="filters.min_rating"
+        class="!w-32 !mb-0 flex-none h-10 text-sm bg-white border rounded border-n-weak"
+        title="Filter by minimum Google rating"
+      >
+        <option v-for="r in RATING_OPTIONS" :key="r.value" :value="r.value">
+          {{ r.label }}
+        </option>
+      </select>
       <a
         href="https://framky.com/pl-pl/dodaj-fotografa"
         target="_blank"
@@ -436,6 +483,7 @@ watch(
           <th class="px-3 py-2 font-medium text-left">Email</th>
           <th class="px-3 py-2 font-medium text-left">Country</th>
           <th class="px-3 py-2 font-medium text-left">Locale</th>
+          <th class="px-3 py-2 font-medium text-left">Rating</th>
           <th class="px-3 py-2 font-medium text-left">Status</th>
           <th class="px-3 py-2 font-medium text-left">Status since</th>
           <th class="px-3 py-2 font-medium text-right">Actions</th>
@@ -536,6 +584,18 @@ watch(
           </td>
           <td class="px-3 py-2 text-n-slate-11">
             {{ row.preferred_language || '—' }}
+          </td>
+          <td class="px-3 py-2 text-n-slate-11 whitespace-nowrap">
+            <template v-if="row.google_rating">
+              ★ {{ Number(row.google_rating).toFixed(1) }}
+              <span
+                v-if="row.google_review_count"
+                class="text-xs text-n-slate-10"
+              >
+                ({{ row.google_review_count }})
+              </span>
+            </template>
+            <template v-else>—</template>
           </td>
           <td class="px-3 py-2">
             <span

@@ -95,9 +95,19 @@ class Api::V1::Accounts::Outreach::PhotographerPartnerProfilesController < Api::
     scope = PhotographerDirectory::Photographer
     country_codes = scope.where.not(country_code: [nil, '']).distinct.pluck(:country_code)
     locales = scope.where.not(preferred_language: [nil, '']).distinct.pluck(:preferred_language)
+    # Top 30 service categories by service-row count — the table has a long
+    # tail of 250+ values (mostly variants/typos), so we surface the heavy
+    # hitters and let operators type the rest into the search box.
+    categories = PhotographerDirectory::Service
+                 .where.not(category: [nil, ''])
+                 .group(:category)
+                 .order(Arel.sql('COUNT(*) DESC'))
+                 .limit(30)
+                 .pluck(:category)
     render json: {
       country_codes: country_codes.map { |c| c.to_s.upcase }.uniq.sort,
-      locales: locales.map(&:to_s).uniq.sort
+      locales: locales.map(&:to_s).uniq.sort,
+      categories: categories
     }
   end
 
@@ -139,36 +149,26 @@ class Api::V1::Accounts::Outreach::PhotographerPartnerProfilesController < Api::
 
   private
 
-  # PII filters (q / country_code / locale) are resolved against the
-  # directory first; we then narrow the local profiles by the matching
-  # external_ids. Status filter stays local (it's chatwoot-side).
+  DIRECTORY_FILTER_PARAMS = %i[country_code locale q category min_rating].freeze
+  private_constant :DIRECTORY_FILTER_PARAMS
+
+  # PII filters (q / country_code / locale / category / min_rating) are
+  # resolved against the directory first; we then narrow the local
+  # profiles by the matching external_ids. Status filter stays local.
   def apply_filters(scope)
     scope = scope.where(partnership_status: params[:status]) if params[:status].present?
+    return scope unless DIRECTORY_FILTER_PARAMS.any? { |k| params[k].present? }
 
-    needs_directory_filter = params[:country_code].present? ||
-                             params[:locale].present? ||
-                             params[:q].present?
-    if needs_directory_filter
-      directory_ids = filter_directory_ids
-      return scope.none if directory_ids.empty?
+    directory_ids = filter_directory_ids
+    return scope.none if directory_ids.empty?
 
-      scope = scope.where(external_id: directory_ids)
-    end
-
-    scope
+    scope.where(external_id: directory_ids)
   end
 
   def filter_directory_ids
-    dscope = PhotographerDirectory::Photographer
-    dscope = dscope.where(country_code: params[:country_code].to_s.downcase) if params[:country_code].present?
-    dscope = dscope.where(preferred_language: params[:locale]) if params[:locale].present?
-    if params[:q].present?
-      q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
-      dscope = dscope.where(
-        'email ILIKE :q OR business_name ILIKE :q OR owner_name ILIKE :q OR instagram_handle ILIKE :q', q: q
-      )
-    end
-    dscope.pluck(:id).map(&:to_s)
+    Outreach::PhotographerDirectory::SearchFilters
+      .apply(PhotographerDirectory::Photographer, params)
+      .pluck(:id).map(&:to_s)
   end
 
   def profile

@@ -13,6 +13,8 @@ json.preferred_language resource.preferred_language
 json.instagram_handle resource.instagram_handle
 json.marketing_consent resource.marketing_consent
 json.source_status resource.status
+json.google_rating resource.google_rating
+json.google_review_count resource.google_review_count
 json.directory_linked resource.source.present?
 
 # Chatwoot-side outreach state — owned locally, editable via this controller.

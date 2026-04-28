@@ -15,6 +15,8 @@ json.data do
     json.instagram_handle row.instagram_handle
     json.marketing_consent row.marketing_consent
     json.email_validation_status row.email_validation_status
+    json.google_rating row.google_rating
+    json.google_review_count row.google_review_count
     json.already_enrolled @enrolled_ids.include?(row.id.to_s)
     json.in_directory_campaign @in_directory_campaign_ids.include?(row.id)
   end

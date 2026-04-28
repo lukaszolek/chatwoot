@@ -12,6 +12,8 @@ class OutreachDirectoryAPI extends ApiClient {
     if (filters.country_code)
       params.append('country_code', filters.country_code);
     if (filters.locale) params.append('locale', filters.locale);
+    if (filters.category) params.append('category', filters.category);
+    if (filters.min_rating) params.append('min_rating', filters.min_rating);
     return axios.get(`${this.url}/search?${params}`);
   }
 
