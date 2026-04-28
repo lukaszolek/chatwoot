@@ -1,12 +1,17 @@
-# Initial knowledge base for the photographer_partnership campaign.
-# Inserted only when a campaign has zero knowledge_documents — operator
-# edits in the UI are then the source of truth. Re-applying the blueprint
-# leaves these alone.
+# Knowledge base for the photographer_partnership campaign.
+#
+# Two entry points:
+#   * `seed!(campaign)` — initial insert when a campaign has zero
+#     knowledge_documents (called from BlueprintApplier on first apply).
+#   * `sync!(campaign)` — upsert by (kind, locale) so CI/CD can roll out
+#     content updates from this file without losing operator-added docs
+#     whose (kind, locale) does not match a seeded entry. See the
+#     `outreach:knowledge:sync` rake task.
 #
 # Source material:
 #   - https://framky.com/pl-pl/program-partnerski/dla-fotografow
 #   - https://framky.com/pl-pl/program-partnerski/regulamin
-# (fetched 2026-04-23; consistency notes in the open_issues document below)
+# (refreshed 2026-04-28 — concrete commission rates landed in the regulamin)
 module Outreach::KnowledgeSeeds
   module PhotographerPartnership
     module_function
@@ -19,6 +24,27 @@ module Outreach::KnowledgeSeeds
       end
     end
 
+    # Idempotent upsert: matches existing documents by (kind, locale) and
+    # rewrites title/content/position/active. Operator-added documents whose
+    # (kind, locale) is not in DOCUMENTS are left untouched.
+    def sync!(campaign)
+      raise ArgumentError, 'campaign required' unless campaign
+
+      DOCUMENTS.each do |attrs|
+        doc = campaign.knowledge_documents.find_or_initialize_by(
+          kind: attrs.fetch(:kind),
+          locale: attrs[:locale]
+        )
+        doc.assign_attributes(
+          title: attrs.fetch(:title),
+          content: attrs.fetch(:content),
+          position: attrs.fetch(:position),
+          active: true
+        )
+        doc.save!
+      end
+    end
+
     DOCUMENTS = [
       {
         kind: 'goal',
@@ -26,11 +52,13 @@ module Outreach::KnowledgeSeeds
         position: 0,
         title: 'Cel kampanii',
         content: <<~TEXT
-          Pozyskać polskich i europejskich fotografów (PL, DE, AT, CH, FR, NL, IT, ES, CZ, SK, HU, RO, HR, DK, FI, SE, GR) do programu partnerskiego Framky. Sukcesem jest:
-            - Fotograf zarejestrowany w Panelu Partnera (`https://framky.com/pl-pl/program-partnerski/rejestracja`)
-            - Pierwszy klient skutecznie złożył zamówienie z kodem partnera w 30-dniowym oknie konwersji
+          Pozyskać polskich i europejskich fotografów (PL, DE, AT, CH, FR, NL, IT, ES, CZ, SK, HU, RO, HR, DK, FI, SE, GR) do programu partnerskiego Framky. Dwa równoważne typy sukcesu:
 
-          Każdy mail outreach ma być **personalny**, zorientowany na konkretną wartość dla fotografa, **bez sztucznego presji**, z minimalnym CTA (jedno słowo w odpowiedzi wystarczy). Outreach jest osobistą propozycją, nie marketingową kampanią masową.
+          1. **Polecenie pierwszego poziomu (klient → Framky)** — fotograf zarejestrowany w Panelu Partnera (`https://framky.com/pl-pl/program-partnerski/rejestracja`), pierwszy klient skutecznie złożył zamówienie z linku polecającego w 30-dniowym oknie konwersji.
+
+          2. **Polecenie drugiego poziomu (partner → partner)** — fotograf nie tylko poleca Framky swoim klientom, ale też **poleca program znajomym fotografom**. Za każdego takiego poleconego fotografa zarabia 2% prowizji od jego sprzedaży — bezterminowo. To ciche serce kampanii: jeden zaangażowany ambasador przyciąga kolejnych, a my im to wynagradzamy.
+
+          Każdy mail outreach ma być **personalny**, zorientowany na konkretną wartość dla fotografa, **bez sztucznej presji**, z minimalnym CTA (jedno słowo w odpowiedzi wystarczy). Outreach jest osobistą propozycją, nie marketingową kampanią masową.
         TEXT
       },
       {
@@ -65,39 +93,36 @@ module Outreach::KnowledgeSeeds
              - Co najmniej jedna aktywna obecność online (firmowa strona, portfolio, profil w mediach społecznościowych)
              - Akceptacja wniosku przez Administratora w ciągu 5 dni roboczych
 
-          2. **Prowizja** (§ 4 ust. 2, 4, 5):
-             - Stawki ustalane przez Administratora, dostępne w Panelu Partnera; **mogą się różnić** w zależności od kategorii produktu, wolumenu sprzedaży, okresów promocyjnych
-             - Liczona od **kwoty sprzedaży NETTO** (bez podatków, kosztów wysyłki, po odjęciu rabatów i zwrotów)
-             - Warunki naliczenia: klient wszedł przez link partnera, zakup w **30-dniowym oknie konwersji**, zamówienie nie anulowane/zwrócone, płatność zrealizowana
+          2. **Stawki prowizji** (§ 4 — w regulaminie i w Panelu Partnera):
+             - **20% od kwoty netto** zamówienia każdego klienta, który wejdzie przez **link polecający** partnera (po odjęciu rabatu klienta, bez VAT, kosztów wysyłki, zwrotów).
+             - **25% rabat** dla klienta partnera od ceny katalogowej — automatycznie naliczany, gdy klient korzysta z linku polecającego.
+             - **2% od kwoty netto** zamówień klientów **partnera poleconego** — czyli innego fotografa, który zarejestrował się z Twojego polecenia. To prowizja drugiego poziomu, naliczana **bezterminowo**, dopóki obaj jesteście aktywnymi partnerami.
+             - Struktura kończy się na pierwszym poziomie polecenia partner→partner (regulamin nie przewiduje kaskady głębiej niż jeden poziom).
 
-          3. **Wypłaty** (§ 6 ust. 2-5):
+          3. **Warunki naliczenia prowizji** (§ 4 ust. 4–5):
+             - Klient/partner wszedł przez link polecający, zakup w **30-dniowym oknie konwersji**, model **last-click**, zamówienie nie anulowane/zwrócone, płatność zrealizowana.
+
+          4. **Wypłaty** (§ 6 ust. 2-5):
              - Minimalny próg wypłaty: **50 EUR** (poniżej — przeniesione na kolejny miesiąc)
              - Wypłaty do **10. dnia każdego miesiąca** za prowizje naliczone w miesiącu poprzednim
              - Metody: SEPA dla UE, PayPal, inne uzgodnione
              - Partner musi dostarczyć ważną dokumentację podatkową i dane do płatności
              - Partner odpowiada za podatki od prowizji
 
-          4. **Obowiązki partnera** (§ 7):
+          5. **Obowiązki partnera** (§ 7):
              - Wyłącznie zatwierdzone materiały marketingowe
              - Wyraźnie identyfikować się jako niezależny partner (nie pracownik)
              - **Zakaz**: spam, mylące domeny, strony z treściami dla dorosłych/przemocą
 
-          5. **RODO** (§ 9):
+          6. **RODO** (§ 9):
              - Dane klientów tylko do śledzenia przypisania
              - Po rozwiązaniu umowy — usunięte
              - Nigdy nie sprzedawane
 
-          6. **Rozwiązanie umowy** (§ 10):
+          7. **Rozwiązanie umowy** (§ 10):
              - Każda strona — 30-dniowy okres wypowiedzenia (pisemny)
              - Administrator może rozwiązać natychmiastowo: naruszenie regulaminu, oszustwa, nieaktywność > **12 miesięcy**
              - Po rozwiązaniu — usunięcie linków/materiałów; niewypłacone prowizje wypłacane standardowo
-
-          7. **Co NIE jest w regulaminie** (zob. open_issues — NIE PORUSZAJ tego w mailach, dopóki nie zostanie wyjaśnione):
-             - Konkretne procenty prowizji
-             - Voucher 20 EUR przy rejestracji
-             - System polecania innych fotografów (two-tier)
-             - Rabat dla klientów partnera
-             - Osobny rabat dla samego partnera
         TEXT
       },
       {
@@ -165,18 +190,58 @@ module Outreach::KnowledgeSeeds
         TEXT
       },
       {
+        kind: 'intro_seed',
+        locale: 'pl',
+        position: 0,
+        title: 'Intro seed — bullets do pierwszego maila (PL)',
+        content: <<~TEXT
+          Bullets do pierwszego maila wysyłanego do fotografa. Komponer (intro) ma je przepisać DOSŁOWNIE — można dopasować tylko opener (anchor z website snippet) i sygnaturę. Nie generalizuj, nie skracaj, nie zamieniaj na "atrakcyjna prowizja".
+
+          **Co dostajesz w programie partnerskim Framky:**
+
+          - **20% prowizji** od kwoty netto każdego zamówienia klienta, który wejdzie przez Twój **link polecający** (last-click, 30-dniowe okno konwersji).
+          - **25% rabat dla Twojego klienta** od ceny katalogowej — naliczany automatycznie, gdy klient kupuje przez link polecający. Czyli klient zyskuje, Ty zyskujesz, bez żadnej dodatkowej sztuczki.
+          - **2% prowizji bezterminowo, gdy polecisz Framky innemu fotografowi** — zarabiasz na każdym zamówieniu klientów tego fotografa, dopóki jest aktywny w programie. To "drugi poziom" polecania: pasywny strumień, w który warto włożyć jeden mail do znajomego z branży.
+          - **Voucher 20 EUR na start**, żebyś sam przetestował jakość naszych galerii zanim cokolwiek polecisz klientowi.
+          - **Wypłaty co miesiąc** (SEPA dla UE / PayPal), próg 50 EUR, do 10. dnia za miesiąc poprzedni.
+          - **Bez limitu** liczby klientów, bez limitu czasu zarabiania, bez ekskluzywności.
+
+          CTA: jedno zdanie w odpowiedzi (np. "wchodzę") — odeślę link do rejestracji + voucher startowy.
+        TEXT
+      },
+      {
+        kind: 'copywriting',
+        locale: 'pl',
+        position: 0,
+        title: 'Copywriting — zasady cold-mail (PL)',
+        content: <<~TEXT
+          Reguły komponowania każdego maila w kampanii (intro / reminder / breakup / reply).
+
+          1. **Każde zdanie zarabia swoje miejsce.** Wytnij wszystko, co czytelnik pominie wzrokiem.
+          2. **Konkret > ogólnik.** "20% prowizji" zamiast "atrakcyjna prowizja". "25% rabat dla klienta" zamiast "ciekawe warunki". Zero korpomowy.
+          3. **Bez clickbaitu w temacie.** 2-4 słowa, lowercase, brzmi jak wewnętrzna notatka. Bez imienia adresata, bez procentów, bez emoji. Przykłady: "galerie na ścianę", "kursy i wydruki", "szybka propozycja".
+          4. **Bez fałszywej presji.** Żadnych "ostatnia szansa", "tylko dziś", "specjalnie dla Ciebie".
+          5. **Bez clichés.** Zero "uwielbiam Twoje zdjęcia", "podziwiam Twój styl", "I hope this finds you well", "natknąłem się na Twoje portfolio".
+          6. **Polecanie drugiego poziomu — nie chowaj go.** Bullet o 2% od poleconych fotografów to często najmocniejszy hak (pasywny przychód) — wymień go z naciskiem, nie zakopuj na dole.
+          7. **Link polecający, nie "kod", nie "handle".** Ujednolicona terminologia: zawsze mówimy "link polecający" (lub "Twój link"). Nigdy "handle", nigdy "kod afiliacyjny".
+          8. **Sygnatura zawsze pełna**: imię + "Framky Founder". Nawet w reply.
+        TEXT
+      },
+      {
         kind: 'faq',
         locale: 'pl',
         position: 0,
         title: 'FAQ ze strony "dla fotografów"',
         content: <<~TEXT
-          Pytania, które fotografowie zadają najczęściej (źródło: `framky.com/pl-pl/program-partnerski/dla-fotografow`):
+          Pytania, które fotografowie zadają najczęściej (źródło: `framky.com/pl-pl/program-partnerski/dla-fotografow` + regulamin):
 
           - **Czy program jest tylko dla profesjonalistów?** Nie, program jest otwarty dla wszystkich fotografów — zarówno profesjonalnych, jak i hobbystów. (Uwaga: w regulaminie wymóg ≥1 aktywnej obecności online + 18 lat.)
+          - **Ile dokładnie zarabiam?** **20% od kwoty netto** każdego zamówienia klienta, który wszedł przez Twój link polecający. Plus **2% od kwoty netto** zamówień klientów fotografów, których polecisz do programu — bezterminowo.
+          - **Co dostaje mój klient?** **25% rabat** od ceny katalogowej, naliczany automatycznie, gdy klient wejdzie przez Twój link polecający.
+          - **Co dostaję, gdy polecę innego fotografa?** Gdy znajomy fotograf zarejestruje się z Twojego polecenia i zacznie polecać Framky swoim klientom, **dostajesz 2% od każdego zamówienia jego klientów — bezterminowo**, dopóki jesteście oboje aktywnymi partnerami. To pasywny strumień przychodu — jeden mail do koleżanki z branży może procentować latami.
+          - **Czy łańcuch poleceń jest głębszy niż 2 poziomy?** Nie, regulamin przewiduje dokładnie jeden poziom polecenia partner→partner. Twój polecony fotograf nie może już polecić kolejnego "z Twojego drzewa" tak, żebyś dostał z tego prowizję.
           - **Jak działa rozliczenie?** Comiesięczne rozliczenia na fakturę lub umowę. Wypłata do 10. dnia każdego miesiąca za prowizje z miesiąca poprzedniego, gdy saldo ≥ 50 EUR.
-          - **Co dostaje klient?** Dedykowany kod rabatowy z linkiem partnera (konkretna stawka — zob. Panel Partnera po rejestracji).
-          - **Co dostaję ja jako fotograf?** Voucher 20 EUR na przetestowanie produktu, prowizja od zamówień klientów (stawka w Panelu).
-          - **Materiały marketingowe?** Tak, gotowe szablony wiadomości i grafiki w Panelu Partnera.
+          - **Co dostaję na start?** Voucher 20 EUR na przetestowanie produktu, indywidualny **link polecający** + materiały marketingowe w Panelu Partnera.
           - **Jak długo trwa weryfikacja?** Do 5 dni roboczych po wypełnieniu formularza.
 
           Link do rejestracji (PL): `https://framky.com/pl-pl/program-partnerski/rejestracja`
@@ -187,23 +252,21 @@ module Outreach::KnowledgeSeeds
         kind: 'open_issues',
         locale: nil,
         position: 0,
-        title: 'Open issues — NIE poruszaj w mailach',
+        title: 'Open issues — co wymaga ostrożności w outboundzie',
         content: <<~TEXT
-          Niespójności między marketingiem a regulaminem (stan na 2026-04-23). Dopóki nie zostaną wyjaśnione przez biznes, **LLM ma się powstrzymać** od poruszania ich w outboundzie.
+          Stan na 2026-04-28. Stawki prowizji 20% / 25% rabatu klienta / 2% drugiego poziomu są **potwierdzone w regulaminie** (§ 4) — można ich używać z imienia i nazwiska. Wcześniejsze obawy o "ujawnianie procentów" są nieaktualne.
 
-          1. **Two-tier (polecenia fotografów)**: strona "dla fotografów" obiecuje "Polecaj innym fotografom, zarabiaj bezterminowo" + "prowizja od zamówień jego klientów — bezterminowo". W regulaminie BRAK jakiegokolwiek paragrafu o tym. Ryzyko prawne. → Nie wspominać two-tier w mailach.
+          Co warto trzymać miękko:
 
-          2. **Konkretne procenty prowizji**: ani regulamin (§ 4 ust. 2: "ustalane przez Administratora"), ani strona ("atrakcyjna prowizja") nie podają. Stary outreach mail obiecywał 25%/20%/40% bez podkładki. → Mówić "atrakcyjna prowizja, szczegóły w Panelu Partnera po rejestracji".
+          1. **Voucher 20 EUR**: na stronie obiecane jako "voucher na przetestowanie". Szczegóły operacyjne (kiedy aktywuje się, kiedy wygasa) — w Panelu Partnera. W mailu można wspomnieć fakt, ale szczegóły kierować do Panelu.
 
-          3. **Voucher 20 EUR**: na stronie obiecane jako "voucher na przetestowanie". W regulaminie BRAK. → Można wspomnieć ze strony, ale uprzedzić, że szczegóły w Panelu.
+          2. **Wymóg 18+**: na stronie nieeksponowany; w regulaminie tak. Pominąć w pierwszym mailu, podać przy konkretnym pytaniu.
 
-          4. **Rabat klienta**: na stronie "dedykowany kod rabatowy" (bez procentu). W regulaminie BRAK. → "Klient dostanie kod ze zniżką, szczegóły po rejestracji."
+          3. **Klauzula 12 mies. nieaktywności = rozwiązanie**: w regulaminie tak; nieeksponowane na stronie. Pominąć w outboundzie.
 
-          5. **Osobny rabat dla fotografa**: w starym mailu mówiło się o -40%. NIE WSPOMINAĆ.
+          4. **Materiały marketingowe**: regulamin mówi "wyłącznie zatwierdzone". Nie obiecywać "róbcie co chcecie" — kierować do Panelu po rejestracji.
 
-          6. **Wymóg 18+**: na stronie nieeksponowany; w regulaminie tak. → Można pominąć w pierwszym mailu, podać przy konkretnym pytaniu.
-
-          7. **Klauzula 12 mies. nieaktywności = rozwiązanie**: w regulaminie tak; nieeksponowane na stronie. → Pominąć w outbounddzie.
+          5. **Stawki są zmienne** (§ 4 ust. 2 — Administrator może je zmieniać, w tym po kategoriach produktów / okresach promocyjnych). 20% / 25% / 2% to aktualny stan **bazowy**; jeśli ktoś dopytuje o stałość, trzeba uczciwie powiedzieć, że Administrator zastrzega sobie prawo do zmian, ale obowiązuje stawka z momentu zamówienia.
         TEXT
       }
     ].freeze

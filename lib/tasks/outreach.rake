@@ -8,7 +8,11 @@
 #   # Import photographers from photographer-directory for a given country
 #   bundle exec rake "outreach:photographers:import[ACCOUNT_ID,pl]"
 #   ACCOUNT_ID=1 COUNTRY=pl bundle exec rake outreach:photographers:import
+#
+#   # Sync knowledge documents (idempotent, run from CI/CD on every deploy)
+#   bundle exec rake outreach:knowledge:sync
 
+# rubocop:disable Metrics/BlockLength
 namespace :outreach do
   namespace :blueprints do
     desc 'Apply all campaign blueprints in db/campaign_blueprints/ to an account'
@@ -44,4 +48,33 @@ namespace :outreach do
            "skipped=#{result.skipped} failed=#{result.failed} (total=#{result.total})"
     end
   end
+
+  namespace :knowledge do
+    # Idempotent rollout of knowledge_documents from
+    # Outreach::KnowledgeSeeds::* into every matching campaign. Wired into
+    # deployment/framky/deploy.sh so every push to framky/main updates the
+    # campaign knowledge base in lockstep with the code that consumes it.
+    # Documents are upserted by (kind, locale); operator-added documents
+    # whose (kind, locale) is not in the seed list are left untouched.
+    desc 'Sync knowledge_documents for all known program seeds across all accounts'
+    task sync: :environment do
+      seeds = {
+        'photographer_partnership' => Outreach::KnowledgeSeeds::PhotographerPartnership
+      }
+
+      campaigns = OutboundCampaign.where(program_key: seeds.keys)
+      if campaigns.empty?
+        puts 'outreach:knowledge:sync — no campaigns matched a seed; nothing to do'
+        next
+      end
+
+      campaigns.find_each do |campaign|
+        seed_module = seeds.fetch(campaign.program_key)
+        seed_module.sync!(campaign)
+        puts "  synced ##{campaign.id} #{campaign.program_key} (account=#{campaign.account_id}) — " \
+             "#{campaign.knowledge_documents.where(active: true).count} active docs"
+      end
+    end
+  end
 end
+# rubocop:enable Metrics/BlockLength

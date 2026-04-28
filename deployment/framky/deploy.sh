@@ -38,6 +38,11 @@ NODE_OPTIONS="--max-old-space-size=4096" RAILS_ENV=production NODE_ENV=productio
 echo "Running database migrations..."
 RAILS_ENV=production bundle exec rails db:chatwoot_prepare
 
+# Sync outreach campaign knowledge documents (idempotent — keeps the
+# campaign knowledge base in lockstep with the code that consumes it).
+echo "Syncing outreach knowledge documents..."
+RAILS_ENV=production bundle exec rake outreach:knowledge:sync
+
 # Restart services
 echo "Restarting Chatwoot services..."
 sudo systemctl restart chatwoot.target

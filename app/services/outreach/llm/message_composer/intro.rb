@@ -15,9 +15,11 @@ class Outreach::Llm::MessageComposer::Intro < Outreach::Llm::MessageComposer::Ba
         BODY PARAGRAPHS VERBATIM. The seed represents an explicit business
         decision about what this campaign promises — it OVERRIDES open_issues
         and any legalistic ambiguity. Do not rephrase the bullets. Do not
-        substitute "miesięczne rozliczenia" for the bullet about a personal
-        discount code. Do not replace "rabat na zamówienie — kod = Twój handle"
-        with a feature description.
+        soften concrete percentages ("20% prowizji", "25% rabat dla klienta",
+        "2% bezterminowo od poleconych fotografów") into vague phrases like
+        "atrakcyjna prowizja". The 2% second-level (partner-refers-partner)
+        bullet is load-bearing — keep it visible, do not collapse it into
+        the first-level commission line.
 
         Change ONLY:
           * The opener (first sentence, before "Cześć" or company intro) —
