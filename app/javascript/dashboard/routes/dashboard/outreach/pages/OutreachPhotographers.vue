@@ -94,6 +94,7 @@ const rows = computed(() => {
       email: p.email,
       business_name: p.business_name,
       owner_name: p.owner_name,
+      website: p.website,
       country_code: p.country_code,
       preferred_language: p.preferred_language,
     });
@@ -109,6 +110,7 @@ const rows = computed(() => {
       email: r.email,
       business_name: r.business_name,
       owner_name: r.owner_name,
+      website: r.website,
       country_code: r.country_code,
       preferred_language: r.preferred_language,
     });
@@ -193,6 +195,11 @@ const onSaved = () => {
 };
 
 const formatDate = ts => (ts ? new Date(ts * 1000).toLocaleString() : '—');
+
+const websiteHref = url => {
+  if (!url) return null;
+  return /^https?:\/\//i.test(url) ? url : `https://${url}`;
+};
 
 onMounted(() => {
   runSearch();
@@ -452,6 +459,17 @@ watch(
           <td class="px-3 py-2 font-medium text-n-slate-12">
             <div class="flex items-center gap-2 flex-wrap">
               <span>{{ row.business_name || '—' }}</span>
+              <a
+                v-if="row.website"
+                :href="websiteHref(row.website)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-xs font-normal text-n-brand hover:underline"
+                :title="row.website"
+                @click.stop
+              >
+                {{ row.website }} ↗
+              </a>
               <span
                 v-if="row.type === 'directory'"
                 class="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-n-slate-3 text-n-slate-11"
