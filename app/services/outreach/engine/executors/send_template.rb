@@ -29,44 +29,66 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
     'breakup' => Outreach::Llm::MessageComposer::Breakup
   }.freeze
 
-  # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
   def call
-    return skip_replied! if already_replied?
-    return skip_cap! if outbound_count >= MAX_OUTBOUND
-    return park_until_gap_elapsed! if gap_not_elapsed?
+    return if halt_for_pacing_guard!
 
-    composer_class = COMPOSERS[stage.template_slot]
-    unless composer_class
-      pause_terminal!(reason: "no_composer_for_slot:#{stage.template_slot}")
-      return
-    end
+    composer_class = composer_class_for_stage
+    return unless composer_class
+
+    return if park_existing_manual_review_draft
 
     composed = composer_class.new(participant: participant).call
     log_decision!(composed)
 
     conversation = Outreach::Engine::ConversationResolver.new(participant).conversation
+    deliver_or_create_draft!(conversation, composed)
+  end
 
+  private
+
+  def halt_for_pacing_guard!
+    return skip_replied! if already_replied?
+    return skip_cap! if outbound_count >= MAX_OUTBOUND
+    return park_until_gap_elapsed! if gap_not_elapsed?
+
+    false
+  end
+
+  def composer_class_for_stage
+    COMPOSERS[stage.template_slot].tap do |composer_class|
+      pause_terminal!(reason: "no_composer_for_slot:#{stage.template_slot}") unless composer_class
+    end
+  end
+
+  def park_existing_manual_review_draft
+    return false unless campaign.manual_review_mode?
+    return false if pending_draft_for_current_stage.blank?
+
+    park_for_operator!
+  end
+
+  def deliver_or_create_draft!(conversation, composed)
     if campaign.manual_review_mode?
-      create_outreach_draft_message!(conversation, composed)
-      park_for_operator!
-      # Stage stays put. Operator will trigger approve/reject which
-      # advances or escalates the participant. We don't set
-      # last_outbound_at — nothing has actually been sent yet.
+      create_or_reuse_outreach_draft_message!(conversation, composed)
     else
-      Outreach::SendEmailJob.perform_later(
-        participant_id: participant.id,
-        conversation_id: conversation.id,
-        subject: composed[:subject],
-        body: composed[:body],
-        template_slot: stage.template_slot,
-        locale: composed[:locale]
-      )
+      enqueue_send_email!(conversation, composed)
       advance_after_send
     end
   end
-  # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
-  private
+  def create_or_reuse_outreach_draft_message!(conversation, composed)
+    participant.with_lock do
+      existing_draft = pending_draft_for_current_stage
+      if existing_draft
+        park_for_operator!
+        existing_draft
+      else
+        message = create_outreach_draft_message!(conversation, composed)
+        park_for_operator!
+        message
+      end
+    end
+  end
 
   def create_outreach_draft_message!(conversation, composed)
     message = conversation.messages.create!(
@@ -78,23 +100,46 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
       content: composed[:body],
       content_type: 'text',
       content_attributes: { email: { subject: composed[:subject] } },
-      additional_attributes: {
-        'outreach_draft' => true,
-        'draft_status' => 'pending',
-        'template_slot' => stage.template_slot,
-        'locale' => composed[:locale],
-        'composer_model' => composed[:model],
-        'composer_prompt_version' => composed[:prompt_version],
-        'composer_input_digest' => composed[:input_digest],
-        'iteration_count' => 1,
-        'regeneration_history' => [],
-        'campaign_participant_id' => participant.id,
-        'outbound_campaign_id' => campaign.id,
-        'fallback' => composed[:fallback]
-      }
+      additional_attributes: outreach_draft_attributes(composed)
     )
     Outreach::TranslateForAgents.call(message: message, source_locale: composed[:locale])
     message
+  end
+
+  def outreach_draft_attributes(composed)
+    {
+      'outreach_draft' => true,
+      'draft_status' => 'pending',
+      'template_slot' => stage.template_slot,
+      'locale' => composed[:locale],
+      'composer_model' => composed[:model],
+      'composer_prompt_version' => composed[:prompt_version],
+      'composer_input_digest' => composed[:input_digest],
+      'iteration_count' => 1,
+      'regeneration_history' => [],
+      'campaign_participant_id' => participant.id,
+      'outbound_campaign_id' => campaign.id,
+      'fallback' => composed[:fallback]
+    }
+  end
+
+  def enqueue_send_email!(conversation, composed)
+    Outreach::SendEmailJob.perform_later(
+      participant_id: participant.id,
+      conversation_id: conversation.id,
+      subject: composed[:subject],
+      body: composed[:body],
+      template_slot: stage.template_slot,
+      locale: composed[:locale]
+    )
+  end
+
+  def pending_draft_for_current_stage
+    Message.pending_outreach_drafts.find_by(
+      "additional_attributes->>'campaign_participant_id' = ? AND additional_attributes->>'template_slot' = ?",
+      participant.id.to_s,
+      stage.template_slot.to_s
+    )
   end
 
   def log_decision!(composed)

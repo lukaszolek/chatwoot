@@ -23,15 +23,15 @@ class Outreach::Engine::ConversationResolver
   end
 
   def conversation
-    return @participant.conversation if @participant.conversation_id.present?
+    @participant.with_lock do
+      @participant.reload
 
-    inbox = campaign.inbox
-    raise InboxMissing, "OutboundCampaign##{campaign.id} has no inbox configured" unless inbox
-
-    contact_inbox = find_or_create_contact_inbox!(inbox)
-    conversation = create_conversation!(inbox, contact_inbox)
-    @participant.update!(conversation: conversation)
-    conversation
+      if @participant.conversation_id.present?
+        @participant.conversation
+      else
+        create_and_assign_conversation!
+      end
+    end
   end
 
   private
@@ -65,6 +65,16 @@ class Outreach::Engine::ConversationResolver
       inbox: inbox,
       source_id: SecureRandom.uuid
     )
+  end
+
+  def create_and_assign_conversation!
+    inbox = campaign.inbox
+    raise InboxMissing, "OutboundCampaign##{campaign.id} has no inbox configured" unless inbox
+
+    contact_inbox = find_or_create_contact_inbox!(inbox)
+    conversation = create_conversation!(inbox, contact_inbox)
+    @participant.update!(conversation: conversation)
+    conversation
   end
 
   def create_conversation!(inbox, contact_inbox)
