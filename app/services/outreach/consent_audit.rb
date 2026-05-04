@@ -6,7 +6,7 @@
 #   1. chatwoot DNC but directory still consenting → re-run ConsentWriter
 #      opt-out so directory catches up (previous PropagateConsentJob
 #      failed).
-#   2. directory not consenting (opt_out or bounce in directory) but
+#   2. directory has an explicit opt-out/delete/bounce signal but
 #      chatwoot shows active participation → pause the profile locally.
 #
 # Each drift row emits a `consent_drift_detected` audit event and returns
@@ -60,7 +60,7 @@ class Outreach::ConsentAudit
   def check_inbound_drift(profile)
     source = find_source(profile)
     return unless source
-    return if source.marketing_consent && !source.unsubscribed_from_all_campaigns
+    return unless explicit_directory_stop?(source)
 
     profile.transition_to!(:do_not_contact)
     CampaignParticipant.where(participatable: profile, paused: false).update_all( # rubocop:disable Rails/SkipsModelValidations
@@ -71,6 +71,12 @@ class Outreach::ConsentAudit
   rescue StandardError => e
     Rails.logger.error("[outreach.consent_audit] profile=#{profile.id} inbound_drift error=#{e.class}")
     @errors += 1
+  end
+
+  def explicit_directory_stop?(source)
+    source.unsubscribed_from_all_campaigns ||
+      source.gdpr_delete_requested_at.present? ||
+      source.email_validation_status.to_s.start_with?('invalid')
   end
 
   def find_source(profile)
