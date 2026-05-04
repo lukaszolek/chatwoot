@@ -1,10 +1,12 @@
 class Outreach::Drafts::BulkApproveService
   Result = Struct.new(:requested, :selected, :approved, :failed, :errors, keyword_init: true)
+  DEFAULT_TEMPLATE_SLOT = 'intro'.freeze
 
-  def initialize(campaign:, user:, limit:)
+  def initialize(campaign:, user:, limit:, template_slot: DEFAULT_TEMPLATE_SLOT)
     @campaign = campaign
     @user = user
     @limit = limit
+    @template_slot = template_slot.presence || DEFAULT_TEMPLATE_SLOT
   end
 
   def call
@@ -23,13 +25,14 @@ class Outreach::Drafts::BulkApproveService
 
   private
 
-  attr_reader :campaign, :user, :limit
+  attr_reader :campaign, :user, :limit, :template_slot
 
   def drafts
     @drafts ||= Message.pending_outreach_drafts
                        .joins(:conversation)
                        .where(conversations: { account_id: campaign.account_id, status: :open })
                        .where("messages.additional_attributes->>'outbound_campaign_id' = ?", campaign.id.to_s)
+                       .where("messages.additional_attributes->>'template_slot' = ?", template_slot)
                        .order(:created_at, :id)
                        .limit(limit)
                        .to_a

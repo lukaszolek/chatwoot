@@ -117,10 +117,10 @@ class Message < ApplicationRecord
   scope :non_activity_messages, -> { where.not(message_type: :activity).reorder('created_at desc') }
   scope :today, -> { where("date_trunc('day', created_at) = ?", Date.current) }
   scope :voice_calls, -> { where(content_type: :voice_call) }
-  scope :outreach_drafts, -> { where("additional_attributes ? 'outreach_draft'") }
+  scope :outreach_drafts, -> { where("messages.additional_attributes ? 'outreach_draft'") }
   scope :pending_outreach_drafts, lambda {
     outreach_drafts.where(
-      "(additional_attributes->>'draft_status' = 'pending' OR NOT (additional_attributes ? 'draft_status'))"
+      "(messages.additional_attributes->>'draft_status' = 'pending' OR NOT (messages.additional_attributes ? 'draft_status'))"
     )
   }
 
