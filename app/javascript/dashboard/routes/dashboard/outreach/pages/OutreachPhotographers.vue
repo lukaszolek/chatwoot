@@ -2,6 +2,7 @@
 import { computed, ref, onMounted, watch } from 'vue';
 import OutreachPhotographersAPI from 'dashboard/api/outreachPhotographers';
 import OutreachDirectoryAPI from 'dashboard/api/outreachDirectory';
+import OutreachDraftsAPI from 'dashboard/api/outreachDrafts';
 import PhotographerEditSidebar from '../components/PhotographerEditSidebar.vue';
 
 // ---------- Unified search state ----------
@@ -17,6 +18,9 @@ const busyRowKey = ref(null);
 const importSummary = ref(null);
 const bulkImporting = ref(false);
 const bulkLimit = ref(50);
+const bulkApproving = ref(false);
+const bulkApproveLimit = ref(10);
+const bulkApproveSummary = ref(null);
 
 const filters = ref({
   q: '',
@@ -40,6 +44,7 @@ const RATING_OPTIONS = [
   { value: '3.0', label: '★ 3.0+' },
 ];
 const BULK_LIMIT_OPTIONS = [10, 25, 50, 100];
+const BULK_APPROVE_LIMIT_OPTIONS = [10, 25, 50];
 
 const fetchFacets = async () => {
   try {
@@ -236,6 +241,28 @@ const startFilteredCampaign = async () => {
     error.value = e.response?.data?.error || e.message;
   } finally {
     bulkImporting.value = false;
+  }
+};
+
+const approvePendingDrafts = async () => {
+  const confirmed = window.confirm(
+    `Approve and enqueue the first ${bulkApproveLimit.value} pending outreach drafts?`
+  );
+  if (!confirmed) return;
+
+  bulkApproving.value = true;
+  bulkApproveSummary.value = null;
+  error.value = null;
+  try {
+    const { data } = await OutreachDraftsAPI.approvePending({
+      limit: bulkApproveLimit.value,
+    });
+    bulkApproveSummary.value = data.result;
+    await runSearch();
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    bulkApproving.value = false;
   }
 };
 
@@ -436,6 +463,37 @@ watch(
     </div>
 
     <div
+      class="flex items-center justify-end gap-2 mb-3 text-xs text-n-slate-11"
+    >
+      <span> Bulk send </span>
+      <select
+        v-model.number="bulkApproveLimit"
+        class="!w-24 !mb-0 h-8 text-xs bg-white border rounded border-n-weak"
+        :disabled="bulkApproving"
+      >
+        <option
+          v-for="limit in BULK_APPROVE_LIMIT_OPTIONS"
+          :key="limit"
+          :value="limit"
+        >
+          {{ limit }}
+        </option>
+      </select>
+      <button
+        type="button"
+        class="px-3 py-1.5 font-medium text-white rounded bg-n-ruby-9 hover:opacity-90 disabled:opacity-50"
+        :disabled="bulkApproving || loading"
+        @click="approvePendingDrafts"
+      >
+        {{
+          bulkApproving
+            ? 'Approving drafts…'
+            : `Approve first ${bulkApproveLimit} pending drafts`
+        }}
+      </button>
+    </div>
+
+    <div
       v-if="hasDirectoryPagination"
       class="flex items-center justify-end gap-2 mb-3 text-xs text-n-slate-11"
     >
@@ -573,6 +631,15 @@ watch(
     >
       {{
         `Started campaign for ${importSummary.enrolled} (selected ${importSummary.selected || importSummary.enrolled}, re-enrolled ${importSummary.re_enrolled}, already enrolled ${importSummary.already_enrolled}, skipped DNC ${importSummary.skipped_dnc}, failed ${importSummary.failed})`
+      }}
+    </div>
+
+    <div
+      v-if="bulkApproveSummary"
+      class="p-3 mb-3 text-xs rounded bg-n-amber-3 text-n-amber-11"
+    >
+      {{
+        `Approved ${bulkApproveSummary.approved} pending drafts (selected ${bulkApproveSummary.selected}, failed ${bulkApproveSummary.failed})`
       }}
     </div>
 

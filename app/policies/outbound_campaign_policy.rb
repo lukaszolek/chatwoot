@@ -30,4 +30,8 @@ class OutboundCampaignPolicy < ApplicationPolicy
   def archive?
     @account_user.administrator?
   end
+
+  def approve_pending?
+    @account_user.administrator?
+  end
 end

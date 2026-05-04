@@ -142,6 +142,7 @@ Rails.application.routes.draw do
             get 'directory/search', to: 'directory#search'
             post 'directory/import', to: 'directory#import'
             post 'directory/import_filtered', to: 'directory#import_filtered'
+            post 'drafts/approve_pending', to: 'drafts#approve_pending'
             get 'conversations/:conversation_id/context', to: 'conversation_contexts#show'
           end
           resources :dashboard_apps, only: [:index, :show, :create, :update, :destroy]
