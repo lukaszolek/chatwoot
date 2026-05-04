@@ -27,6 +27,10 @@ class PhotographerPartnerProfilePolicy < ApplicationPolicy
     index?
   end
 
+  def import_filtered?
+    import?
+  end
+
   def facets?
     index?
   end

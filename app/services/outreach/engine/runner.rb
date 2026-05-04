@@ -51,11 +51,18 @@ class Outreach::Engine::Runner
   end
 
   def execute(participant)
-    stage = lookup_stage(participant)
-    return handle_missing_stage(participant) unless stage
-
     ActiveRecord::Base.transaction do
-      executor_for(stage).new(participant: participant, stage: stage).call
+      participant.with_lock do
+        participant.reload
+        next unless executable?(participant)
+
+        stage = lookup_stage(participant)
+        if stage
+          executor_for(stage).new(participant: participant, stage: stage).call
+        else
+          handle_missing_stage(participant)
+        end
+      end
     end
   rescue StandardError => e
     Rails.logger.error(
@@ -63,6 +70,13 @@ class Outreach::Engine::Runner
       "error=#{e.class.name}: #{e.message}"
     )
     back_off!(participant, reason: "executor_error:#{e.class.name}")
+  end
+
+  def executable?(participant)
+    return false if participant.paused?
+    return false if participant.next_action_at.blank?
+
+    participant.next_action_at <= Time.current
   end
 
   def handle_missing_stage(participant)

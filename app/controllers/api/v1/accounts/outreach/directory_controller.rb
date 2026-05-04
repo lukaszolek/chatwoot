@@ -16,6 +16,7 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
   before_action :check_authorization
 
   PER_PAGE = 30
+  MAX_BULK_IMPORT = 100
 
   def search
     scope = apply_search_filters(base_scope)
@@ -42,6 +43,18 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
     render json: { result: result.to_h }, status: :ok
   end
 
+  def import_filtered
+    limit = bulk_import_limit
+    scope = bulk_import_scope.limit(limit)
+    ids = scope.pluck(:id)
+    return render json: { result: empty_bulk_result(limit) }, status: :ok if ids.empty?
+
+    result = Outreach::Enrollment::EnrollFromDirectory.new(
+      account: Current.account, directory_ids: ids
+    ).perform
+    render json: { result: result.to_h.merge(requested: limit, selected: ids.size) }, status: :ok
+  end
+
   private
 
   def base_scope
@@ -54,6 +67,40 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
 
   def apply_search_filters(scope)
     Outreach::PhotographerDirectory::SearchFilters.apply(scope, params)
+  end
+
+  def bulk_import_scope
+    apply_search_filters(base_scope)
+      .where.not(id: enrolled_directory_ids)
+      .where.not(id: PhotographerDirectory::CampaignStatus.active_enrolment.select(:photographer_id))
+      .where("email_validation_status IS NULL OR email_validation_status::text NOT LIKE 'invalid%'")
+      .order(:business_name, :id)
+  end
+
+  def enrolled_directory_ids
+    Current.account.photographer_partner_profiles
+           .where.not(external_id: [nil, ''])
+           .pluck(:external_id)
+           .map(&:to_i)
+  end
+
+  def bulk_import_limit
+    requested = params[:limit].to_i
+    requested = PER_PAGE unless requested.positive?
+    [requested, MAX_BULK_IMPORT].min
+  end
+
+  def empty_bulk_result(limit)
+    {
+      requested: limit,
+      selected: 0,
+      enrolled: 0,
+      re_enrolled: 0,
+      already_enrolled: 0,
+      skipped_dnc: 0,
+      failed: 0,
+      errors: []
+    }
   end
 
   def offset

@@ -9,10 +9,14 @@ const profiles = ref([]);
 const profilesTotal = ref(0);
 const directoryResults = ref([]);
 const directoryTotal = ref(0);
+const directoryPage = ref(1);
+const directoryPerPage = ref(30);
 const loading = ref(false);
 const error = ref(null);
 const busyRowKey = ref(null);
 const importSummary = ref(null);
+const bulkImporting = ref(false);
+const bulkLimit = ref(50);
 
 const filters = ref({
   q: '',
@@ -35,6 +39,7 @@ const RATING_OPTIONS = [
   { value: '3.5', label: '★ 3.5+' },
   { value: '3.0', label: '★ 3.0+' },
 ];
+const BULK_LIMIT_OPTIONS = [10, 25, 50, 100];
 
 const fetchFacets = async () => {
   try {
@@ -78,9 +83,10 @@ const fetchDirectory = async () => {
   ) {
     directoryResults.value = [];
     directoryTotal.value = 0;
+    directoryPage.value = 1;
     return;
   }
-  const { data } = await OutreachDirectoryAPI.search(1, {
+  const { data } = await OutreachDirectoryAPI.search(directoryPage.value, {
     q: filters.value.q,
     country_code: filters.value.country_code,
     locale: filters.value.locale,
@@ -89,6 +95,7 @@ const fetchDirectory = async () => {
   });
   directoryResults.value = data.data || [];
   directoryTotal.value = data.meta?.total || 0;
+  directoryPerPage.value = data.meta?.per_page || directoryPerPage.value;
 };
 
 const runSearch = async () => {
@@ -145,6 +152,32 @@ const rows = computed(() => {
 });
 
 const totalShown = computed(() => rows.value.length);
+const directoryTotalPages = computed(() =>
+  Math.max(1, Math.ceil(directoryTotal.value / directoryPerPage.value))
+);
+const directoryStart = computed(() => {
+  if (!directoryTotal.value) return 0;
+
+  return (directoryPage.value - 1) * directoryPerPage.value + 1;
+});
+const directoryEnd = computed(() =>
+  Math.min(directoryPage.value * directoryPerPage.value, directoryTotal.value)
+);
+const hasDirectoryPagination = computed(
+  () => directoryTotal.value > directoryPerPage.value
+);
+
+const resetDirectoryPage = () => {
+  directoryPage.value = 1;
+};
+
+const goToDirectoryPage = async page => {
+  const nextPage = Math.min(Math.max(page, 1), directoryTotalPages.value);
+  if (nextPage === directoryPage.value) return;
+
+  directoryPage.value = nextPage;
+  await runSearch();
+};
 
 // ---------- Actions ----------
 const optOut = async profile => {
@@ -172,6 +205,37 @@ const startCampaign = async row => {
     error.value = e.response?.data?.error || e.message;
   } finally {
     busyRowKey.value = null;
+  }
+};
+
+const directoryFilterPayload = () => ({
+  q: filters.value.q,
+  country_code: filters.value.country_code,
+  locale: filters.value.locale,
+  category: filters.value.category,
+  min_rating: filters.value.min_rating,
+});
+
+const startFilteredCampaign = async () => {
+  const confirmed = window.confirm(
+    `Start campaign for the first ${bulkLimit.value} matching directory photographers?`
+  );
+  if (!confirmed) return;
+
+  bulkImporting.value = true;
+  importSummary.value = null;
+  error.value = null;
+  try {
+    const { data } = await OutreachDirectoryAPI.importFiltered(
+      directoryFilterPayload(),
+      bulkLimit.value
+    );
+    importSummary.value = data.result;
+    await runSearch();
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    bulkImporting.value = false;
   }
 };
 
@@ -237,6 +301,7 @@ watch(
   () => filters.value.q,
   () => {
     clearTimeout(searchTimer);
+    resetDirectoryPage();
     searchTimer = setTimeout(runSearch, 300);
   }
 );
@@ -249,7 +314,10 @@ watch(
     filters.value.category,
     filters.value.min_rating,
   ],
-  runSearch
+  () => {
+    resetDirectoryPage();
+    runSearch();
+  }
 );
 </script>
 
@@ -330,9 +398,64 @@ watch(
       <span v-if="directoryTotal > 0">
         Directory matches: <strong>{{ directoryTotal }}</strong>
       </span>
+      <span v-if="directoryTotal > 0">
+        Directory {{ directoryStart }}-{{ directoryEnd }} of
+        {{ directoryTotal }}
+      </span>
       <span v-if="totalShown" class="ml-auto">
         Showing {{ totalShown }} row{{ totalShown === 1 ? '' : 's' }}
       </span>
+    </div>
+
+    <div
+      v-if="directoryTotal > 0"
+      class="flex items-center justify-end gap-2 mb-3 text-xs text-n-slate-11"
+    >
+      <span> Bulk start </span>
+      <select
+        v-model.number="bulkLimit"
+        class="!w-24 !mb-0 h-8 text-xs bg-white border rounded border-n-weak"
+        :disabled="bulkImporting"
+      >
+        <option v-for="limit in BULK_LIMIT_OPTIONS" :key="limit" :value="limit">
+          {{ limit }}
+        </option>
+      </select>
+      <button
+        type="button"
+        class="px-3 py-1.5 font-medium text-white rounded bg-n-brand hover:opacity-90 disabled:opacity-50"
+        :disabled="bulkImporting || loading"
+        @click="startFilteredCampaign"
+      >
+        {{
+          bulkImporting
+            ? 'Starting filtered…'
+            : `Start first ${bulkLimit} matches`
+        }}
+      </button>
+    </div>
+
+    <div
+      v-if="hasDirectoryPagination"
+      class="flex items-center justify-end gap-2 mb-3 text-xs text-n-slate-11"
+    >
+      <button
+        type="button"
+        class="px-3 py-1.5 border rounded border-n-weak disabled:opacity-50"
+        :disabled="loading || directoryPage <= 1"
+        @click="goToDirectoryPage(directoryPage - 1)"
+      >
+        Previous
+      </button>
+      <span> Page {{ directoryPage }} of {{ directoryTotalPages }} </span>
+      <button
+        type="button"
+        class="px-3 py-1.5 border rounded border-n-weak disabled:opacity-50"
+        :disabled="loading || directoryPage >= directoryTotalPages"
+        @click="goToDirectoryPage(directoryPage + 1)"
+      >
+        Next
+      </button>
     </div>
 
     <!-- Add-photographer panel (disabled under SSOT-in-directory) -->
@@ -449,7 +572,7 @@ watch(
       class="p-3 mb-3 text-xs rounded bg-n-teal-3 text-n-teal-11"
     >
       {{
-        `Started campaign for ${importSummary.enrolled} (re-enrolled ${importSummary.re_enrolled}, already enrolled ${importSummary.already_enrolled}, skipped DNC ${importSummary.skipped_dnc}, failed ${importSummary.failed})`
+        `Started campaign for ${importSummary.enrolled} (selected ${importSummary.selected || importSummary.enrolled}, re-enrolled ${importSummary.re_enrolled}, already enrolled ${importSummary.already_enrolled}, skipped DNC ${importSummary.skipped_dnc}, failed ${importSummary.failed})`
       }}
     </div>
 
