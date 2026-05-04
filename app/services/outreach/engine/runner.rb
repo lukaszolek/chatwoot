@@ -9,6 +9,7 @@
 class Outreach::Engine::Runner
   DEFAULT_BATCH_SIZE = 200
   BACKOFF = 10.minutes
+  DEFAULT_STALE_PROCESSING_AFTER = 30.minutes
 
   ACTION_TO_EXECUTOR = {
     'send_template' => Outreach::Engine::Executors::SendTemplate,
@@ -26,6 +27,8 @@ class Outreach::Engine::Runner
 
   def tick
     return 0 unless @campaign.active?
+
+    reclaim_stale_processing!
 
     participants = due_participants.to_a
     Rails.logger.info(
@@ -54,7 +57,7 @@ class Outreach::Engine::Runner
       "[outreach.runner] participant=#{participant.id} stage=#{participant.current_stage_key} " \
       "error=#{e.class.name}: #{e.message}"
     )
-    back_off!(participant, reason: "executor_error:#{e.class.name}")
+    back_off!(participant, reason: error_reason(e))
   end
 
   private
@@ -100,6 +103,63 @@ class Outreach::Engine::Runner
     participant.update!(next_action_at: nil, metadata: metadata)
   end
 
+  def reclaim_stale_processing!
+    reclaimed = stale_processing_participants.count { |participant| reclaim_stale_participant(participant) }
+    return if reclaimed.zero?
+
+    Rails.logger.warn(
+      "[outreach.runner] campaign=#{@campaign.id} reclaimed_stale_processing=#{reclaimed}"
+    )
+  end
+
+  def stale_processing_participants
+    @campaign.participants
+             .where(paused: false, next_action_at: nil, conversation_id: nil)
+             .where("metadata ? 'processing_started_at'")
+             .where("(metadata->>'processing_started_at')::timestamptz < ?", stale_processing_cutoff)
+             .limit(batch_size)
+  end
+
+  def reclaim_stale_participant(participant)
+    reclaimed = false
+
+    participant.with_lock do
+      participant.reload
+      if stale_processing?(participant)
+        metadata = (participant.metadata || {}).merge(
+          'processing_reclaimed_at' => Time.current.iso8601,
+          'processing_reclaim_reason' => 'stale_outreach_runner_claim'
+        )
+        participant.update!(next_action_at: Time.current, metadata: metadata)
+        reclaimed = true
+      end
+    end
+
+    reclaimed
+  end
+
+  def stale_processing?(participant)
+    return false if participant.paused?
+    return false if participant.next_action_at.present?
+    return false if participant.conversation_id.present?
+
+    started_at = participant.metadata&.fetch('processing_started_at', nil)
+    return false if started_at.blank?
+
+    Time.zone.parse(started_at) < stale_processing_cutoff
+  rescue ArgumentError, TypeError
+    true
+  end
+
+  def stale_processing_cutoff
+    Time.current - stale_processing_after
+  end
+
+  def stale_processing_after
+    seconds = ENV.fetch('OUTREACH_PROCESSING_STALE_AFTER_SECONDS', DEFAULT_STALE_PROCESSING_AFTER.to_i).to_i
+    seconds.positive? ? seconds.seconds : DEFAULT_STALE_PROCESSING_AFTER
+  end
+
   def handle_missing_stage(participant)
     Rails.logger.warn(
       "[outreach.runner] participant=#{participant.id} has no stage for key=#{participant.current_stage_key}"
@@ -115,6 +175,11 @@ class Outreach::Engine::Runner
   def lookup_stage(participant)
     @stage_cache ||= @campaign.pipeline_stages.index_by(&:key)
     @stage_cache[participant.current_stage_key]
+  end
+
+  def error_reason(error)
+    message = error.message.to_s.squish.truncate(240)
+    "executor_error:#{error.class.name}:#{message}"
   end
 
   def back_off!(participant, reason:)
