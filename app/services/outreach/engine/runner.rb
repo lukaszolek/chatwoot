@@ -2,11 +2,10 @@
 # passed and dispatches each through the executor matching their current
 # stage's `on_enter_action`.
 #
-# One tick call handles up to BATCH_SIZE participants per campaign. The
-# TickSchedulerJob (every 5 min) fans out per active campaign so batches
-# run independently. Each participant's transition is wrapped in a
-# transaction — a failure rolls back state mutations and the runner
-# logs + pushes `next_action_at` out by BACKOFF to avoid hot-looping.
+# One tick call claims up to BATCH_SIZE due participants per campaign and
+# fans them out to one ParticipantTickJob each. Claiming clears
+# `next_action_at` under a row lock before the slow LLM work starts, so
+# overlapping cron ticks cannot enqueue the same participant repeatedly.
 class Outreach::Engine::Runner
   DEFAULT_BATCH_SIZE = 200
   BACKOFF = 10.minutes
@@ -33,28 +32,14 @@ class Outreach::Engine::Runner
       "[outreach.runner] campaign=#{@campaign.id} program=#{@campaign.program_key} batch=#{participants.size}"
     )
 
-    participants.each { |p| execute(p) }
-    participants.size
+    participants.count { |p| claim_and_enqueue(p) }
   end
 
-  private
-
-  def due_participants
-    @campaign.participants
-             .due_for_tick
-             .includes(:participatable)
-             .limit(batch_size)
-  end
-
-  def batch_size
-    (@campaign.config || {})['tick_batch_size'].to_i.positive? ? @campaign.config['tick_batch_size'].to_i : DEFAULT_BATCH_SIZE
-  end
-
-  def execute(participant)
+  def process(participant)
     ActiveRecord::Base.transaction do
       participant.with_lock do
         participant.reload
-        next unless executable?(participant)
+        next if participant.paused?
 
         stage = lookup_stage(participant)
         if stage
@@ -72,11 +57,47 @@ class Outreach::Engine::Runner
     back_off!(participant, reason: "executor_error:#{e.class.name}")
   end
 
+  private
+
+  def due_participants
+    @campaign.participants
+             .due_for_tick
+             .includes(:participatable)
+             .limit(batch_size)
+  end
+
+  def batch_size
+    (@campaign.config || {})['tick_batch_size'].to_i.positive? ? @campaign.config['tick_batch_size'].to_i : DEFAULT_BATCH_SIZE
+  end
+
+  def claim_and_enqueue(participant)
+    claimed = false
+
+    participant.with_lock do
+      participant.reload
+      if executable?(participant)
+        mark_processing!(participant)
+        Outreach::ParticipantTickJob.perform_later(participant.id)
+        claimed = true
+      end
+    end
+
+    claimed
+  end
+
   def executable?(participant)
     return false if participant.paused?
     return false if participant.next_action_at.blank?
 
     participant.next_action_at <= Time.current
+  end
+
+  def mark_processing!(participant)
+    metadata = (participant.metadata || {}).merge(
+      'processing_started_at' => Time.current.iso8601,
+      'processing_reason' => 'outreach_runner_claim'
+    )
+    participant.update!(next_action_at: nil, metadata: metadata)
   end
 
   def handle_missing_stage(participant)
