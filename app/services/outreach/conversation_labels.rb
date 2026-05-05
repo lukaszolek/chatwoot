@@ -30,6 +30,10 @@ class Outreach::ConversationLabels
       sync!(conversation, add: [:error], remove: [])
     end
 
+    def clear_error!(conversation)
+      sync!(conversation, add: [], remove: [:error])
+    end
+
     def clear_draft!(conversation)
       sync!(conversation, add: [], remove: [:draft])
     end

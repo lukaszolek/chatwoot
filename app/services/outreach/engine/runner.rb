@@ -41,15 +41,7 @@ class Outreach::Engine::Runner
   def process(participant)
     ActiveRecord::Base.transaction do
       participant.with_lock do
-        participant.reload
-        next if participant.paused?
-
-        stage = lookup_stage(participant)
-        if stage
-          executor_for(stage).new(participant: participant, stage: stage).call
-        else
-          handle_missing_stage(participant)
-        end
+        process_locked_participant(participant)
       end
     end
   rescue StandardError => e
@@ -57,10 +49,23 @@ class Outreach::Engine::Runner
       "[outreach.runner] participant=#{participant.id} stage=#{participant.current_stage_key} " \
       "error=#{e.class.name}: #{e.message}"
     )
+    return error_state(participant).pause_invalid_email!(error: e) if invalid_email_error?(e)
+
     back_off!(participant, reason: error_reason(e))
   end
 
   private
+
+  def process_locked_participant(participant)
+    participant.reload
+    return if participant.paused?
+
+    stage = lookup_stage(participant)
+    return handle_missing_stage(participant) unless stage
+
+    executor_for(stage).new(participant: participant, stage: stage).call
+    error_state(participant).clear_success!
+  end
 
   def due_participants
     @campaign.participants
@@ -182,18 +187,15 @@ class Outreach::Engine::Runner
     "executor_error:#{error.class.name}:#{message}"
   end
 
+  def invalid_email_error?(error)
+    Outreach::Engine::ParticipantErrorState.invalid_email_error?(error)
+  end
+
   def back_off!(participant, reason:)
-    metadata = (participant.metadata || {}).merge('last_error' => reason, 'last_error_at' => Time.current.iso8601)
-    Outreach::ConversationLabels.mark_error!(participant.conversation) if participant.conversation_id
-    # update_columns intentionally skips validations/callbacks — this runs
-    # inside the runner's rescue path after a transaction rollback, where
-    # we must not re-enter validation logic that might itself raise.
-    participant.update_columns( # rubocop:disable Rails/SkipsModelValidations
-      next_action_at: Time.current + BACKOFF,
-      metadata: metadata,
-      updated_at: Time.current
-    )
-  rescue StandardError => e
-    Rails.logger.error("[outreach.runner] back_off! failed for participant=#{participant.id}: #{e.message}")
+    error_state(participant).back_off!(reason: reason, delay: BACKOFF)
+  end
+
+  def error_state(participant)
+    Outreach::Engine::ParticipantErrorState.new(participant)
   end
 end

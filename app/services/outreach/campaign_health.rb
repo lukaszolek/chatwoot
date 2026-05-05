@@ -21,7 +21,7 @@ class Outreach::CampaignHealth
 
   def missing_drafts
     @missing_drafts ||= campaign.participants
-                                .where(paused: false, conversation_id: nil)
+                                .where(conversation_id: nil)
                                 .where(current_stage_key: 'intro')
   end
 
@@ -39,6 +39,7 @@ class Outreach::CampaignHealth
 
   def stale_processing
     @stale_processing ||= missing_drafts
+                          .where(paused: false)
                           .where(next_action_at: nil)
                           .where("metadata ? 'processing_started_at'")
   end

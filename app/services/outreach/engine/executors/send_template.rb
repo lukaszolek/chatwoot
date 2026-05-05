@@ -1,10 +1,12 @@
-# SendTemplate executor (LLM-first edition).
+# SendTemplate executor (LLM-composed edition).
 #
 # Despite the historical name, this executor no longer renders a Liquid
 # template. The stage's `template_slot` (intro / reminder / breakup) is
 # the routing key for an Outreach::Llm::MessageComposer subclass that
 # generates the entire mail from the campaign knowledge base + recent
-# operator learnings + conversation history. (The slot name is preserved
+# operator learnings + conversation history. The recipient contact and
+# conversation are resolved before composing, so invalid recipient data
+# fails fast without spending LLM credits. (The slot name is preserved
 # for blueprint compatibility — renaming would be a YAML breaker.)
 #
 # Pacing guards (the same as before):
@@ -37,10 +39,11 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
 
     return if park_existing_manual_review_draft
 
-    composed = composer_class.new(participant: participant).call
+    conversation = Outreach::Engine::ConversationResolver.new(participant).conversation
+
+    composed = composer_class.new(participant: participant, conversation: conversation).call
     log_decision!(composed)
 
-    conversation = Outreach::Engine::ConversationResolver.new(participant).conversation
     deliver_or_create_draft!(conversation, composed)
   end
 

@@ -47,7 +47,9 @@ class Outreach::ConversationLabelsBackfill
   end
 
   def mark_error?(participant, conversation)
-    return false if participant.metadata.to_h['last_error'].blank?
+    metadata = participant.metadata.to_h
+    return false if metadata['last_error'].blank?
+    return false unless metadata['terminal_error'].present? || participant.paused?
 
     Outreach::ConversationLabels.mark_error!(conversation)
     true
