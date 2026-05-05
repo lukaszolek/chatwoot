@@ -140,6 +140,10 @@ class Message < ApplicationRecord
     content_attributes&.dig('email', 'subject')
   end
 
+  def outreach_message?
+    additional_attributes.is_a?(Hash) && additional_attributes['outreach'].present?
+  end
+
   # TODO: Get rid of default scope
   # https://stackoverflow.com/a/1834250/939299
   # if you want to change order, use `reorder`
@@ -156,6 +160,7 @@ class Message < ApplicationRecord
 
   after_create_commit :execute_after_create_commit_callbacks
 
+  after_update_commit :sync_updated_outreach_draft_labels
   after_update_commit :dispatch_update_event
   after_commit :reindex_for_search, if: :should_index?, on: [:create, :update]
 
@@ -334,9 +339,50 @@ class Message < ApplicationRecord
     reopen_conversation
     set_conversation_activity
     dispatch_create_events
+    sync_created_outreach_labels
     send_reply
     execute_message_template_hooks
     update_contact_activity
+  end
+
+  def sync_created_outreach_labels
+    if pending_outreach_draft?
+      Outreach::ConversationLabels.mark_draft!(conversation)
+    elsif sent_outreach_message?
+      Outreach::ConversationLabels.mark_sent!(conversation)
+    elsif incoming_outreach_reply?
+      Outreach::ConversationLabels.mark_replied!(conversation)
+    end
+  end
+
+  def sync_updated_outreach_draft_labels
+    return unless outreach_draft?
+    return unless saved_change_to_additional_attributes?
+
+    case outreach_draft_status
+    when 'approved'
+      Outreach::ConversationLabels.mark_sent!(conversation)
+    when 'rejected', 'duplicate'
+      Outreach::ConversationLabels.clear_draft!(conversation)
+    when 'pending'
+      Outreach::ConversationLabels.mark_draft!(conversation)
+    end
+  end
+
+  def outreach_conversation?
+    conversation&.additional_attributes.to_h['campaign_participant_id'].present?
+  end
+
+  def pending_outreach_draft?
+    outreach_draft? && outreach_draft_status == 'pending'
+  end
+
+  def sent_outreach_message?
+    outgoing? && !private? && outreach_message?
+  end
+
+  def incoming_outreach_reply?
+    incoming? && !private? && outreach_conversation?
   end
 
   def update_contact_activity

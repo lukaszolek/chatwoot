@@ -184,6 +184,7 @@ class Outreach::Engine::Runner
 
   def back_off!(participant, reason:)
     metadata = (participant.metadata || {}).merge('last_error' => reason, 'last_error_at' => Time.current.iso8601)
+    Outreach::ConversationLabels.mark_error!(participant.conversation) if participant.conversation_id
     # update_columns intentionally skips validations/callbacks — this runs
     # inside the runner's rescue path after a transaction rollback, where
     # we must not re-enter validation logic that might itself raise.
