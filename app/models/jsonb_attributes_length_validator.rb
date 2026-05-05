@@ -1,6 +1,6 @@
 class JsonbAttributesLengthValidator < ActiveModel::EachValidator
   def validate_each(record, attribute, value)
-    return if value.empty?
+    return if value.blank?
 
     @attribute = attribute
     @record = record
