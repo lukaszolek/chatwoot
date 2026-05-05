@@ -25,5 +25,6 @@ json.participants_count resource.participants.count
 json.pipeline_stages_count resource.pipeline_stages.count
 json.knowledge_documents_count resource.knowledge_documents.where(active: true).count
 json.learnings_count resource.learnings.where(active: true).count
+json.generation_health Outreach::CampaignHealth.new(resource).summary
 json.created_at resource.created_at.to_i
 json.updated_at resource.updated_at.to_i

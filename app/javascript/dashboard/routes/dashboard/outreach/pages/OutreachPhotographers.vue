@@ -3,6 +3,7 @@ import { computed, ref, onMounted, watch } from 'vue';
 import OutreachPhotographersAPI from 'dashboard/api/outreachPhotographers';
 import OutreachDirectoryAPI from 'dashboard/api/outreachDirectory';
 import OutreachDraftsAPI from 'dashboard/api/outreachDrafts';
+import OutreachCampaignsAPI from 'dashboard/api/outreachCampaigns';
 import PhotographerEditSidebar from '../components/PhotographerEditSidebar.vue';
 
 // ---------- Unified search state ----------
@@ -21,6 +22,7 @@ const bulkLimit = ref(50);
 const bulkApproving = ref(false);
 const bulkApproveLimit = ref(10);
 const bulkApproveSummary = ref(null);
+const campaignHealth = ref(null);
 
 const filters = ref({
   q: '',
@@ -103,11 +105,23 @@ const fetchDirectory = async () => {
   directoryPerPage.value = data.meta?.per_page || directoryPerPage.value;
 };
 
+const fetchCampaignHealth = async () => {
+  const { data } = await OutreachCampaignsAPI.get();
+  const campaign = (data || []).find(
+    item => item.program_key === 'photographer_partnership'
+  );
+  campaignHealth.value = campaign?.generation_health || null;
+};
+
 const runSearch = async () => {
   loading.value = true;
   error.value = null;
   try {
-    await Promise.all([fetchProfiles(), fetchDirectory()]);
+    await Promise.all([
+      fetchProfiles(),
+      fetchDirectory(),
+      fetchCampaignHealth(),
+    ]);
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
   } finally {
@@ -167,6 +181,18 @@ const directoryStart = computed(() => {
 });
 const directoryEnd = computed(() =>
   Math.min(directoryPage.value * directoryPerPage.value, directoryTotal.value)
+);
+const hasGenerationHealthWarning = computed(() => {
+  const health = campaignHealth.value;
+  return (
+    health &&
+    (health.missing_drafts_count > 0 ||
+      health.generation_error_count > 0 ||
+      health.stale_processing_count > 0)
+  );
+});
+const hasLlmCreditsError = computed(
+  () => (campaignHealth.value?.llm_credits_error_count || 0) > 0
 );
 const hasDirectoryPagination = computed(
   () => directoryTotal.value > directoryPerPage.value
@@ -641,6 +667,47 @@ watch(
       {{
         `Approved ${bulkApproveSummary.approved} pending drafts (selected ${bulkApproveSummary.selected}, failed ${bulkApproveSummary.failed})`
       }}
+    </div>
+
+    <div
+      v-if="hasGenerationHealthWarning"
+      class="p-3 mb-3 text-xs rounded"
+      :class="
+        hasLlmCreditsError
+          ? 'bg-n-ruby-3 text-n-ruby-11'
+          : 'bg-n-amber-3 text-n-amber-11'
+      "
+    >
+      <div class="font-semibold">
+        {{
+          hasLlmCreditsError
+            ? 'LLM credits or max token limit blocked draft generation.'
+            : 'Some outreach drafts are still missing or waiting for retry.'
+        }}
+      </div>
+      <div class="mt-1">
+        Missing drafts: {{ campaignHealth.missing_drafts_count }} · generation
+        errors: {{ campaignHealth.generation_error_count }} · LLM credits
+        errors: {{ campaignHealth.llm_credits_error_count }} · stale processing:
+        {{ campaignHealth.stale_processing_count }}
+      </div>
+      <ul
+        v-if="campaignHealth.recent_generation_errors?.length"
+        class="mt-2 space-y-1"
+      >
+        <li
+          v-for="item in campaignHealth.recent_generation_errors"
+          :key="item.participant_id"
+        >
+          <strong>
+            {{ item.profile_name || `Participant ${item.participant_id}` }}
+          </strong>
+          <span v-if="item.last_error_at">
+            · {{ formatDate(item.last_error_at) }}
+          </span>
+          <span> · {{ item.last_error }}</span>
+        </li>
+      </ul>
     </div>
 
     <div

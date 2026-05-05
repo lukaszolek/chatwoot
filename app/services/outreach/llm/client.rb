@@ -25,8 +25,7 @@ class Outreach::Llm::Client
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
     response = with_outreach_context(model: model) do |chat|
-      chat.with_temperature(temperature)
-      chat.with_instructions(system)
+      configure_chat(chat, temperature: temperature, system: system)
       chat.ask(user)
     end
 
@@ -59,8 +58,7 @@ class Outreach::Llm::Client
     captured_calls = []
 
     response = with_outreach_context(model: model) do |chat|
-      chat.with_temperature(temperature)
-      chat.with_instructions(system)
+      configure_chat(chat, temperature: temperature, system: system)
       tools.each { |tool| chat.with_tool(tool) }
       chat.on_tool_call { |tc| captured_calls << { name: tc.name, params: tc.arguments } }
       chat.ask(user)
@@ -68,16 +66,7 @@ class Outreach::Llm::Client
 
     latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
 
-    {
-      parsed: try_parse_json(response.content),
-      raw_content: response.content,
-      tool_calls: captured_calls,
-      token_usage: {
-        'prompt_tokens' => response.input_tokens,
-        'completion_tokens' => response.output_tokens
-      },
-      latency_ms: latency_ms
-    }
+    tool_response_payload(response, captured_calls, latency_ms)
   end
 
   # Scopes RubyLLM config to outreach credentials for the duration of
@@ -132,6 +121,29 @@ class Outreach::Llm::Client
 
   def openrouter?
     ENV.fetch('OUTREACH_LLM_PROVIDER', 'openrouter').to_s.downcase == 'openrouter'
+  end
+
+  def max_tokens
+    ENV.fetch('OUTREACH_LLM_MAX_TOKENS', 2000).to_i
+  end
+
+  def configure_chat(chat, temperature:, system:)
+    chat.with_temperature(temperature)
+    chat.with_params(max_tokens: max_tokens)
+    chat.with_instructions(system)
+  end
+
+  def tool_response_payload(response, captured_calls, latency_ms)
+    {
+      parsed: try_parse_json(response.content),
+      raw_content: response.content,
+      tool_calls: captured_calls,
+      token_usage: {
+        'prompt_tokens' => response.input_tokens,
+        'completion_tokens' => response.output_tokens
+      },
+      latency_ms: latency_ms
+    }
   end
 
   def parse_json!(content)
