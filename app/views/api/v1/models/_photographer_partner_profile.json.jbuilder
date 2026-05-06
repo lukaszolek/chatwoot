@@ -3,12 +3,14 @@ json.external_id resource.external_id
 
 # PII — delegated to photographer-directory via PhotographerPartnerProfile#source.
 # Reads return nil when the directory is unreachable (secondary DB down).
-# The UI shows these as read-only; edits must happen in the directory UI.
+# The UI edits these through ProfileWriter so directory remains source of truth.
 json.email resource.email
 json.business_name resource.business_name
 json.owner_name resource.owner_name
 json.website resource.website
 json.country_code resource.country_code
+json.native_language resource.source&.native_language
+json.directory_preferred_language resource.source&.preferred_language
 json.preferred_language resource.preferred_language
 json.instagram_handle resource.instagram_handle
 json.marketing_consent resource.marketing_consent

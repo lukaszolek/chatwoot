@@ -46,6 +46,12 @@ const directoryUrl = computed(() => {
   return `https://framky.com/pl-pl/fotograf/${props.profile.external_id}`;
 });
 
+const profileLocale = profile =>
+  profile?.native_language ||
+  profile?.directory_preferred_language ||
+  profile?.preferred_language ||
+  '';
+
 const hydrate = profile => {
   if (!profile) {
     form.value = {};
@@ -58,7 +64,7 @@ const hydrate = profile => {
     owner_name: profile.owner_name || '',
     website: profile.website || '',
     country_code: profile.country_code || '',
-    preferred_language: profile.preferred_language || '',
+    locale: profileLocale(profile),
     instagram_handle: profile.instagram_handle || '',
     phone: profile.phone || '',
 
@@ -84,7 +90,6 @@ const piiChanges = () => {
     'owner_name',
     'website',
     'country_code',
-    'preferred_language',
     'instagram_handle',
     'phone',
   ];
@@ -94,6 +99,14 @@ const piiChanges = () => {
     const after = (form.value[f] || '').toString();
     if (before !== after) changed[f] = after;
   });
+
+  const beforeLocale = profileLocale(props.profile).toString();
+  const afterLocale = (form.value.locale || '').toString();
+  if (beforeLocale !== afterLocale) {
+    changed.native_language = afterLocale;
+    changed.preferred_language = afterLocale;
+  }
+
   return changed;
 };
 
@@ -224,7 +237,7 @@ const save = async () => {
               class="reset-base w-full h-9 px-3 bg-white border rounded border-n-weak"
             />
           </label>
-          <div class="grid grid-cols-3 gap-3">
+          <div class="grid grid-cols-2 gap-3">
             <label class="flex flex-col gap-1">
               <span class="text-xs text-n-slate-11">Country (2-letter)</span>
               <input
@@ -241,7 +254,7 @@ const save = async () => {
             <label class="flex flex-col gap-1">
               <span class="text-xs text-n-slate-11">Locale</span>
               <input
-                v-model="form.preferred_language"
+                v-model="form.locale"
                 type="text"
                 maxlength="5"
                 list="photographer-locales"

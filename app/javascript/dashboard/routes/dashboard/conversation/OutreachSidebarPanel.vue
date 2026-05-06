@@ -110,21 +110,24 @@ const countryLabel = computed(() => {
 });
 
 const languageLabel = computed(() => {
-  const code = profile.value?.preferred_language;
+  const code =
+    profile.value?.native_language || profile.value?.preferred_language;
   if (!code) return null;
   const name = displayNamesFor('language', code);
   return name && name !== code ? `${code} — ${name}` : code;
 });
 
 const localeOptionsForSelect = computed(() => {
-  const current = profile.value?.preferred_language;
+  const current =
+    profile.value?.native_language || profile.value?.preferred_language;
   const options = [...LOCALE_OPTIONS];
   if (current && !options.includes(current)) options.unshift(current);
   return options;
 });
 
 const startEditLocale = () => {
-  localeDraft.value = profile.value?.preferred_language || '';
+  localeDraft.value =
+    profile.value?.native_language || profile.value?.preferred_language || '';
   editingLocale.value = true;
 };
 const cancelEditLocale = () => {
@@ -133,7 +136,9 @@ const cancelEditLocale = () => {
 };
 const saveLocale = async () => {
   if (!profile.value?.id) return;
-  if (localeDraft.value === profile.value.preferred_language) {
+  const current =
+    profile.value.native_language || profile.value.preferred_language || '';
+  if (localeDraft.value === current) {
     cancelEditLocale();
     return;
   }
@@ -141,6 +146,7 @@ const saveLocale = async () => {
   error.value = null;
   try {
     await OutreachPhotographersAPI.update(profile.value.id, {
+      native_language: localeDraft.value,
       preferred_language: localeDraft.value,
     });
     await fetchContext();
