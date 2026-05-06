@@ -92,29 +92,43 @@ class Outreach::Drafts::RegenerateService
   def apply_regeneration!(composed)
     additional = draft_message.additional_attributes.deep_dup
     history = Array(additional['regeneration_history'])
-    history << {
+    history << regeneration_history_entry(composed)
+    additional['regeneration_history'] = history
+    additional.merge!(regeneration_attributes(composed, additional))
+
+    draft_message.update!(
+      content: legal_body(composed),
+      content_attributes: draft_message.content_attributes.deep_merge('email' => { 'subject' => composed[:subject] }),
+      additional_attributes: additional
+    )
+    Outreach::TranslateForAgents.call(message: draft_message, source_locale: composed[:locale] || locale)
+  end
+
+  def regeneration_history_entry(composed)
+    {
       'at' => Time.current.iso8601,
       'operator_user_id' => user&.id,
       'operator_prompt' => operator_prompt,
       'prev_subject' => draft_message.outreach_draft_subject,
       'prev_body' => draft_message.content,
       'new_subject' => composed[:subject],
-      'new_body' => composed[:body],
+      'new_body' => legal_body(composed),
       'model' => composed[:model],
       'latency_ms' => composed[:latency_ms]
     }
-    additional['regeneration_history'] = history
-    additional['iteration_count'] = additional['iteration_count'].to_i + 1
-    additional['composer_model'] = composed[:model]
-    additional['composer_prompt_version'] = composed[:prompt_version]
-    additional['composer_input_digest'] = composed[:input_digest]
+  end
 
-    draft_message.update!(
-      content: composed[:body],
-      content_attributes: draft_message.content_attributes.deep_merge('email' => { 'subject' => composed[:subject] }),
-      additional_attributes: additional
-    )
-    Outreach::TranslateForAgents.call(message: draft_message, source_locale: composed[:locale] || locale)
+  def regeneration_attributes(composed, additional)
+    {
+      'iteration_count' => additional['iteration_count'].to_i + 1,
+      'composer_model' => composed[:model],
+      'composer_prompt_version' => composed[:prompt_version],
+      'composer_input_digest' => composed[:input_digest]
+    }
+  end
+
+  def legal_body(composed)
+    Outreach::LegalFooter.ensure_stop_opt_out(composed[:body], locale: composed[:locale] || locale)
   end
 
   def record_learning!(participant, _composed)

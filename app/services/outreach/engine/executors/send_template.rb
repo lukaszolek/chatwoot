@@ -100,7 +100,7 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
       message_type: :outgoing,
       private: true,
       sender: campaign.sender_user,
-      content: composed[:body],
+      content: legal_body(composed),
       content_type: 'text',
       content_attributes: { email: { subject: composed[:subject] } },
       additional_attributes: outreach_draft_attributes(composed)
@@ -131,10 +131,14 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
       participant_id: participant.id,
       conversation_id: conversation.id,
       subject: composed[:subject],
-      body: composed[:body],
+      body: legal_body(composed),
       template_slot: stage.template_slot,
       locale: composed[:locale]
     )
+  end
+
+  def legal_body(composed)
+    Outreach::LegalFooter.ensure_stop_opt_out(composed[:body], locale: composed[:locale])
   end
 
   def pending_draft_for_current_stage

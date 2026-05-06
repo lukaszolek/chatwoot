@@ -38,26 +38,37 @@ class Outreach::Drafts::EditService
   def apply_edit!(prev_subject, prev_body)
     additional = draft_message.additional_attributes.deep_dup
     history = Array(additional['edit_history'])
-    history << {
-      'at' => Time.current.iso8601,
-      'operator_user_id' => user&.id,
-      'prev_subject' => prev_subject,
-      'prev_body' => prev_body,
-      'new_subject' => subject,
-      'new_body' => body,
-      'learning_note' => learning_note
-    }
+    history << edit_history_entry(prev_subject, prev_body)
     additional['edit_history'] = history
     additional['iteration_count'] = additional['iteration_count'].to_i + 1
 
     draft_message.update!(
-      content: body,
+      content: legal_body,
       content_attributes: draft_message.content_attributes.deep_merge('email' => { 'subject' => subject }),
       additional_attributes: additional
     )
     Outreach::TranslateForAgents.call(
       message: draft_message,
       source_locale: draft_message.additional_attributes['locale']
+    )
+  end
+
+  def edit_history_entry(prev_subject, prev_body)
+    {
+      'at' => Time.current.iso8601,
+      'operator_user_id' => user&.id,
+      'prev_subject' => prev_subject,
+      'prev_body' => prev_body,
+      'new_subject' => subject,
+      'new_body' => legal_body,
+      'learning_note' => learning_note
+    }
+  end
+
+  def legal_body
+    @legal_body ||= Outreach::LegalFooter.ensure_stop_opt_out(
+      body,
+      locale: draft_message.additional_attributes['locale']
     )
   end
 
@@ -80,9 +91,7 @@ class Outreach::Drafts::EditService
   def build_learning_content(prev_subject, prev_body)
     parts = []
     parts << "Operator note: #{learning_note}" if learning_note
-    if prev_subject != subject
-      parts << "Subject change: \"#{prev_subject}\" → \"#{subject}\""
-    end
+    parts << "Subject change: \"#{prev_subject}\" → \"#{subject}\"" if prev_subject != subject
     if prev_body != body
       parts << "Body changed (#{prev_body.length} → #{body.length} chars)."
       parts << "New body excerpt: #{body.truncate(280)}"

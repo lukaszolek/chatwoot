@@ -28,15 +28,8 @@ class Outreach::Drafts::ApproveService
     participant = resolve_participant
     raise Error, 'participant not found' unless participant
 
-    Outreach::SendEmailJob.perform_later(
-      participant_id: participant.id,
-      conversation_id: draft_message.conversation_id,
-      subject: draft_message.outreach_draft_subject,
-      body: draft_message.content,
-      template_slot: draft_message.additional_attributes['template_slot'],
-      locale: draft_message.additional_attributes['locale']
-    )
-
+    validate_stop_opt_out!
+    enqueue_email!(participant)
     mark_approved!
     advance_participant!(participant)
 
@@ -50,6 +43,31 @@ class Outreach::Drafts::ApproveService
   def resolve_participant
     pid = draft_message.additional_attributes['campaign_participant_id']
     pid ? CampaignParticipant.find_by(id: pid) : nil
+  end
+
+  def stop_opt_out_required?
+    draft_message.additional_attributes['template_slot'].to_s != 'reply'
+  end
+
+  def missing_stop_opt_out?
+    !Outreach::LegalFooter.stop_opt_out_present?(draft_message.content)
+  end
+
+  def validate_stop_opt_out!
+    return unless stop_opt_out_required? && missing_stop_opt_out?
+
+    raise Error, 'draft is missing STOP opt-out'
+  end
+
+  def enqueue_email!(participant)
+    Outreach::SendEmailJob.perform_later(
+      participant_id: participant.id,
+      conversation_id: draft_message.conversation_id,
+      subject: draft_message.outreach_draft_subject,
+      body: draft_message.content,
+      template_slot: draft_message.additional_attributes['template_slot'],
+      locale: draft_message.additional_attributes['locale']
+    )
   end
 
   def mark_approved!
