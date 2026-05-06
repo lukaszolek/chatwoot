@@ -95,7 +95,7 @@ class PhotographerPartnerProfile < ApplicationRecord
   # hands us a Relation of profiles; we pull all source rows in one IN
   # query and pre-fill each profile's memoized @source.
   def self.preload_sources!(profiles)
-    ids = profiles.map(&:external_id).compact.uniq
+    ids = profiles.filter_map(&:external_id).uniq
     return profiles if ids.empty?
 
     sources_by_id = PhotographerDirectory::Photographer.where(id: ids).index_by { |s| s.id.to_s }
@@ -115,24 +115,29 @@ class PhotographerPartnerProfile < ApplicationRecord
   # ------------------------------------------------------------------
 
   PIPELINE_STAGES = %w[new interested signed_up first_order active dormant_30d dormant_90d].freeze
+  TERMINAL_PIPELINE_STATUSES = %w[do_not_contact declined completed].freeze
 
   def pipeline_stage
-    return nil if %w[do_not_contact declined completed].include?(partnership_status)
+    return nil if TERMINAL_PIPELINE_STATUSES.include?(partnership_status)
 
-    total = orders_total.to_i
-    last_at = last_order_completed_at
-    days = last_at ? ((Time.current - last_at) / 1.day).to_i : nil
+    order_pipeline_stage || status_pipeline_stage
+  end
 
-    if total >= 1 && days
-      return 'dormant_90d' if days >= 90
-      return 'dormant_30d' if days >= 30
-      return 'active'      if total >= 2
-      return 'first_order'
-    end
+  def order_pipeline_stage
+    return nil if orders_total.to_i < 1 || last_order_completed_at.blank?
 
-    case partnership_status
+    days = ((Time.current - last_order_completed_at) / 1.day).to_i
+    return 'dormant_90d' if days >= 90
+    return 'dormant_30d' if days >= 30
+    return 'active' if orders_total.to_i >= 2
+
+    'first_order'
+  end
+
+  def status_pipeline_stage
+    case partnership_status.to_s
     when 'signed_up' then 'signed_up'
-    when 'interested', 'replied' then 'interested'
+    when 'interested' then 'interested'
     else 'new'
     end
   end

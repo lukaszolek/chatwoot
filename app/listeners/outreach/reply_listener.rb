@@ -23,6 +23,7 @@ class Outreach::ReplyListener < BaseListener
     participant = CampaignParticipant.find_by(id: participant_id)
     return unless participant
     return if participant.paused?
+    return handle_non_reply!(participant, message) unless real_reply?(message)
 
     participant.update!(
       current_stage_key: REPLY_ROUTER_STAGE_KEY,
@@ -40,6 +41,24 @@ class Outreach::ReplyListener < BaseListener
   end
 
   private
+
+  def real_reply?(message)
+    Outreach::InboundMessageKind.call(message) == :reply
+  end
+
+  def handle_non_reply!(participant, message)
+    kind = Outreach::InboundMessageKind.call(message)
+    metadata = (participant.metadata || {}).merge(
+      'last_inbound_kind' => kind.to_s,
+      'last_inbound_message_id' => message.id,
+      'last_inbound_at' => Time.current.iso8601
+    )
+    participant.update!(metadata: metadata)
+    Rails.logger.info(
+      "[outreach.reply_listener] participant=#{participant.id} conversation=#{message.conversation_id} " \
+      "ignored_kind=#{kind} message=#{message.id}"
+    )
+  end
 
   # Rough/non-semantic bump just because they replied at all. The
   # downstream ClassifyReply executor will further refine the status

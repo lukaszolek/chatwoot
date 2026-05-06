@@ -3,6 +3,8 @@ class Outreach::ConversationLabels
     draft: 'outreach_draft',
     sent: 'outreach_sent',
     replied: 'outreach_replied',
+    auto_reply: 'outreach_auto_reply',
+    bounced: 'outreach_bounced',
     error: 'outreach_error'
   }.freeze
 
@@ -10,6 +12,8 @@ class Outreach::ConversationLabels
     'outreach_draft' => '#f59e0b',
     'outreach_sent' => '#2563eb',
     'outreach_replied' => '#059669',
+    'outreach_auto_reply' => '#7c3aed',
+    'outreach_bounced' => '#dc2626',
     'outreach_error' => '#dc2626'
   }.freeze
 
@@ -23,7 +27,15 @@ class Outreach::ConversationLabels
     end
 
     def mark_replied!(conversation)
-      sync!(conversation, add: [:replied], remove: %i[draft sent])
+      sync!(conversation, add: [:replied], remove: %i[draft sent auto_reply bounced])
+    end
+
+    def mark_auto_reply!(conversation)
+      sync!(conversation, add: [:auto_reply], remove: %i[draft replied])
+    end
+
+    def mark_bounced!(conversation)
+      sync!(conversation, add: [:bounced], remove: %i[draft replied auto_reply])
     end
 
     def mark_error!(conversation)

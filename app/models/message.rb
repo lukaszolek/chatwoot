@@ -351,6 +351,17 @@ class Message < ApplicationRecord
     elsif sent_outreach_message?
       Outreach::ConversationLabels.mark_sent!(conversation)
     elsif incoming_outreach_reply?
+      sync_incoming_outreach_label
+    end
+  end
+
+  def sync_incoming_outreach_label
+    case Outreach::InboundMessageKind.call(self)
+    when :bounce
+      Outreach::ConversationLabels.mark_bounced!(conversation)
+    when :auto_reply
+      Outreach::ConversationLabels.mark_auto_reply!(conversation)
+    else
       Outreach::ConversationLabels.mark_replied!(conversation)
     end
   end
