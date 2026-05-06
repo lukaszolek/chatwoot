@@ -45,6 +45,7 @@ const ContactPipelineStages = defineAsyncComponent(
 );
 
 const {
+  uiSettings,
   updateUISettings,
   isContactSidebarItemOpen,
   conversationSidebarItemsOrder,
@@ -99,7 +100,10 @@ const currentConversationDisplayId = computed(
   () => currentChat.value?.id ?? conversationId.value
 );
 const currentAccountId = computed(() => currentAccount.value?.id);
-const outreachPanelTitle = 'Outreach campaign';
+const outreachPanelTitle = 'Outreach campaign / profile';
+const isOutreachPanelOpen = computed(
+  () => uiSettings.value.is_outreach_open ?? true
+);
 
 const channelType = computed(() => currentChat.value.meta?.channel);
 
@@ -160,6 +164,19 @@ onMounted(() => {
     />
     <div v-if="contact.id" class="px-4 pb-3">
       <ContactLabels :contact-id="contact.id" />
+    </div>
+    <div class="px-2 pb-3">
+      <AccordionItem
+        :title="outreachPanelTitle"
+        :is-open="isOutreachPanelOpen"
+        compact
+        @toggle="value => toggleSidebarUIState('is_outreach_open', value)"
+      >
+        <OutreachSidebarPanel
+          :conversation-id="currentConversationDisplayId"
+          :account-id="currentAccountId"
+        />
+      </AccordionItem>
     </div>
     <ContactPipelineStages v-if="contact.id" :contact-id="contact.id" compact />
     <div class="px-2 pb-8 list-group">
@@ -324,21 +341,6 @@ onMounted(() => {
           </div>
         </template>
       </Draggable>
-
-      <!-- Outreach sidebar panel — visible only when conversation is
-           linked to an outreach campaign (participant_id present in
-           additional_attributes). Not draggable (static trailing). -->
-      <AccordionItem
-        :title="outreachPanelTitle"
-        :is-open="isContactSidebarItemOpen('is_outreach_open')"
-        compact
-        @toggle="value => toggleSidebarUIState('is_outreach_open', value)"
-      >
-        <OutreachSidebarPanel
-          :conversation-id="currentConversationDisplayId"
-          :account-id="currentAccountId"
-        />
-      </AccordionItem>
     </div>
   </div>
 </template>
