@@ -18,6 +18,7 @@
 # escalate_to_operator, or fell through fallback) we route to escalated.
 class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::Base
   ESCALATED_STAGE_KEY = 'escalated'.freeze
+  SIGNUP_INTENT = 'interested_signup'.freeze
   MIN_DRAFT_CONFIDENCE = 0.5
   DECLINE_PROPAGATION_CONFIDENCE = 0.85
 
@@ -56,6 +57,8 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
   end
 
   def resolve_routed_to(outcome)
+    return :operator_draft if signup_intent?(outcome) && outcome[:confidence].to_f >= MIN_DRAFT_CONFIDENCE
+
     rule = branch_rule_for(outcome[:intent_class])
     return :escalate if rule.nil? || outcome[:confidence].to_f < MIN_DRAFT_CONFIDENCE
 
@@ -107,7 +110,7 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
     return Rails.logger.warn('[outreach.classify_reply] no inbound') unless inbound_message
     return Rails.logger.warn('[outreach.classify_reply] sender mismatch') if sender_email_mismatch?(sender_email)
 
-    composed = compose_reply(sender_email)
+    composed = compose_reply(sender_email, outcome: outcome)
     if composed[:escalate]
       Rails.logger.info("[outreach.classify_reply] reply composer self-escalated: #{composed[:reason]}")
       return
@@ -121,7 +124,7 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
     return escalate!(reason: 'reply_composer_no_inbound') unless inbound_message
     return escalate!(reason: 'reply_composer_sender_mismatch') if sender_email_mismatch?(sender_email)
 
-    composed = compose_reply(sender_email)
+    composed = compose_reply(sender_email, outcome: outcome)
     return escalate!(reason: "reply_composer_escalate:#{composed[:reason]}") if composed[:escalate]
 
     send_immediately!(outcome, composed)
@@ -135,7 +138,7 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
     participant.update!(next_action_at: nil, metadata: metadata)
   end
 
-  def compose_reply(sender_email)
+  def compose_reply(sender_email, outcome: nil)
     toolbox = Outreach::Agent::Toolbox.new(
       scoped_sender_email: sender_email,
       account: participant.account,
@@ -144,7 +147,8 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
     Outreach::Llm::MessageComposer::Reply.new(
       participant: participant,
       conversation: participant.conversation,
-      toolbox: toolbox
+      toolbox: toolbox,
+      operator_hint: reply_operator_hint(outcome)
     ).call
   end
 
@@ -173,6 +177,22 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
         'tool_calls' => composed[:tool_calls] || []
       }
     )
+  end
+
+  def reply_operator_hint(outcome)
+    return nil unless signup_intent?(outcome)
+
+    <<~TEXT.squish
+      The photographer appears ready to join or asks for the registration link.
+      Use the campaign knowledge document kind=reply_signup for tone and required details.
+      If the inbound message is a simple confirmation, send a short reply with the registration link.
+      If the inbound message includes questions or concerns, answer them briefly first, then include the registration link as the next step when appropriate.
+      Do not escalate only because the photographer wants to sign up.
+    TEXT
+  end
+
+  def signup_intent?(outcome)
+    outcome[:intent_class].to_s == SIGNUP_INTENT
   end
 
   def send_immediately!(outcome, composed)
@@ -236,24 +256,24 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
   # (signed_up / completed / do_not_contact / declined). Only bumps the
   # photographer up the funnel.
   STATUS_BUMP_BY_INTENT = {
-    'interested_signup'      => :interested,
-    'interested_commission'  => :interested,
-    'asks_product'           => :interested,
-    'asks_showroom'          => :interested,
-    'declined'               => :declined
+    'interested_signup' => :interested,
+    'interested_commission' => :interested,
+    'asks_product' => :interested,
+    'asks_showroom' => :interested,
+    'declined' => :declined
   }.freeze
 
   STATUS_RANK = {
-    nil                  => 0,
-    'imported'           => 0,
-    'qualified'          => 1,
-    'contacted'          => 2,
-    'replied'            => 3,
-    'interested'         => 4,
-    'signed_up'          => 5,
-    'completed'          => 6,
-    'declined'           => 99,   # terminal — never overwrite
-    'do_not_contact'     => 99    # terminal — never overwrite
+    nil => 0,
+    'imported' => 0,
+    'qualified' => 1,
+    'contacted' => 2,
+    'replied' => 3,
+    'interested' => 4,
+    'signed_up' => 5,
+    'completed' => 6,
+    'declined' => 99,   # terminal — never overwrite
+    'do_not_contact' => 99    # terminal — never overwrite
   }.freeze
 
   def update_partnership_status_from_intent!(outcome)
