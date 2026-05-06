@@ -11,6 +11,7 @@ const KINDS = [
   'tone',
   'copywriting',
   'intro_seed',
+  'reply_signup',
   'open_issues',
   'custom',
 ];
