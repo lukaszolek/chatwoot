@@ -71,10 +71,12 @@ class Outreach::Engine::ConversationResolver
     inbox = campaign.inbox
     raise InboxMissing, "OutboundCampaign##{campaign.id} has no inbox configured" unless inbox
 
+    existing = find_existing_conversation(inbox)
+    return assign_conversation!(existing) if existing
+
     contact_inbox = find_or_create_contact_inbox!(inbox)
     conversation = create_conversation!(inbox, contact_inbox)
-    @participant.update!(conversation: conversation)
-    conversation
+    assign_conversation!(conversation)
   end
 
   def create_conversation!(inbox, contact_inbox)
@@ -89,5 +91,18 @@ class Outreach::Engine::ConversationResolver
         'outbound_campaign_program_key' => campaign.program_key
       }
     )
+  end
+
+  def find_existing_conversation(inbox)
+    Conversation
+      .where(account: account, inbox: inbox, contact: contact)
+      .where("additional_attributes->>'campaign_participant_id' = ?", @participant.id.to_s)
+      .order(updated_at: :desc)
+      .first
+  end
+
+  def assign_conversation!(conversation)
+    @participant.update!(conversation: conversation)
+    conversation
   end
 end
