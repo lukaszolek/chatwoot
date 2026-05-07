@@ -1,6 +1,6 @@
 class Imap::MicrosoftFetchEmailService < Imap::BaseFetchEmailService
   def fetch_emails
-    return if channel.provider_config['access_token'].blank?
+    return [] if channel.provider_config['access_token'].blank?
 
     fetch_mail_for_channel
   end

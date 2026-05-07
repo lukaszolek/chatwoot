@@ -42,7 +42,7 @@ RSpec.describe Imap::MicrosoftFetchEmailService do
           expect(refresh_token_service).to have_received(:access_token)
 
           expect(result.length).to eq 1
-          expect(result[0].message_id).to eq email_object.message_id
+          expect(result[0][:mail].message_id).to eq email_object.message_id
           expect(imap).to have_received(:search).with(%w[SINCE 25-Oct-2020])
           expect(imap).to have_received(:fetch).with([1], 'BODY.PEEK[HEADER]')
           expect(imap).to have_received(:fetch).with(1, 'RFC822')
@@ -68,7 +68,7 @@ RSpec.describe Imap::MicrosoftFetchEmailService do
           expect(refresh_token_service).to have_received(:access_token)
 
           expect(result.length).to eq 1
-          expect(result[0].message_id).to eq email_object.message_id
+          expect(result[0][:mail].message_id).to eq email_object.message_id
           expect(imap).to have_received(:search).with(%w[SINCE 18-Oct-2020])
           expect(imap).to have_received(:fetch).with([1], 'BODY.PEEK[HEADER]')
           expect(imap).to have_received(:fetch).with(1, 'RFC822')

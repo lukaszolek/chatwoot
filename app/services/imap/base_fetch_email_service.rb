@@ -3,6 +3,8 @@ require 'net/imap'
 class Imap::BaseFetchEmailService
   pattr_initialize [:channel!, :interval]
 
+  CHATWOOT_MESSAGE_ID_PATTERN = %r{conversation/[a-zA-Z0-9-]+/messages/\d+@}
+
   def fetch_emails
     # Override this method
   end
@@ -28,25 +30,31 @@ class Imap::BaseFetchEmailService
     @imap_client ||= build_imap_client
   end
 
-  def mail_info_logger(inbound_mail, seq_no)
+  def mail_info_logger(inbound_mail, seq_no, direction)
     return if Rails.env.test?
 
-    Rails.logger.info("
-      #{channel.provider} Email id: #{inbound_mail.from} - message_source_id: #{inbound_mail.message_id} - sequence id: #{seq_no}")
+    Rails.logger.info(
+      "#{channel.provider} Email id: #{inbound_mail.from} - " \
+      "message_source_id: #{inbound_mail.message_id} - " \
+      "sequence id: #{seq_no} - direction: #{direction}"
+    )
   end
 
   def email_already_present?(channel, message_id)
     channel.inbox.messages.find_by(source_id: message_id).present?
   end
 
-  def fetch_mail_for_channel
+  def fetch_mail_for_channel(direction: :incoming)
     message_ids_with_seq = fetch_message_ids_with_sequence
     message_ids_with_seq.filter_map do |message_id_with_seq|
-      process_message_id(message_id_with_seq)
+      mail = process_message_id(message_id_with_seq, direction)
+      next if mail.nil?
+
+      { mail: mail, direction: direction }
     end
   end
 
-  def process_message_id(message_id_with_seq)
+  def process_message_id(message_id_with_seq, direction = :incoming)
     seq_no, message_id = message_id_with_seq
 
     if message_id.blank?
@@ -55,6 +63,7 @@ class Imap::BaseFetchEmailService
     end
 
     return if email_already_present?(channel, message_id)
+    return if direction == :outgoing && CHATWOOT_MESSAGE_ID_PATTERN.match?(message_id)
 
     # Fetch the original mail content using the sequence no
     mail_str = imap_client.fetch(seq_no, 'RFC822')[0].attr['RFC822']
@@ -65,7 +74,7 @@ class Imap::BaseFetchEmailService
     end
 
     inbound_mail = build_mail_from_string(mail_str)
-    mail_info_logger(inbound_mail, seq_no)
+    mail_info_logger(inbound_mail, seq_no, direction)
     inbound_mail
   end
 
@@ -108,8 +117,12 @@ class Imap::BaseFetchEmailService
   def build_imap_client
     imap = Net::IMAP.new(channel.imap_address, port: channel.imap_port, ssl: true)
     imap.authenticate(authentication_type, channel.imap_login, imap_password)
-    imap.select('INBOX')
+    select_folder(imap, 'INBOX')
     imap
+  end
+
+  def select_folder(imap, folder)
+    imap.select(folder)
   end
 
   def terminate_imap_connection
