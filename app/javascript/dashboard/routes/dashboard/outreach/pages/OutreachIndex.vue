@@ -5,6 +5,7 @@ import { useRoute } from 'vue-router';
 const route = useRoute();
 
 const tabs = [
+  { key: 'inbox', label: 'Inbox', route: 'outreach_inbox' },
   {
     key: 'photographers',
     label: 'Photographers',
@@ -17,6 +18,7 @@ const tabs = [
 ];
 
 const activeKey = computed(() => {
+  if (route.name === 'outreach_inbox') return 'inbox';
   if (route.name === 'outreach_pipeline') return 'pipeline';
   if (route.name === 'outreach_campaigns') return 'campaigns';
   if (route.name === 'outreach_knowledge') return 'knowledge';

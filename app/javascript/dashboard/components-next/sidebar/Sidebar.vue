@@ -208,31 +208,11 @@ const outreachInboxes = computed(() =>
 const outreachInboxMenuItem = computed(() => {
   const list = outreachInboxes.value;
   if (list.length === 0) return null;
-  if (list.length === 1) {
-    const [inbox] = list;
-    return {
-      name: 'Outreach Inbox',
-      label: 'Inbox',
-      to: accountScopedRoute('inbox_dashboard', { inbox_id: inbox.id }),
-      activeOn: [],
-    };
-  }
   return {
-    name: 'Outreach Inboxes',
+    name: 'Outreach Inbox',
     label: 'Inbox',
-    activeOn: ['conversation_through_inbox'],
-    children: list.map(inbox => ({
-      name: `outreach-inbox-${inbox.id}`,
-      label: inbox.name,
-      icon: h(ChannelIcon, { inbox, class: 'size-[16px]' }),
-      to: accountScopedRoute('inbox_dashboard', { inbox_id: inbox.id }),
-      component: leafProps =>
-        h(ChannelLeaf, {
-          label: leafProps.label,
-          active: leafProps.active,
-          inbox,
-        }),
-    })),
+    to: accountScopedRoute('outreach_inbox'),
+    activeOn: ['outreach_inbox'],
   };
 });
 

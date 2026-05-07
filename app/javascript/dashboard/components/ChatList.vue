@@ -76,6 +76,7 @@ const props = defineProps({
   conversationInbox: { type: [String, Number], default: 0 },
   teamId: { type: [String, Number], default: 0 },
   label: { type: String, default: '' },
+  initialStatus: { type: String, default: '' },
   conversationType: { type: String, default: '' },
   foldersId: { type: [String, Number], default: 0 },
   showConversationList: { default: true, type: Boolean },
@@ -374,7 +375,8 @@ const uniqueInboxes = computed(() => {
 function setFiltersFromUISettings() {
   const { conversations_filter_by: filterBy = {} } = uiSettings.value;
   const { status, order_by: orderBy } = filterBy;
-  activeStatus.value = status || wootConstants.STATUS_TYPE.OPEN;
+  activeStatus.value =
+    props.initialStatus || status || wootConstants.STATUS_TYPE.OPEN;
   activeSortBy.value = Object.values(wootConstants.SORT_BY_TYPE).includes(
     orderBy
   )
@@ -878,6 +880,13 @@ watch(
 watch(
   computed(() => props.label),
   () => resetAndFetchData()
+);
+watch(
+  computed(() => props.initialStatus),
+  newStatus => {
+    activeStatus.value = newStatus || wootConstants.STATUS_TYPE.OPEN;
+    resetAndFetchData();
+  }
 );
 watch(
   computed(() => props.conversationType),

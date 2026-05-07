@@ -1,5 +1,6 @@
 import { frontendURL } from '../../../helper/URLHelper';
 import OutreachIndex from './pages/OutreachIndex.vue';
+import OutreachInbox from './pages/OutreachInbox.vue';
 import OutreachPhotographers from './pages/OutreachPhotographers.vue';
 import OutreachPipeline from './pages/OutreachPipeline.vue';
 import OutreachCampaigns from './pages/OutreachCampaigns.vue';
@@ -19,7 +20,13 @@ export const routes = [
       {
         path: '',
         name: 'outreach_dashboard_index',
-        redirect: { name: 'outreach_photographers' },
+        redirect: { name: 'outreach_inbox' },
+        meta: commonMeta,
+      },
+      {
+        path: 'inbox',
+        name: 'outreach_inbox',
+        component: OutreachInbox,
         meta: commonMeta,
       },
       {
