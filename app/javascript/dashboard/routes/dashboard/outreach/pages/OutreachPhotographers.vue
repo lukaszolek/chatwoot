@@ -693,11 +693,12 @@ watch(
       </div>
       <ul
         v-if="campaignHealth.recent_generation_errors?.length"
-        class="mt-2 space-y-1"
+        class="mt-2 ml-0 pl-4 space-y-1 list-disc list-inside"
       >
         <li
           v-for="item in campaignHealth.recent_generation_errors"
           :key="item.participant_id"
+          class="pl-0"
         >
           <strong>
             {{ item.profile_name || `Participant ${item.participant_id}` }}
