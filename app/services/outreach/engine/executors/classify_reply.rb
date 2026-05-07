@@ -259,8 +259,7 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
     'interested_signup' => :interested,
     'interested_commission' => :interested,
     'asks_product' => :interested,
-    'asks_showroom' => :interested,
-    'declined' => :declined
+    'asks_showroom' => :interested
   }.freeze
 
   STATUS_RANK = {
@@ -304,6 +303,19 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
 
     profile = participant.participatable
     return unless profile.is_a?(PhotographerPartnerProfile)
+
+    ActiveRecord::Base.transaction do
+      profile.transition_to!(:do_not_contact) unless profile.do_not_contact?
+      profile.update!(marketing_consent_state: :declined)
+      participant.update!(
+        current_stage_key: branch_rule_for('declined')&.dig('target') || 'terminal',
+        stage_entered_at: Time.current,
+        paused: true,
+        next_action_at: nil,
+        metadata: (participant.metadata || {}).merge('paused_reason' => 'explicit_decline')
+      )
+      Outreach::ConversationLabels.mark_opt_out!(participant.conversation) if participant.conversation
+    end
 
     Outreach::PhotographerDirectory::PropagateConsentJob
       .perform_later(profile.id, 'opt_out', reason: 'explicit_decline')

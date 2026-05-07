@@ -5,7 +5,17 @@ require 'rails_helper'
 RSpec.describe Outreach::Engine::Executors::ClassifyReply do
   let(:account) { create(:account) }
   let(:campaign) { create(:outbound_campaign, account: account) }
-  let(:profile) { create(:photographer_partner_profile, account: account) }
+  let(:profile) { PhotographerPartnerProfile.create!(account: account, external_id: SecureRandom.uuid) }
+  let(:conversation) do
+    create(
+      :conversation,
+      account: account,
+      additional_attributes: {
+        'outbound_campaign_program_key' => campaign.program_key,
+        'campaign_participant_id' => participant.id
+      }
+    )
+  end
   let(:router_stage) do
     create(:campaign_pipeline_stage,
            outbound_campaign: campaign,
@@ -101,7 +111,8 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
     end
 
     context 'with declined intent at >= 0.85 confidence (C7.3)' do
-      it 'enqueues PropagateConsentJob and transitions to the declined target (terminal)' do
+      it 'marks the conversation opt-out, pauses outreach, and propagates consent' do
+        participant.update!(conversation: conversation)
         stub_classifier(intent_class: 'declined', confidence: 0.9, model: 'stub-1')
 
         expect do
@@ -109,7 +120,12 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
         end.to have_enqueued_job(Outreach::PhotographerDirectory::PropagateConsentJob)
           .with(profile.id, 'opt_out', reason: 'explicit_decline')
 
-        expect(participant.reload.current_stage_key).to eq('terminal')
+        expect(participant.reload).to be_paused
+        expect(participant.current_stage_key).to eq('terminal')
+        expect(profile.reload).to be_do_not_contact
+        expect(profile).to be_consent_declined
+        expect(conversation.reload).to be_resolved
+        expect(conversation.label_list).to include('outreach_opt_out')
       end
 
       it 'does NOT enqueue propagation for declined below threshold' do

@@ -26,11 +26,11 @@ class Outreach::InboundMessageKind
     /within 24 (?:hours|hrs)/i
   ].freeze
 
-  OPT_OUT_PATTERNS = [
-    /\A\s*stop[\s.!?,;:]*\z/i,
-    /\A\s*unsubscribe[\s.!?,;:]*\z/i,
-    /\A\s*uitschrijven[\s.!?,;:]*\z/i,
-    /\A\s*afmelden[\s.!?,;:]*\z/i
+  OPT_OUT_FIRST_LINE_PATTERNS = [
+    /\Astop(?:\s+(?:aub|svp|please|pls))?[\s.!?,;:]*\z/i,
+    /\Aunsubscribe(?:\s+(?:please|pls))?[\s.!?,;:]*\z/i,
+    /\Auitschrijven(?:\s+(?:aub|svp))?[\s.!?,;:]*\z/i,
+    /\Aafmelden(?:\s+(?:aub|svp))?[\s.!?,;:]*\z/i
   ].freeze
 
   def self.call(message)
@@ -63,7 +63,8 @@ class Outreach::InboundMessageKind
   end
 
   def opt_out?
-    OPT_OUT_PATTERNS.any? { |pattern| reply_text.match?(pattern) }
+    first_meaningful_reply_line.present? &&
+      OPT_OUT_FIRST_LINE_PATTERNS.any? { |pattern| first_meaningful_reply_line.match?(pattern) }
   end
 
   def from
@@ -81,27 +82,35 @@ class Outreach::InboundMessageKind
     explicit_reply_text.presence || stripped_message_content
   end
 
+  def first_meaningful_reply_line
+    reply_text.to_s.lines.map(&:strip).reject(&:blank?).first
+  end
+
   def explicit_reply_text
     email = message.content_attributes&.fetch('email', nil) || message.content_attributes&.fetch(:email, nil)
     return unless email.is_a?(Hash)
 
     text_reply = nested_dig(email, 'text_content', 'reply')
-    return text_reply.to_s.strip if text_reply.present?
+    return strip_quoted_history(text_reply) if text_reply.present?
 
     html_reply = nested_dig(email, 'html_content', 'reply')
-    return html_to_text(html_reply).strip if html_reply.present?
+    return strip_quoted_history(html_to_text(html_reply)) if html_reply.present?
 
     nil
   end
 
   def stripped_message_content
-    message.content.to_s
-           .split(/\n-{2,}\s*Original Message\s*-{2,}/i, 2).first
-           .split(/\nOn .+wrote:\s*/i, 2).first
-           .split(/\nOp .+schreef .+:\s*/i, 2).first
-           .split(/\nW dniu .+napisa.+:\s*/i, 2).first
-           .split(/\nVan:|\nFrom:|\nOd:/i, 2).first
-           .strip
+    strip_quoted_history(message.content)
+  end
+
+  def strip_quoted_history(value)
+    value.to_s
+         .split(/\n-{2,}\s*Original Message\s*-{2,}/i, 2).first
+         .split(/\nOn .+wrote:\s*/i, 2).first
+         .split(/\nOp .+schreef.*:\s*/i, 2).first
+         .split(/\nW dniu .+napisa.*:\s*/i, 2).first
+         .split(/\nVan:|\nFrom:|\nOd:/i, 2).first
+         .strip
   end
 
   def nested_dig(hash, *keys)
