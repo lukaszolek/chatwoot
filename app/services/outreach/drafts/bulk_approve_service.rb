@@ -30,7 +30,7 @@ class Outreach::Drafts::BulkApproveService
   def drafts
     @drafts ||= Message.pending_outreach_drafts
                        .joins(:conversation)
-                       .where(conversations: { account_id: campaign.account_id, status: :open })
+                       .where(conversations: { account_id: campaign.account_id })
                        .where("messages.additional_attributes->>'outbound_campaign_id' = ?", campaign.id.to_s)
                        .where("messages.additional_attributes->>'template_slot' = ?", template_slot)
                        .order(:created_at, :id)

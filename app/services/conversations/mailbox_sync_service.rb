@@ -118,6 +118,8 @@ class Conversations::MailboxSyncService
     @account.conversations
             .where(status: %i[open pending resolved])
             .where(inbox_id: gmail_inbox_ids)
+            .where("COALESCE(conversations.additional_attributes->>'outbound_campaign_program_key', '') = ''")
+            .where("COALESCE(conversations.additional_attributes->>'campaign_participant_id', '') = ''")
   end
 
   def gmail_inbox_ids
