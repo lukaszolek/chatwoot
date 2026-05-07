@@ -5,10 +5,12 @@ import { useRoute } from 'vue-router';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { useAccount } from 'dashboard/composables/useAccount';
 import { selectTranslation } from 'dashboard/composables/useTranslations';
+import TranslationToggle from 'dashboard/components-next/message/TranslationToggle.vue';
+import MessageApi from 'dashboard/api/inbox/message';
 
 const props = defineProps({
   messageId: { type: Number, required: true },
-  conversationId: { type: Number, required: true },
+  conversationId: { type: [Number, String], required: true },
   content: { type: String, default: '' },
   contentAttributes: { type: Object, default: () => ({}) },
   additionalAttributes: { type: Object, default: () => ({}) },
@@ -50,6 +52,7 @@ const subject = ref(props.contentAttributes?.email?.subject || '');
 const body = ref(props.content || '');
 const bodyTextarea = ref(null);
 const editingBody = ref(false);
+const renderOriginal = ref(true);
 
 // Operator-language preview — Outreach::TranslateForAgents populates
 // content_attributes.translations[<agentLocale>] each time the draft is
@@ -58,21 +61,32 @@ const editingBody = ref(false);
 // without round-tripping through Google Translate themselves.
 const { uiSettings } = useUISettings();
 const { currentAccount } = useAccount();
-const translations = computed(
-  () => props.contentAttributes?.translations || {}
+const localTranslations = ref({});
+const translations = computed(() =>
+  Object.assign(
+    {},
+    props.contentAttributes?.translations || {},
+    localTranslations.value
+  )
 );
-const draftLocale = computed(() => props.additionalAttributes?.locale || '');
+const targetTranslationLocale = computed(
+  () => uiSettings.value?.locale || currentAccount.value?.locale
+);
 const operatorTranslation = computed(() => {
-  const agentLocale = uiSettings.value?.locale;
-  // Don't show preview if the draft is already in the operator's language —
-  // they're reading the original.
-  if (!agentLocale || agentLocale === draftLocale.value) return null;
+  const agentLocale = targetTranslationLocale.value;
+  if (!agentLocale) return null;
   return selectTranslation(
     translations.value,
     agentLocale,
     currentAccount.value?.locale
   );
 });
+const hasOperatorTranslation = computed(() => !!operatorTranslation.value);
+const visibleBody = computed(() =>
+  !renderOriginal.value && operatorTranslation.value
+    ? operatorTranslation.value
+    : body.value
+);
 
 const autoResize = () => {
   const el = bodyTextarea.value;
@@ -82,6 +96,7 @@ const autoResize = () => {
 };
 
 watch(body, () => nextTick(autoResize));
+watch(renderOriginal, () => nextTick(autoResize));
 watch(
   () => props.content,
   newContent => {
@@ -105,6 +120,7 @@ const busy = ref(null);
 const error = ref(null);
 
 const beginEdit = () => {
+  renderOriginal.value = true;
   editingBody.value = true;
 };
 const cancelEdit = () => {
@@ -146,6 +162,35 @@ const regenerate = async () => {
     });
     promptInput.value = '';
     showPrompt.value = false;
+    emit('updated');
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    busy.value = null;
+  }
+};
+
+const translateDraft = async () => {
+  if (!targetTranslationLocale.value) {
+    error.value = 'Brak języka operatora do tłumaczenia';
+    return;
+  }
+  busy.value = 'translate';
+  error.value = null;
+  try {
+    const response = await MessageApi.translateMessage(
+      props.conversationId,
+      props.messageId,
+      targetTranslationLocale.value
+    );
+    const translatedContent = response.data?.content;
+    if (translatedContent) {
+      localTranslations.value = {
+        ...localTranslations.value,
+        [targetTranslationLocale.value]: translatedContent,
+      };
+    }
+    renderOriginal.value = false;
     emit('updated');
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
@@ -261,10 +306,28 @@ const reject = async () => {
       </label>
 
       <label class="block mb-3">
-        <span class="text-[11px] uppercase tracking-wide text-n-slate-11"
-          >Body</span
+        <span
+          class="flex items-center gap-2 text-[11px] uppercase tracking-wide text-n-slate-11"
         >
+          <span>Body</span>
+          <TranslationToggle
+            v-if="hasOperatorTranslation && !editingBody"
+            class="normal-case tracking-normal"
+            :showing-original="renderOriginal"
+            @toggle="renderOriginal = !renderOriginal"
+          />
+          <button
+            v-else-if="!editingBody"
+            type="button"
+            class="normal-case tracking-normal text-xs text-n-slate-11 hover:underline disabled:opacity-50"
+            :disabled="busy === 'translate'"
+            @click.prevent="translateDraft"
+          >
+            {{ busy === 'translate' ? 'Translating…' : 'Translate' }}
+          </button>
+        </span>
         <textarea
+          v-if="renderOriginal || editingBody"
           ref="bodyTextarea"
           v-model="body"
           :disabled="!isPending || !editingBody"
@@ -273,17 +336,15 @@ const reject = async () => {
           :class="{ 'bg-n-slate-2': !editingBody }"
           @input="autoResize"
         />
+        <textarea
+          v-else
+          ref="bodyTextarea"
+          :value="visibleBody"
+          disabled
+          rows="4"
+          class="reset-base w-full px-3 py-2 mt-1 font-mono text-[13px] border rounded border-n-weak bg-n-slate-2 text-n-slate-12 overflow-hidden resize-none leading-6"
+        />
       </label>
-
-      <div v-if="operatorTranslation" class="mb-3">
-        <span class="text-[11px] uppercase tracking-wide text-n-slate-11">
-          Podgląd tłumaczenia ({{ draftLocale }} → {{ uiSettings?.locale }})
-        </span>
-        <pre
-          class="w-full px-3 py-2 mt-1 font-mono text-[13px] border rounded border-n-weak bg-n-slate-2 text-n-slate-11 whitespace-pre-wrap leading-6"
-          >{{ operatorTranslation }}</pre
-        >
-      </div>
 
       <label v-if="editingBody" class="block mb-3">
         <span class="text-[11px] uppercase tracking-wide text-n-slate-11">

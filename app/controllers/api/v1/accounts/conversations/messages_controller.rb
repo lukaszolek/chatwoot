@@ -37,7 +37,7 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
   end
 
   def translate
-    return head :ok if already_translated_content_available?
+    return render json: { content: message.translations[permitted_params[:target_language]] } if already_translated_content_available?
 
     translated_content = Integrations::GoogleTranslate::ProcessorService.new(
       message: message,

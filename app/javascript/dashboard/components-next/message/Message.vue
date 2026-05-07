@@ -121,7 +121,7 @@ const props = defineProps({
     default: 'text',
     validator: value => Object.values(CONTENT_TYPES).includes(value),
   },
-  conversationId: { type: Number, required: true },
+  conversationId: { type: [Number, String], required: true },
   createdAt: { type: Number, required: true }, // eslint-disable-line vue/no-unused-properties
   currentUserId: { type: Number, required: true }, // eslint-disable-line vue/no-unused-properties
   groupWithNext: { type: Boolean, default: false },
@@ -137,7 +137,7 @@ const props = defineProps({
   sourceId: { type: String, default: '' }, // eslint-disable-line vue/no-unused-properties
 });
 
-const emit = defineEmits(['retry']);
+const emit = defineEmits(['retry', 'updated']);
 
 const contextMenuPosition = ref({});
 const showBackgroundHighlight = ref(false);
@@ -550,7 +550,7 @@ provideMessageContext({
       :content="content"
       :content-attributes="contentAttributes"
       :additional-attributes="additionalAttributes"
-      @updated="$emit('retry')"
+      @updated="emit('updated')"
     />
     <div v-else-if="variant === MESSAGE_VARIANTS.ACTIVITY">
       <ActivityBubble :content="content" />

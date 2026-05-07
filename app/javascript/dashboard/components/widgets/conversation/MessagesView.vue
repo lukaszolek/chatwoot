@@ -437,6 +437,10 @@ export default {
       const payload = useSnakeCase(message);
       await this.$store.dispatch('sendMessageWithData', payload);
     },
+    async handleMessageUpdated() {
+      if (!this.currentChat?.id) return;
+      await this.$store.dispatch('getConversation', this.currentChat.id);
+    },
   },
 };
 </script>
@@ -461,11 +465,13 @@ export default {
       ref="conversationPanelRef"
       class="conversation-panel flex-shrink flex-grow basis-px flex flex-col overflow-y-auto relative h-full m-0 pb-4"
       :current-user-id="currentUserId"
+      :conversation-id="currentChat.id"
       :first-unread-id="unReadMessages[0]?.id"
       :is-an-email-channel="isAnEmailChannel"
       :inbox-supports-reply-to="inboxSupportsReplyTo"
       :messages="getMessages"
       @retry="handleMessageRetry"
+      @updated="handleMessageUpdated"
     >
       <template #beforeAll>
         <transition name="slide-up">

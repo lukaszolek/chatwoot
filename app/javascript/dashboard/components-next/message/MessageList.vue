@@ -33,22 +33,33 @@ const props = defineProps({
     type: Object,
     default: () => ({ incoming: false, outgoing: false }),
   },
+  conversationId: {
+    type: [Number, String],
+    default: null,
+  },
   messages: {
     type: Array,
     default: () => [],
   },
 });
 
-const emit = defineEmits(['retry']);
+const emit = defineEmits(['retry', 'updated']);
+const currentChat = useMapGetter('getSelectedChat');
 
 const allMessages = computed(() => {
-  return useCamelCase(props.messages, {
+  const messages = useCamelCase(props.messages, {
     deep: true,
     stopPaths: ['content_attributes.translations'],
   });
+  const fallbackConversationId = props.conversationId || currentChat.value?.id;
+  return messages.map(message => ({
+    ...message,
+    conversationId:
+      message.conversationId ||
+      message.conversation_id ||
+      fallbackConversationId,
+  }));
 });
-
-const currentChat = useMapGetter('getSelectedChat');
 
 // Cache for fetched reply messages to avoid duplicate API calls
 const fetchedReplyMessages = reactive(new Map());
@@ -179,6 +190,7 @@ const getInReplyToMessage = parentMessage => {
         :current-user-id="currentUserId"
         data-clarity-mask="True"
         @retry="emit('retry', message)"
+        @updated="emit('updated')"
       />
     </template>
     <slot name="after" />
