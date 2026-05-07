@@ -48,6 +48,7 @@ class Outreach::ReplyListener < BaseListener
 
   def handle_non_reply!(participant, message)
     kind = Outreach::InboundMessageKind.call(message)
+    handle_opt_out!(participant, message) if kind == :opt_out
     metadata = (participant.metadata || {}).merge(
       'last_inbound_kind' => kind.to_s,
       'last_inbound_message_id' => message.id,
@@ -58,6 +59,22 @@ class Outreach::ReplyListener < BaseListener
       "[outreach.reply_listener] participant=#{participant.id} conversation=#{message.conversation_id} " \
       "ignored_kind=#{kind} message=#{message.id}"
     )
+  end
+
+  def handle_opt_out!(participant, message)
+    profile = participant.participatable
+    ActiveRecord::Base.transaction do
+      profile.transition_to!(:do_not_contact) if profile.is_a?(PhotographerPartnerProfile) && !profile.do_not_contact?
+      profile.update!(marketing_consent_state: :declined) if profile.is_a?(PhotographerPartnerProfile)
+      participant.update!(
+        paused: true,
+        metadata: (participant.metadata || {}).merge('paused_reason' => 'opt_out', 'opt_out_message_id' => message.id)
+      )
+    end
+    Outreach::PhotographerDirectory::PropagateConsentJob.perform_later(profile.id, 'opt_out', reason: 'inbound_stop') \
+      if profile.is_a?(PhotographerPartnerProfile)
+  rescue StandardError => e
+    Rails.logger.warn("[outreach.reply_listener] opt_out failed: #{e.class}: #{e.message}")
   end
 
   # Rough/non-semantic bump just because they replied at all. The

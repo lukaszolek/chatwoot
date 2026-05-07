@@ -28,6 +28,13 @@ class OutreachCampaignsAPI extends ApiClient {
       `/api/v1/accounts/${accountId}/outreach/conversations/${conversationDisplayId}/context`
     );
   }
+
+  conversationAction(conversationDisplayId, operation) {
+    const accountId = this.accountIdFromRoute;
+    return axios.post(
+      `/api/v1/accounts/${accountId}/outreach/conversations/${conversationDisplayId}/actions/${operation}`
+    );
+  }
 }
 
 export default new OutreachCampaignsAPI();

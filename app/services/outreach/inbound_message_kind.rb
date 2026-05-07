@@ -26,6 +26,13 @@ class Outreach::InboundMessageKind
     /within 24 (?:hours|hrs)/i
   ].freeze
 
+  OPT_OUT_PATTERNS = [
+    /\A\s*stop[\s.!?,;:]*\z/i,
+    /\A\s*unsubscribe[\s.!?,;:]*\z/i,
+    /\A\s*uitschrijven[\s.!?,;:]*\z/i,
+    /\A\s*afmelden[\s.!?,;:]*\z/i
+  ].freeze
+
   def self.call(message)
     new(message).call
   end
@@ -36,6 +43,7 @@ class Outreach::InboundMessageKind
 
   def call
     return :bounce if bounce?
+    return :opt_out if opt_out?
     return :auto_reply if auto_reply?
 
     :reply
@@ -54,6 +62,10 @@ class Outreach::InboundMessageKind
     AUTO_REPLY_PATTERNS.any? { |pattern| text.match?(pattern) }
   end
 
+  def opt_out?
+    OPT_OUT_PATTERNS.any? { |pattern| reply_text.match?(pattern) }
+  end
+
   def from
     Array(message.content_attributes&.dig('email', 'from')).join(' ')
   end
@@ -63,5 +75,13 @@ class Outreach::InboundMessageKind
       message.content_attributes&.dig('email', 'subject'),
       message.content
     ].join("\n")
+  end
+
+  def reply_text
+    message.content.to_s
+           .split(/\n-{2,}\s*Original Message\s*-{2,}/i, 2).first
+           .split(/\nOn .+wrote:\s*/i, 2).first
+           .split(/\nVan:|\nFrom:/i, 2).first
+           .strip
   end
 end

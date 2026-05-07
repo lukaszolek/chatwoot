@@ -359,6 +359,8 @@ class Message < ApplicationRecord
     case Outreach::InboundMessageKind.call(self)
     when :bounce
       Outreach::ConversationLabels.mark_bounced!(conversation)
+    when :opt_out
+      Outreach::ConversationLabels.mark_opt_out!(conversation)
     when :auto_reply
       Outreach::ConversationLabels.mark_auto_reply!(conversation)
     else

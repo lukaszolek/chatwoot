@@ -8,8 +8,14 @@ RSpec.describe Outreach::ReplyListener do
   let(:account) { create(:account) }
   let(:inbox) { create(:inbox, :with_email, account: account) }
   let(:campaign) { create(:outbound_campaign, :active, account: account, inbox: inbox) }
-  let(:profile) { create(:photographer_partner_profile, account: account) }
-  let(:contact) { create(:contact, account: account, email: profile.email) }
+  let(:profile) do
+    PhotographerPartnerProfile.create!(
+      account: account,
+      external_id: 'reply-listener-profile',
+      partnership_status: :imported
+    )
+  end
+  let(:contact) { create(:contact, account: account, email: 'photographer@example.com') }
   let(:conversation) do
     create(:conversation, account: account, inbox: inbox, contact: contact,
                           additional_attributes: { 'campaign_participant_id' => participant.id })
@@ -74,6 +80,20 @@ RSpec.describe Outreach::ReplyListener do
 
       fire_event(message)
       expect(participant.reload.current_stage_key).to eq(original_stage)
+    end
+
+    it 'pauses campaign and marks profile do_not_contact for STOP opt-out' do
+      message = create(:message, conversation: conversation, account: account, inbox: inbox,
+                                 message_type: :incoming, content: 'STOP')
+
+      expect(Outreach::PhotographerDirectory::PropagateConsentJob).to receive(:perform_later)
+
+      fire_event(message)
+
+      expect(participant.reload).to be_paused
+      expect(participant.metadata['paused_reason']).to eq('opt_out')
+      expect(profile.reload).to be_do_not_contact
+      expect(profile).to be_consent_declined
     end
   end
 end

@@ -44,6 +44,7 @@ const LOCALE_OPTIONS = [
 const editingLocale = ref(false);
 const localeDraft = ref('');
 const savingLocale = ref(false);
+const runningAction = ref('');
 
 const fetchContext = async () => {
   if (!props.conversationId) return;
@@ -156,6 +157,24 @@ const saveLocale = async () => {
       e.response?.data?.message || e.response?.data?.error || e.message;
   } finally {
     savingLocale.value = false;
+  }
+};
+
+const runConversationAction = async operation => {
+  if (!props.conversationId || runningAction.value) return;
+  runningAction.value = operation;
+  error.value = null;
+  try {
+    await OutreachCampaignsAPI.conversationAction(
+      props.conversationId,
+      operation
+    );
+    await fetchContext();
+  } catch (e) {
+    error.value =
+      e.response?.data?.message || e.response?.data?.error || e.message;
+  } finally {
+    runningAction.value = '';
   }
 };
 </script>
@@ -305,6 +324,54 @@ const saveLocale = async () => {
       >
         Open in Outreach →
       </router-link>
+    </div>
+
+    <div class="pt-3 border-t border-n-weak">
+      <div class="text-xs uppercase tracking-wide text-n-slate-10 mb-2">
+        Outreach actions
+      </div>
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          class="h-8 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
+          :disabled="!!runningAction"
+          @click="runConversationAction('needs_reply')"
+        >
+          Needs reply
+        </button>
+        <button
+          type="button"
+          class="h-8 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
+          :disabled="!!runningAction"
+          @click="runConversationAction('resolve')"
+        >
+          Resolve
+        </button>
+        <button
+          type="button"
+          class="h-8 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
+          :disabled="!!runningAction"
+          @click="runConversationAction('mark_auto_reply')"
+        >
+          Auto-reply
+        </button>
+        <button
+          type="button"
+          class="h-8 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
+          :disabled="!!runningAction"
+          @click="runConversationAction('mark_bounced')"
+        >
+          Bounced
+        </button>
+        <button
+          type="button"
+          class="col-span-2 h-8 px-2 text-xs font-medium rounded border border-n-ruby-5 text-n-ruby-11 hover:bg-n-ruby-2 disabled:opacity-50"
+          :disabled="!!runningAction"
+          @click="runConversationAction('mark_opt_out')"
+        >
+          Opt-out / STOP
+        </button>
+      </div>
     </div>
   </div>
 </template>
