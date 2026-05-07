@@ -120,9 +120,22 @@ class Conversations::MailboxSyncService
             .where(inbox_id: gmail_inbox_ids)
             .where("COALESCE(conversations.additional_attributes->>'outbound_campaign_program_key', '') = ''")
             .where("COALESCE(conversations.additional_attributes->>'campaign_participant_id', '') = ''")
+            .where.not("COALESCE(conversations.cached_label_list, '') ~ ?", outreach_label_pattern)
+            .where.not(id: outreach_labeled_conversations)
   end
 
   def gmail_inbox_ids
     @gmail_inbox_ids ||= gmail_channels.map(&:inbox).map(&:id)
+  end
+
+  def outreach_labeled_conversations
+    @outreach_labeled_conversations ||= @account.conversations
+                                                .tagged_with(Outreach::ConversationLabels::LABELS.values, any: true)
+                                                .distinct
+                                                .pluck(:id)
+  end
+
+  def outreach_label_pattern
+    @outreach_label_pattern ||= Outreach::ConversationLabels::LABELS.values.join('|')
   end
 end
