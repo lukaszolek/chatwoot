@@ -11,6 +11,7 @@ const COLUMNS = [
   { key: 'active', label: 'Aktywny', tone: 'green' },
   { key: 'dormant_30d', label: 'Brak zamówień 30d+', tone: 'orange' },
   { key: 'dormant_90d', label: 'Brak zamówień 90d+', tone: 'ruby' },
+  { key: 'do_not_contact', label: 'Opt-out / STOP', tone: 'slate' },
 ];
 
 const TONE_CLASSES = {

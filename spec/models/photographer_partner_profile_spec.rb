@@ -41,6 +41,14 @@ RSpec.describe PhotographerPartnerProfile do
     end
   end
 
+  describe '#pipeline_stage' do
+    it 'exposes do_not_contact as the opt-out pipeline stage' do
+      profile = described_class.new(partnership_status: :do_not_contact)
+
+      expect(profile.pipeline_stage).to eq('do_not_contact')
+    end
+  end
+
   describe '#transition_to!' do
     it 'updates status and stamps the transition time' do
       profile = create(:photographer_partner_profile, partnership_status: :imported, partnership_status_changed_at: nil)

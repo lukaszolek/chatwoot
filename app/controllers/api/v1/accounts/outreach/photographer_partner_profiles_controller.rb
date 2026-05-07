@@ -112,7 +112,7 @@ class Api::V1::Accounts::Outreach::PhotographerPartnerProfilesController < Api::
   end
 
   def pipeline
-    scope = Current.account.photographer_partner_profiles.active_outreach
+    scope = Current.account.photographer_partner_profiles.where.not(partnership_status: %i[declined completed])
     profiles = scope.to_a
     PhotographerPartnerProfile.preload_sources!(profiles)
     grouped = PhotographerPartnerProfile::PIPELINE_STAGES.index_with { |_| [] }

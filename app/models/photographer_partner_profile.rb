@@ -114,8 +114,8 @@ class PhotographerPartnerProfile < ApplicationRecord
   # Outreach pipeline (chatwoot-only state, not propagated)
   # ------------------------------------------------------------------
 
-  PIPELINE_STAGES = %w[new interested signed_up first_order active dormant_30d dormant_90d].freeze
-  TERMINAL_PIPELINE_STATUSES = %w[do_not_contact declined completed].freeze
+  PIPELINE_STAGES = %w[new interested signed_up first_order active dormant_30d dormant_90d do_not_contact].freeze
+  TERMINAL_PIPELINE_STATUSES = %w[declined completed].freeze
 
   def pipeline_stage
     return nil if TERMINAL_PIPELINE_STATUSES.include?(partnership_status)
@@ -136,6 +136,7 @@ class PhotographerPartnerProfile < ApplicationRecord
 
   def status_pipeline_stage
     case partnership_status.to_s
+    when 'do_not_contact' then 'do_not_contact'
     when 'signed_up' then 'signed_up'
     when 'interested' then 'interested'
     else 'new'
