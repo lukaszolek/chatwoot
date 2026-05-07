@@ -1,16 +1,16 @@
 module MailboxHelper
   private
 
-  def create_message
-    Rails.logger.info "[MailboxHelper] Creating message #{processed_mail.message_id}"
+  def create_message(direction: :incoming, sender: nil, created_at: nil)
+    Rails.logger.info "[MailboxHelper] Creating #{direction} message #{processed_mail.message_id}"
     return if @conversation.messages.find_by(source_id: processed_mail.message_id).present?
 
-    @message = @conversation.messages.create!(
+    attrs = {
       account_id: @conversation.account_id,
-      sender: @conversation.contact,
+      sender: sender || @conversation.contact,
       content: mail_content&.truncate(150_000),
       inbox_id: @conversation.inbox_id,
-      message_type: 'incoming',
+      message_type: direction == :outgoing ? 'outgoing' : 'incoming',
       content_type: 'incoming_email',
       source_id: processed_mail.message_id,
       content_attributes: {
@@ -18,7 +18,10 @@ module MailboxHelper
         cc_email: processed_mail.cc,
         bcc_email: processed_mail.bcc
       }
-    )
+    }
+    attrs[:created_at] = created_at if created_at.present?
+
+    @message = @conversation.messages.create!(attrs)
   end
 
   def add_attachments_to_message

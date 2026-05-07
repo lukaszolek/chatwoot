@@ -5,7 +5,7 @@ RSpec.describe Inboxes::FetchImapEmailsJob do
   include ActionMailbox::TestHelper
 
   let(:account) { create(:account) }
-  let(:imap_email_channel) { create(:channel_email, :imap_email, account: account) }
+  let(:imap_email_channel) { create(:channel_email, :imap_email, account: account, imap_address: 'imap.example.com') }
   let(:channel_with_imap_disabled) { create(:channel_email, :imap_email, imap_enabled: false, account: account) }
   let(:microsoft_imap_email_channel) { create(:channel_email, :microsoft_email) }
 
@@ -58,6 +58,21 @@ RSpec.describe Inboxes::FetchImapEmailsJob do
       end
     end
 
+    context 'when the channel is Google (OAuth or legacy IMAP Gmail)' do
+      let(:google_channel) do
+        create(:channel_email, :imap_email, account: account, imap_address: 'imap.gmail.com')
+      end
+
+      it 'routes legacy IMAP Gmail to GoogleFetchEmailService' do
+        fetch_service = double
+        allow(Imap::GoogleFetchEmailService).to receive(:new).with(channel: google_channel, interval: 1).and_return(fetch_service)
+        allow(fetch_service).to receive(:perform).and_return([])
+
+        described_class.perform_now(google_channel)
+        expect(fetch_service).to have_received(:perform)
+      end
+    end
+
     context 'when the channel is Microsoft' do
       it 'calls the Microsoft fetch service' do
         fetch_service = double
@@ -89,6 +104,7 @@ RSpec.describe Inboxes::FetchImapEmailsJob do
 
     context 'when the fetch service returns the email objects' do
       let(:inbound_mail) {  create_inbound_email_from_fixture('welcome.eml').mail }
+      let(:tagged_inbound_mail) { { mail: inbound_mail, direction: :incoming } }
       let(:mailbox) { double }
       let(:exception_tracker) { double }
       let(:fetch_service) { double }
@@ -98,15 +114,15 @@ RSpec.describe Inboxes::FetchImapEmailsJob do
         allow(ChatwootExceptionTracker).to receive(:new).and_return(exception_tracker)
 
         allow(Imap::FetchEmailService).to receive(:new).with(channel: imap_email_channel, interval: 1).and_return(fetch_service)
-        allow(fetch_service).to receive(:perform).and_return([inbound_mail])
+        allow(fetch_service).to receive(:perform).and_return([tagged_inbound_mail])
       end
 
       it 'calls the mailbox to create emails' do
         allow(mailbox).to receive(:process)
 
         expect(Imap::FetchEmailService).to receive(:new).with(channel: imap_email_channel, interval: 1).and_return(fetch_service)
-        expect(fetch_service).to receive(:perform).and_return([inbound_mail])
-        expect(mailbox).to receive(:process).with(inbound_mail, imap_email_channel)
+        expect(fetch_service).to receive(:perform).and_return([tagged_inbound_mail])
+        expect(mailbox).to receive(:process).with(inbound_mail, imap_email_channel, direction: :incoming)
 
         described_class.perform_now(imap_email_channel)
       end

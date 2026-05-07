@@ -1,97 +1,126 @@
 class Conversations::MailboxSyncService
+  SINCE_DAYS = 14
+  BATCH_SIZE = 200
+
   def initialize(account:)
     @account = account
   end
 
   def perform
-    channels = google_email_channels
-    return { resolved: 0, checked: 0, error: 'No Google email channels found' } if channels.empty?
+    channels = gmail_channels
+    return { resolved: 0, reopened: 0, checked: 0, error: 'No Gmail channels found' } if channels.empty?
 
-    inbox_emails = fetch_inbox_emails(channels)
-    return { resolved: 0, checked: 0, error: 'Could not connect to mailbox' } if inbox_emails.nil?
+    inbox_message_ids = fetch_inbox_message_ids(channels)
+    return { resolved: 0, reopened: 0, checked: 0, error: 'Could not connect to mailbox' } if inbox_message_ids.nil?
 
-    resolve_archived_conversations(inbox_emails)
+    sync_conversation_statuses(inbox_message_ids)
   end
 
   private
 
-  def google_email_channels
+  def gmail_channels
     Channel::Email
-      .where(provider: 'google', imap_enabled: true)
+      .where(imap_enabled: true)
+      .where('provider = ? OR imap_address = ?', 'google', 'imap.gmail.com')
       .joins(:inbox)
       .where(inboxes: { account_id: @account.id })
       .includes(:inbox)
   end
 
-  def fetch_inbox_emails(channels)
-    all_emails = Set.new
+  def fetch_inbox_message_ids(channels)
+    all_ids = Set.new
 
     channels.each do |channel|
-      emails = fetch_channel_inbox_emails(channel)
-      all_emails.merge(emails) if emails
+      ids = fetch_channel_inbox_message_ids(channel)
+      all_ids.merge(ids) if ids
     end
 
-    all_emails
+    all_ids
   rescue StandardError => e
     Rails.logger.error("[MailboxSync] IMAP error: #{e.message}")
     nil
   end
 
-  def fetch_channel_inbox_emails(channel)
-    return nil if channel.provider_config['access_token'].blank?
+  def fetch_channel_inbox_message_ids(channel)
+    imap = build_imap_client(channel)
+    return nil unless imap
 
-    access_token = Google::RefreshOauthTokenService.new(channel: channel).access_token
-    imap = Net::IMAP.new('imap.gmail.com', port: 993, ssl: true)
-    imap.authenticate('XOAUTH2', channel.imap_login, access_token)
     imap.select('INBOX')
+    seq_nums = imap.search(['SINCE', SINCE_DAYS.days.ago.strftime('%d-%b-%Y')])
+    return Set.new if seq_nums.empty?
 
-    since_date = 30.days.ago.strftime('%d-%b-%Y')
-    uids = imap.uid_search(['SINCE', since_date])
+    collect_message_ids(imap, seq_nums)
+  ensure
+    safe_logout(imap)
+  end
 
-    return Set.new if uids.empty?
+  def collect_message_ids(imap, seq_nums)
+    ids = Set.new
+    seq_nums.each_slice(100) do |batch|
+      headers = imap.fetch(batch, 'BODY.PEEK[HEADER.FIELDS (MESSAGE-ID)]')
+      headers&.each do |data|
+        raw = data.attr['BODY[HEADER.FIELDS (MESSAGE-ID)]']
+        next if raw.blank?
 
-    emails = Set.new
-    uids.each_slice(100) do |batch|
-      envelopes = imap.uid_fetch(batch, 'ENVELOPE')
-      envelopes&.each do |msg|
-        envelope = msg.attr['ENVELOPE']
-        (envelope.from || []).each do |addr|
-          email = "#{addr.mailbox}@#{addr.host}".downcase
-          emails.add(email)
-        end
+        message_id = Mail.read_from_string(raw).message_id
+        ids.add(message_id) if message_id.present?
+      end
+    end
+    ids
+  end
+
+  def build_imap_client(channel)
+    if channel.provider == 'google' && channel.provider_config.is_a?(Hash) && channel.provider_config['access_token'].present?
+      access_token = Google::RefreshOauthTokenService.new(channel: channel).access_token
+      imap = Net::IMAP.new('imap.gmail.com', port: 993, ssl: true)
+      imap.authenticate('XOAUTH2', channel.imap_login.presence || channel.email, access_token)
+    elsif channel.imap_password.present?
+      imap = Net::IMAP.new(channel.imap_address, port: channel.imap_port, ssl: true)
+      imap.authenticate('PLAIN', channel.imap_login, channel.imap_password)
+    else
+      return nil
+    end
+    imap
+  end
+
+  def safe_logout(imap)
+    return unless imap
+
+    imap.logout
+    imap.disconnect
+  rescue StandardError
+    nil
+  end
+
+  def sync_conversation_statuses(inbox_message_ids)
+    checked = 0
+    resolved = 0
+    reopened = 0
+
+    candidate_conversations.find_each(batch_size: BATCH_SIZE) do |conversation|
+      checked += 1
+      source_ids = conversation.messages.where.not(source_id: nil).pluck(:source_id)
+      thread_in_inbox = source_ids.any? { |sid| inbox_message_ids.include?(sid) }
+
+      if (conversation.open? || conversation.pending?) && !thread_in_inbox
+        conversation.update!(status: :resolved)
+        resolved += 1
+      elsif conversation.resolved? && thread_in_inbox
+        conversation.update!(status: :open)
+        reopened += 1
       end
     end
 
-    emails
-  ensure
-    imap&.logout
-    imap&.disconnect
+    { resolved: resolved, reopened: reopened, checked: checked }
   end
 
-  def resolve_archived_conversations(inbox_emails)
-    open_email_conversations = @account.conversations
-                                       .where(status: %i[open pending])
-                                       .where(inbox_id: email_inbox_ids)
-                                       .joins(:contact)
-                                       .where.not(contacts: { email: [nil, ''] })
-                                       .includes(:contact)
-    checked = 0
-    resolved = 0
-
-    open_email_conversations.find_each do |conversation|
-      contact_email = conversation.contact.email.downcase
-      checked += 1
-
-      next if inbox_emails.include?(contact_email)
-
-      conversation.update!(status: :resolved)
-      resolved += 1
-    end
-
-    { resolved: resolved, checked: checked }
+  def candidate_conversations
+    @account.conversations
+            .where(status: %i[open pending resolved])
+            .where(inbox_id: gmail_inbox_ids)
   end
 
-  def email_inbox_ids
-    @email_inbox_ids ||= @account.inboxes.where(channel_type: 'Channel::Email').pluck(:id)
+  def gmail_inbox_ids
+    @gmail_inbox_ids ||= gmail_channels.map(&:inbox).map(&:id)
   end
 end

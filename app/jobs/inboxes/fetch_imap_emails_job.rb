@@ -31,12 +31,12 @@ class Inboxes::FetchImapEmailsJob < MutexApplicationJob
   def process_email_for_channel(channel, interval)
     inbound_emails = if channel.microsoft?
                        Imap::MicrosoftFetchEmailService.new(channel: channel, interval: interval).perform
-                     elsif channel.google?
+                     elsif channel.google? || channel.legacy_google?
                        Imap::GoogleFetchEmailService.new(channel: channel, interval: interval).perform
                      else
                        Imap::FetchEmailService.new(channel: channel, interval: interval).perform
                      end
-    inbound_emails.map do |inbound_mail|
+    Array(inbound_emails).each do |inbound_mail|
       process_mail(inbound_mail, channel)
     end
   rescue OAuth2::Error => e
@@ -45,10 +45,18 @@ class Inboxes::FetchImapEmailsJob < MutexApplicationJob
   end
 
   def process_mail(inbound_mail, channel)
-    Imap::ImapMailbox.new.process(inbound_mail, channel)
+    if inbound_mail.is_a?(Hash)
+      mail = inbound_mail[:mail]
+      direction = inbound_mail[:direction] || :incoming
+    else
+      mail = inbound_mail
+      direction = :incoming
+    end
+
+    Imap::ImapMailbox.new.process(mail, channel, direction: direction)
   rescue StandardError => e
     ChatwootExceptionTracker.new(e, account: channel.account).capture_exception
     Rails.logger.error("
-      #{channel.provider} Email dropped: #{inbound_mail.from} and message_source_id: #{inbound_mail.message_id}")
+      #{channel.provider} Email dropped: #{mail&.from} and message_source_id: #{mail&.message_id}")
   end
 end
