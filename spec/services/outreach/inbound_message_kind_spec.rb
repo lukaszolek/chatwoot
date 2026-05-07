@@ -16,8 +16,37 @@ RSpec.describe Outreach::InboundMessageKind do
     )
   end
 
+  def email_message(content:, reply:, subject: nil, from: nil)
+    instance_double(
+      Message,
+      content: content,
+      content_attributes: {
+        'email' => {
+          'subject' => subject,
+          'from' => from,
+          'text_content' => {
+            'reply' => reply,
+            'full' => content
+          }
+        }
+      }
+    )
+  end
+
   it 'classifies a standalone STOP as opt-out' do
     expect(described_class.call(message(content: " STOP \n"))).to eq(:opt_out)
+  end
+
+  it 'classifies STOP from parsed email reply as opt-out' do
+    content = "STOP\n\nOp di 5 mei schreef Framky:\nAls u geen berichten wilt ontvangen, antwoord STOP."
+
+    expect(described_class.call(email_message(content: content, reply: "STOP\n"))).to eq(:opt_out)
+  end
+
+  it 'strips localized quoted Dutch history before classifying STOP' do
+    content = "STOP\n\nOp di 5 mei schreef Framky:\nAls u geen berichten wilt ontvangen, antwoord STOP."
+
+    expect(described_class.call(message(content: content))).to eq(:opt_out)
   end
 
   it 'does not classify quoted STOP text as opt-out' do

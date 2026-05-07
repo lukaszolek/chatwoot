@@ -78,10 +78,41 @@ class Outreach::InboundMessageKind
   end
 
   def reply_text
+    explicit_reply_text.presence || stripped_message_content
+  end
+
+  def explicit_reply_text
+    email = message.content_attributes&.fetch('email', nil) || message.content_attributes&.fetch(:email, nil)
+    return unless email.is_a?(Hash)
+
+    text_reply = nested_dig(email, 'text_content', 'reply')
+    return text_reply.to_s.strip if text_reply.present?
+
+    html_reply = nested_dig(email, 'html_content', 'reply')
+    return html_to_text(html_reply).strip if html_reply.present?
+
+    nil
+  end
+
+  def stripped_message_content
     message.content.to_s
            .split(/\n-{2,}\s*Original Message\s*-{2,}/i, 2).first
            .split(/\nOn .+wrote:\s*/i, 2).first
-           .split(/\nVan:|\nFrom:/i, 2).first
+           .split(/\nOp .+schreef .+:\s*/i, 2).first
+           .split(/\nW dniu .+napisa.+:\s*/i, 2).first
+           .split(/\nVan:|\nFrom:|\nOd:/i, 2).first
            .strip
+  end
+
+  def nested_dig(hash, *keys)
+    keys.reduce(hash) do |value, key|
+      break unless value.is_a?(Hash)
+
+      value[key] || value[key.to_sym]
+    end
+  end
+
+  def html_to_text(html)
+    ActionView::Base.full_sanitizer.sanitize(html.to_s)
   end
 end
