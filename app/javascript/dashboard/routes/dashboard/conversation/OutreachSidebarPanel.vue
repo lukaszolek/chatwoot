@@ -45,6 +45,16 @@ const editingLocale = ref(false);
 const localeDraft = ref('');
 const savingLocale = ref(false);
 const runningAction = ref('');
+const ACTION_LABELS = {
+  needs_reply: 'Needs reply',
+  resolve: 'Resolve',
+  mark_auto_reply: 'Auto-reply',
+  mark_bounced: 'Bounced',
+  mark_opt_out: 'Opt-out / STOP',
+};
+
+const actionLabel = operation =>
+  runningAction.value === operation ? 'Working…' : ACTION_LABELS[operation];
 
 const fetchContext = async () => {
   if (!props.conversationId) return;
@@ -337,7 +347,7 @@ const runConversationAction = async operation => {
           :disabled="!!runningAction"
           @click="runConversationAction('needs_reply')"
         >
-          Needs reply
+          {{ actionLabel('needs_reply') }}
         </button>
         <button
           type="button"
@@ -345,7 +355,7 @@ const runConversationAction = async operation => {
           :disabled="!!runningAction"
           @click="runConversationAction('resolve')"
         >
-          Resolve
+          {{ actionLabel('resolve') }}
         </button>
         <button
           type="button"
@@ -353,7 +363,7 @@ const runConversationAction = async operation => {
           :disabled="!!runningAction"
           @click="runConversationAction('mark_auto_reply')"
         >
-          Auto-reply
+          {{ actionLabel('mark_auto_reply') }}
         </button>
         <button
           type="button"
@@ -361,7 +371,7 @@ const runConversationAction = async operation => {
           :disabled="!!runningAction"
           @click="runConversationAction('mark_bounced')"
         >
-          Bounced
+          {{ actionLabel('mark_bounced') }}
         </button>
         <button
           type="button"
@@ -369,7 +379,7 @@ const runConversationAction = async operation => {
           :disabled="!!runningAction"
           @click="runConversationAction('mark_opt_out')"
         >
-          Opt-out / STOP
+          {{ actionLabel('mark_opt_out') }}
         </button>
       </div>
     </div>
