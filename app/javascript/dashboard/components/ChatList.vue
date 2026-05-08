@@ -81,6 +81,7 @@ const props = defineProps({
   foldersId: { type: [String, Number], default: 0 },
   showConversationList: { default: true, type: Boolean },
   isOnExpandedLayout: { default: false, type: Boolean },
+  hideDefaultBulkActions: { default: false, type: Boolean },
 });
 
 const emit = defineEmits(['conversationLoad']);
@@ -919,7 +920,11 @@ watch(conversationFilters, (newVal, oldVal) => {
       isOnExpandedLayout ? 'basis-full' : 'w-[340px] 2xl:w-[412px]',
     ]"
   >
-    <slot />
+    <slot
+      :selected-conversations="selectedConversations"
+      :reset-selection="resetBulkActions"
+      :refresh-conversations="resetAndFetchData"
+    />
     <ChatListHeader
       :page-title="pageTitle"
       :has-applied-filters="hasAppliedFilters"
@@ -971,7 +976,7 @@ watch(conversationFilters, (newVal, oldVal) => {
       {{ $t('CHAT_LIST.LIST.404') }}
     </p>
     <ConversationBulkActions
-      v-if="selectedConversations.length"
+      v-if="selectedConversations.length && !hideDefaultBulkActions"
       :conversations="selectedConversations"
       :all-conversations-selected="allConversationsSelected"
       :selected-inboxes="uniqueInboxes"

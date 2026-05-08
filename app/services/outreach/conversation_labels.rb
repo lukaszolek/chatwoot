@@ -32,8 +32,8 @@ class Outreach::ConversationLabels
       sync!(conversation, add: [:replied], remove: %i[draft sent auto_reply bounced opt_out], status: :open)
     end
 
-    def mark_auto_reply!(conversation)
-      sync!(conversation, add: [:auto_reply], remove: %i[draft sent replied], status: :pending)
+    def mark_auto_reply!(conversation, status: :pending)
+      sync!(conversation, add: [:auto_reply], remove: %i[draft sent replied], status: status)
     end
 
     def mark_bounced!(conversation)

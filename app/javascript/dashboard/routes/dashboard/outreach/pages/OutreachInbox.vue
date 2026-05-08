@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import ChatList from 'dashboard/components/ChatList.vue';
 import OutreachCampaignsAPI from 'dashboard/api/outreachCampaigns';
+import { useAlert } from 'dashboard/composables';
 
 const store = useStore();
 const route = useRoute();
@@ -15,9 +16,18 @@ const inboxId = ref(0);
 const queueCounts = ref({});
 const refreshToken = ref(0);
 const refreshingList = ref(false);
+const runningAction = ref('');
 let countsRefreshTimer = null;
 
 const COUNTS_REFRESH_INTERVAL_MS = 30000;
+
+const ACTIONS = [
+  { key: 'needs_reply', label: 'Needs reply' },
+  { key: 'resolve', label: 'Resolve' },
+  { key: 'mark_auto_reply', label: 'Auto-reply' },
+  { key: 'mark_bounced', label: 'Bounced' },
+  { key: 'mark_opt_out', label: 'Opt-out / STOP' },
+];
 
 const QUEUES = [
   {
@@ -97,6 +107,27 @@ const refreshInbox = async () => {
     refreshToken.value += 1;
   } finally {
     refreshingList.value = false;
+  }
+};
+
+const runAction = async (action, selectedConversations, resetSelection) => {
+  if (!selectedConversations.length) return;
+
+  runningAction.value = action.key;
+  try {
+    await Promise.all(
+      selectedConversations.map(conversationId =>
+        OutreachCampaignsAPI.conversationAction(conversationId, action.key)
+      )
+    );
+    resetSelection();
+    await fetchCounts();
+    refreshToken.value += 1;
+    useAlert(`Updated ${selectedConversations.length} conversation(s).`);
+  } catch (e) {
+    useAlert(e.response?.data?.error || e.message);
+  } finally {
+    runningAction.value = '';
   }
 };
 
@@ -187,8 +218,30 @@ onBeforeUnmount(() => {
         :conversation-inbox="inboxId"
         :label="activeQueue.labelName"
         :initial-status="activeQueue.status"
+        hide-default-bulk-actions
         @conversation-load="() => {}"
-      />
+      >
+        <template #default="{ selectedConversations, resetSelection }">
+          <div
+            v-if="selectedConversations.length"
+            class="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-n-weak bg-n-surface-2"
+          >
+            <span class="text-xs font-medium text-n-slate-11">
+              {{ selectedConversations.length }} selected
+            </span>
+            <button
+              v-for="action in ACTIONS"
+              :key="action.key"
+              type="button"
+              class="px-2.5 py-1.5 text-xs font-medium transition border rounded-md border-n-weak bg-n-surface-1 text-n-slate-11 hover:text-n-slate-12 disabled:cursor-not-allowed disabled:opacity-60"
+              :disabled="!!runningAction"
+              @click="runAction(action, selectedConversations, resetSelection)"
+            >
+              {{ runningAction === action.key ? 'Working…' : action.label }}
+            </button>
+          </div>
+        </template>
+      </ChatList>
 
       <div
         class="items-center justify-center flex-1 hidden min-w-0 border-l lg:flex border-n-weak bg-n-surface-1"

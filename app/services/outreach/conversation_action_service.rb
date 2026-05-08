@@ -39,7 +39,7 @@ class Outreach::ConversationActionService
   end
 
   def mark_auto_reply!
-    Outreach::ConversationLabels.mark_auto_reply!(conversation)
+    Outreach::ConversationLabels.mark_auto_reply!(conversation, status: participant ? :pending : :resolved)
     stamp_participant_metadata!('operator_mark_auto_reply')
   end
 
