@@ -34,4 +34,8 @@ class OutboundCampaignPolicy < ApplicationPolicy
   def approve_pending?
     @account_user.administrator?
   end
+
+  def counts?
+    index?
+  end
 end

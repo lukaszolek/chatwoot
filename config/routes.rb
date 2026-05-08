@@ -142,6 +142,7 @@ Rails.application.routes.draw do
             get 'directory/search', to: 'directory#search'
             post 'directory/import', to: 'directory#import'
             post 'directory/import_filtered', to: 'directory#import_filtered'
+            get 'inbox/counts', to: 'inbox#counts'
             post 'drafts/approve_pending', to: 'drafts#approve_pending'
             get 'conversations/:conversation_id/context', to: 'conversation_contexts#show'
             post 'conversations/:conversation_id/actions/:operation', to: 'conversation_actions#create'

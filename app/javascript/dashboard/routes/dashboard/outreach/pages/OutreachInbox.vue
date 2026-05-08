@@ -11,7 +11,8 @@ const router = useRouter();
 
 const loading = ref(false);
 const error = ref('');
-const campaigns = ref([]);
+const inboxId = ref(0);
+const queueCounts = ref({});
 
 const QUEUES = [
   {
@@ -70,17 +71,13 @@ const activeQueue = computed(
   () => QUEUES.find(queue => queue.key === activeQueueKey.value) || QUEUES[0]
 );
 
-const campaign = computed(() =>
-  campaigns.value.find(item => item.program_key === 'photographer_partnership')
-);
-const inboxId = computed(() => campaign.value?.inbox_id || 0);
-
-const fetchCampaigns = async () => {
+const fetchCounts = async () => {
   loading.value = true;
   error.value = '';
   try {
-    const { data } = await OutreachCampaignsAPI.get();
-    campaigns.value = data || [];
+    const { data } = await OutreachCampaignsAPI.inboxCounts();
+    inboxId.value = data.inbox_id || 0;
+    queueCounts.value = data.queues || {};
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
   } finally {
@@ -103,7 +100,7 @@ watch(
   { immediate: true }
 );
 
-onMounted(fetchCampaigns);
+onMounted(fetchCounts);
 </script>
 
 <!-- eslint-disable vue/no-bare-strings-in-template -->
@@ -125,7 +122,17 @@ onMounted(fetchCampaigns);
         :title="queue.description"
         @click="selectQueue(queue)"
       >
-        {{ queue.label }}
+        <span>{{ queue.label }}</span>
+        <span
+          class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 ml-1 text-xs rounded-full"
+          :class="
+            activeQueue.key === queue.key
+              ? 'bg-n-brand text-white'
+              : 'bg-n-alpha-2 text-n-slate-11'
+          "
+        >
+          {{ queueCounts[queue.key] || 0 }}
+        </span>
       </button>
     </div>
 

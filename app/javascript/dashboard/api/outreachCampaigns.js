@@ -35,6 +35,11 @@ class OutreachCampaignsAPI extends ApiClient {
       `/api/v1/accounts/${accountId}/outreach/conversations/${conversationDisplayId}/actions/${operation}`
     );
   }
+
+  inboxCounts() {
+    const accountId = this.accountIdFromRoute;
+    return axios.get(`/api/v1/accounts/${accountId}/outreach/inbox/counts`);
+  }
 }
 
 export default new OutreachCampaignsAPI();
