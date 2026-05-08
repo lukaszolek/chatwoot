@@ -70,6 +70,13 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render json: result
   rescue Outreach::Drafts::RegenerateService::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
+  rescue StandardError => e
+    Rails.logger.warn(
+      "[outreach.drafts.regenerate] message=#{params[:id]} conversation=#{params[:conversation_id]} " \
+      "error=#{e.class}: #{e.message}\n#{e.backtrace&.first(8)&.join("\n")}"
+    )
+    render json: { error: "LLM regeneration failed (unexpected_error:#{e.class}: #{e.message}). Draft may not have changed." },
+           status: :unprocessable_entity
   end
 
   def reject_outreach_draft
