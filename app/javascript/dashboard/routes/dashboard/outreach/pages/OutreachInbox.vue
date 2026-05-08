@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import ChatList from 'dashboard/components/ChatList.vue';
@@ -13,6 +13,11 @@ const loading = ref(false);
 const error = ref('');
 const inboxId = ref(0);
 const queueCounts = ref({});
+const refreshToken = ref(0);
+const refreshingList = ref(false);
+let countsRefreshTimer = null;
+
+const COUNTS_REFRESH_INTERVAL_MS = 30000;
 
 const QUEUES = [
   {
@@ -71,8 +76,8 @@ const activeQueue = computed(
   () => QUEUES.find(queue => queue.key === activeQueueKey.value) || QUEUES[0]
 );
 
-const fetchCounts = async () => {
-  loading.value = true;
+const fetchCounts = async ({ showLoading = false } = {}) => {
+  if (showLoading) loading.value = true;
   error.value = '';
   try {
     const { data } = await OutreachCampaignsAPI.inboxCounts();
@@ -81,7 +86,17 @@ const fetchCounts = async () => {
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
   } finally {
-    loading.value = false;
+    if (showLoading) loading.value = false;
+  }
+};
+
+const refreshInbox = async () => {
+  refreshingList.value = true;
+  try {
+    await fetchCounts();
+    refreshToken.value += 1;
+  } finally {
+    refreshingList.value = false;
   }
 };
 
@@ -100,39 +115,60 @@ watch(
   { immediate: true }
 );
 
-onMounted(fetchCounts);
+onMounted(() => {
+  fetchCounts({ showLoading: true });
+  countsRefreshTimer = window.setInterval(
+    fetchCounts,
+    COUNTS_REFRESH_INTERVAL_MS
+  );
+});
+
+onBeforeUnmount(() => {
+  if (countsRefreshTimer) window.clearInterval(countsRefreshTimer);
+});
 </script>
 
 <!-- eslint-disable vue/no-bare-strings-in-template -->
 <template>
   <section class="flex flex-col h-full min-h-0 bg-n-background">
     <div
-      class="flex flex-wrap items-center gap-2 px-6 py-3 border-b border-n-weak"
+      class="flex flex-wrap items-center justify-between gap-3 px-6 py-3 border-b border-n-weak"
     >
-      <button
-        v-for="queue in QUEUES"
-        :key="queue.key"
-        type="button"
-        class="px-3 py-2 text-sm font-medium transition border rounded-lg"
-        :class="
-          activeQueue.key === queue.key
-            ? 'border-n-brand bg-n-brand/10 text-n-brand'
-            : 'border-n-weak bg-n-surface-1 text-n-slate-11 hover:text-n-slate-12'
-        "
-        :title="queue.description"
-        @click="selectQueue(queue)"
-      >
-        <span>{{ queue.label }}</span>
-        <span
-          class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 ml-1 text-xs rounded-full"
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          v-for="queue in QUEUES"
+          :key="queue.key"
+          type="button"
+          class="px-3 py-2 text-sm font-medium transition border rounded-lg"
           :class="
             activeQueue.key === queue.key
-              ? 'bg-n-brand text-white'
-              : 'bg-n-alpha-2 text-n-slate-11'
+              ? 'border-n-brand bg-n-brand/10 text-n-brand'
+              : 'border-n-weak bg-n-surface-1 text-n-slate-11 hover:text-n-slate-12'
           "
+          :title="queue.description"
+          @click="selectQueue(queue)"
         >
-          {{ queueCounts[queue.key] || 0 }}
-        </span>
+          <span>{{ queue.label }}</span>
+          <span
+            class="inline-flex items-center justify-center min-w-5 h-5 px-1.5 ml-1 text-xs rounded-full"
+            :class="
+              activeQueue.key === queue.key
+                ? 'bg-n-brand text-white'
+                : 'bg-n-alpha-2 text-n-slate-11'
+            "
+          >
+            {{ queueCounts[queue.key] || 0 }}
+          </span>
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="px-3 py-2 text-sm font-medium transition border rounded-lg border-n-weak bg-n-surface-1 text-n-slate-11 hover:text-n-slate-12 disabled:cursor-not-allowed disabled:opacity-60"
+        :disabled="refreshingList"
+        @click="refreshInbox"
+      >
+        {{ refreshingList ? 'Odświeżam…' : 'Odśwież' }}
       </button>
     </div>
 
@@ -147,7 +183,7 @@ onMounted(fetchCounts);
     </div>
     <div v-else class="flex flex-1 min-h-0">
       <ChatList
-        :key="`${activeQueue.key}-${inboxId}`"
+        :key="`${activeQueue.key}-${inboxId}-${refreshToken}`"
         :conversation-inbox="inboxId"
         :label="activeQueue.labelName"
         :initial-status="activeQueue.status"
