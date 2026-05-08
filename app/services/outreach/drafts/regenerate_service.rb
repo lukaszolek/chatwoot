@@ -56,6 +56,12 @@ class Outreach::Drafts::RegenerateService
   end
 
   def compose(participant)
+    with_llm_errors_wrapped(participant) do
+      compose_for_slot(participant)
+    end
+  end
+
+  def compose_for_slot(participant)
     case slot
     when 'intro'
       Outreach::Llm::MessageComposer::Intro.new(participant: participant, locale: locale,
@@ -71,6 +77,15 @@ class Outreach::Drafts::RegenerateService
     else
       raise Error, "unknown slot '#{slot}'"
     end
+  end
+
+  def with_llm_errors_wrapped(participant)
+    yield
+  rescue Outreach::Llm::Client::LlmError, RubyLLM::Error, Faraday::Error, Net::ReadTimeout, JSON::ParserError => e
+    Rails.logger.warn(
+      "[outreach.drafts.regenerate] draft=#{draft_message.id} participant=#{participant&.id} error=#{e.class}: #{e.message}"
+    )
+    raise Error, "LLM regeneration failed (#{e.class}: #{e.message}). Draft was not changed."
   end
 
   def compose_reply(participant)
