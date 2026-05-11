@@ -70,13 +70,10 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render json: result
   rescue Outreach::Drafts::RegenerateService::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
+  rescue Rack::Timeout::RequestTimeoutException => e
+    render_regenerate_timeout(e)
   rescue StandardError => e
-    Rails.logger.warn(
-      "[outreach.drafts.regenerate] message=#{params[:id]} conversation=#{params[:conversation_id]} " \
-      "error=#{e.class}: #{e.message}\n#{e.backtrace&.first(8)&.join("\n")}"
-    )
-    render json: { error: "LLM regeneration failed (unexpected_error:#{e.class}: #{e.message}). Draft may not have changed." },
-           status: :unprocessable_entity
+    render_regenerate_unexpected_error(e)
   end
 
   def reject_outreach_draft
@@ -119,6 +116,26 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
 
   def already_translated_content_available?
     message.translations.present? && message.translations[permitted_params[:target_language]].present?
+  end
+
+  def render_regenerate_timeout(error)
+    Rails.logger.warn(
+      "[outreach.drafts.regenerate] message=#{params[:id]} conversation=#{params[:conversation_id]} " \
+      "timeout=#{error.class}: #{error.message}"
+    )
+    render json: {
+      error: 'LLM regeneration timed out before Chatwoot could finish the request. Draft was not changed.'
+    }, status: :gateway_timeout
+  end
+
+  def render_regenerate_unexpected_error(error)
+    Rails.logger.warn(
+      "[outreach.drafts.regenerate] message=#{params[:id]} conversation=#{params[:conversation_id]} " \
+      "error=#{error.class}: #{error.message}\n#{error.backtrace&.first(8)&.join("\n")}"
+    )
+    render json: {
+      error: "LLM regeneration failed (unexpected_error:#{error.class}: #{error.message}). Draft may not have changed."
+    }, status: :unprocessable_entity
   end
 
   # API inbox check

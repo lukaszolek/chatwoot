@@ -81,7 +81,8 @@ class Outreach::Drafts::RegenerateService
 
   def with_llm_errors_wrapped(participant)
     yield
-  rescue Outreach::Llm::Client::LlmError, RubyLLM::Error, Faraday::Error, Net::ReadTimeout, JSON::ParserError => e
+  rescue Outreach::Llm::Client::LlmError, RubyLLM::Error, Faraday::Error, Net::ReadTimeout, JSON::ParserError,
+         Rack::Timeout::RequestTimeoutException => e
     Rails.logger.warn(
       "[outreach.drafts.regenerate] draft=#{draft_message.id} participant=#{participant&.id} error=#{e.class}: #{e.message}"
     )
