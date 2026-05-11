@@ -31,6 +31,7 @@
   - active_storage_analysis
   - active_storage_purge
   - action_mailbox_incineration
+  - outreach_interactive
   - outreach
 
 # you can override concurrency based on environment

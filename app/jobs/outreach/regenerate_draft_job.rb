@@ -1,5 +1,5 @@
 class Outreach::RegenerateDraftJob < ApplicationJob
-  queue_as :outreach
+  queue_as :outreach_interactive
 
   def perform(draft_message_id:, user_id:, operator_prompt:)
     draft_message = Message.find(draft_message_id)

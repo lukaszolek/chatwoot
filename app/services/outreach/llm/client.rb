@@ -24,9 +24,11 @@ class Outreach::Llm::Client
     Llm::Config.initialize!
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-    response = with_outreach_context(model: model) do |chat|
-      configure_chat(chat, temperature: temperature, system: system)
-      chat.ask(user)
+    response = without_active_record_connections do
+      with_outreach_context(model: model) do |chat|
+        configure_chat(chat, temperature: temperature, system: system)
+        chat.ask(user)
+      end
     end
 
     latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
@@ -57,11 +59,13 @@ class Outreach::Llm::Client
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     captured_calls = []
 
-    response = with_outreach_context(model: model) do |chat|
-      configure_chat(chat, temperature: temperature, system: system)
-      tools.each { |tool| chat.with_tool(tool) }
-      chat.on_tool_call { |tc| captured_calls << { name: tc.name, params: tc.arguments } }
-      chat.ask(user)
+    response = without_active_record_connections do
+      with_outreach_context(model: model) do |chat|
+        configure_chat(chat, temperature: temperature, system: system)
+        tools.each { |tool| chat.with_tool(tool) }
+        chat.on_tool_call { |tc| captured_calls << { name: tc.name, params: tc.arguments } }
+        chat.ask(user)
+      end
     end
 
     latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
@@ -131,6 +135,13 @@ class Outreach::Llm::Client
     chat.with_temperature(temperature)
     chat.with_params(max_tokens: max_tokens)
     chat.with_instructions(system)
+  end
+
+  def without_active_record_connections
+    ActiveRecord::Base.connection_handler.clear_active_connections!
+    yield
+  ensure
+    ActiveRecord::Base.connection_handler.clear_active_connections!
   end
 
   def tool_response_payload(response, captured_calls, latency_ms)
