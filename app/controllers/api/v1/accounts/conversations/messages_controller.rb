@@ -62,12 +62,16 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
   end
 
   def regenerate_outreach_draft
-    result = Outreach::Drafts::RegenerateService.new(
-      draft_message: message,
-      user: Current.user,
-      operator_prompt: params[:operator_prompt].to_s
-    ).call
-    render json: result
+    operator_prompt = params[:operator_prompt].to_s
+    raise Outreach::Drafts::RegenerateService::Error, 'operator_prompt is required' if operator_prompt.strip.empty?
+
+    mark_outreach_regeneration_queued!(message)
+    Outreach::RegenerateDraftJob.perform_later(
+      draft_message_id: message.id,
+      user_id: Current.user&.id,
+      operator_prompt: operator_prompt
+    )
+    render json: { ok: true, queued: true, draft_message_id: message.id }, status: :accepted
   rescue Outreach::Drafts::RegenerateService::Error => e
     render json: { error: e.message }, status: :unprocessable_entity
   rescue Rack::Timeout::RequestTimeoutException => e
@@ -136,6 +140,22 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render json: {
       error: "LLM regeneration failed (unexpected_error:#{error.class}: #{error.message}). Draft may not have changed."
     }, status: :unprocessable_entity
+  end
+
+  def mark_outreach_regeneration_queued!(draft_message)
+    raise Outreach::Drafts::RegenerateService::Error, 'not an outreach draft' unless draft_message.outreach_draft?
+    raise Outreach::Drafts::RegenerateService::Error, "draft already #{draft_message.outreach_draft_status}" \
+      unless draft_message.outreach_draft_status == 'pending'
+
+    additional = draft_message.additional_attributes.to_h.deep_dup
+    if %w[queued processing].include?(additional['regeneration_status'])
+      raise Outreach::Drafts::RegenerateService::Error, 'draft regeneration already in progress'
+    end
+
+    additional['regeneration_status'] = 'queued'
+    additional['regeneration_error'] = nil
+    additional['regeneration_updated_at'] = Time.current.iso8601
+    draft_message.update!(additional_attributes: additional)
   end
 
   # API inbox check

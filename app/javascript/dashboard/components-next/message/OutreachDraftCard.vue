@@ -1,6 +1,6 @@
 <script setup>
 /* global axios */
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useUISettings } from 'dashboard/composables/useUISettings';
 import { useAccount } from 'dashboard/composables/useAccount';
@@ -43,6 +43,15 @@ const editHistory = computed(
   () => props.additionalAttributes?.editHistory || []
 );
 const toolCalls = computed(() => props.additionalAttributes?.toolCalls || []);
+const regenerationStatus = computed(
+  () => props.additionalAttributes?.regenerationStatus || ''
+);
+const regenerationError = computed(
+  () => props.additionalAttributes?.regenerationError || ''
+);
+const isRegenerating = computed(() =>
+  ['queued', 'processing'].includes(regenerationStatus.value)
+);
 
 const isPending = computed(() => status.value === 'pending');
 const isApproved = computed(() => status.value === 'approved');
@@ -118,6 +127,18 @@ const showPrompt = ref(false);
 const showHistory = ref(false);
 const busy = ref(null);
 const error = ref(null);
+let regenerationPollTimer = null;
+
+const stopRegenerationPolling = () => {
+  if (!regenerationPollTimer) return;
+  window.clearInterval(regenerationPollTimer);
+  regenerationPollTimer = null;
+};
+
+const startRegenerationPolling = () => {
+  stopRegenerationPolling();
+  regenerationPollTimer = window.setInterval(() => emit('updated'), 3000);
+};
 
 const beginEdit = () => {
   renderOriginal.value = true;
@@ -162,6 +183,7 @@ const regenerate = async () => {
     });
     promptInput.value = '';
     showPrompt.value = false;
+    startRegenerationPolling();
     emit('updated');
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
@@ -169,6 +191,20 @@ const regenerate = async () => {
     busy.value = null;
   }
 };
+
+watch(
+  regenerationStatus,
+  newStatus => {
+    if (['queued', 'processing'].includes(newStatus)) {
+      startRegenerationPolling();
+    } else {
+      stopRegenerationPolling();
+    }
+  },
+  { immediate: true }
+);
+
+onBeforeUnmount(stopRegenerationPolling);
 
 const translateDraft = async () => {
   if (!targetTranslationLocale.value) {
@@ -268,6 +304,19 @@ const reject = async () => {
         class="p-2 mb-2 text-xs rounded bg-n-ruby-3 text-n-ruby-11"
       >
         {{ error }}
+      </div>
+      <div
+        v-if="isRegenerating"
+        class="p-2 mb-2 text-xs rounded bg-n-amber-3 text-n-amber-11"
+      >
+        Regeneruję draft w tle. To może potrwać dłużej, jeśli trwa bulk
+        generowanie.
+      </div>
+      <div
+        v-if="regenerationStatus === 'failed'"
+        class="p-2 mb-2 text-xs rounded bg-n-ruby-3 text-n-ruby-11"
+      >
+        Regeneracja nie powiodła się: {{ regenerationError }}
       </div>
 
       <div
@@ -372,11 +421,15 @@ const reject = async () => {
         <div class="flex items-center gap-2 mt-2">
           <button
             type="button"
-            :disabled="busy === 'regenerate'"
+            :disabled="busy === 'regenerate' || isRegenerating"
             class="px-3 py-2 text-xs font-medium text-white rounded bg-n-brand disabled:opacity-50"
             @click="regenerate"
           >
-            {{ busy === 'regenerate' ? 'Generuję…' : 'Wygeneruj ponownie' }}
+            {{
+              busy === 'regenerate' || isRegenerating
+                ? 'Generuję…'
+                : 'Wygeneruj ponownie'
+            }}
           </button>
           <button
             type="button"
@@ -396,7 +449,7 @@ const reject = async () => {
           v-if="!editingBody"
           type="button"
           class="px-3 py-2 text-xs font-medium text-white rounded bg-n-teal-9 hover:bg-n-teal-10"
-          :disabled="busy === 'approve'"
+          :disabled="busy === 'approve' || isRegenerating"
           @click="approve"
         >
           {{ busy === 'approve' ? 'Wysyłam…' : 'Wyślij' }}
@@ -405,6 +458,7 @@ const reject = async () => {
           v-if="!editingBody && !showPrompt"
           type="button"
           class="px-3 py-2 text-xs font-medium border rounded border-n-brand text-n-brand hover:bg-n-brand/10"
+          :disabled="isRegenerating"
           @click="showPrompt = true"
         >
           Regeneruj z promptem
@@ -413,6 +467,7 @@ const reject = async () => {
           v-if="!editingBody"
           type="button"
           class="px-3 py-2 text-xs font-medium border rounded border-n-weak text-n-slate-12 hover:bg-n-slate-2"
+          :disabled="isRegenerating"
           @click="beginEdit"
         >
           Edytuj ręcznie
@@ -440,7 +495,7 @@ const reject = async () => {
           v-if="!editingBody"
           type="button"
           class="ml-auto px-3 py-2 text-xs font-medium text-n-ruby-11 hover:underline"
-          :disabled="busy === 'reject'"
+          :disabled="busy === 'reject' || isRegenerating"
           @click="reject"
         >
           Odrzuć (eskaluj)
