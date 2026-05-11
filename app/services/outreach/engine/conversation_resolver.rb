@@ -27,7 +27,7 @@ class Outreach::Engine::ConversationResolver
       @participant.reload
 
       if @participant.conversation_id.present?
-        @participant.conversation
+        assigned_conversation || create_and_assign_conversation!
       else
         create_and_assign_conversation!
       end
@@ -77,6 +77,14 @@ class Outreach::Engine::ConversationResolver
     contact_inbox = find_or_create_contact_inbox!(inbox)
     conversation = create_conversation!(inbox, contact_inbox)
     assign_conversation!(conversation)
+  end
+
+  def assigned_conversation
+    conversation = Conversation.find_by(id: @participant.conversation_id)
+    return conversation if conversation
+
+    @participant.update!(conversation_id: nil)
+    nil
   end
 
   def create_conversation!(inbox, contact_inbox)

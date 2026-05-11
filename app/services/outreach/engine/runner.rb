@@ -39,11 +39,7 @@ class Outreach::Engine::Runner
   end
 
   def process(participant)
-    ActiveRecord::Base.transaction do
-      participant.with_lock do
-        process_locked_participant(participant)
-      end
-    end
+    process_participant(participant)
   rescue StandardError => e
     Rails.logger.error(
       "[outreach.runner] participant=#{participant.id} stage=#{participant.current_stage_key} " \
@@ -56,7 +52,7 @@ class Outreach::Engine::Runner
 
   private
 
-  def process_locked_participant(participant)
+  def process_participant(participant)
     participant.reload
     return if participant.paused?
 
