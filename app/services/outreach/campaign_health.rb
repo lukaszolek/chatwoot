@@ -26,7 +26,9 @@ class Outreach::CampaignHealth
   end
 
   def generation_errors
-    @generation_errors ||= missing_drafts.where("metadata ? 'last_error'")
+    @generation_errors ||= campaign.participants
+                                   .where(current_stage_key: 'intro')
+                                   .where("metadata ? 'last_error'")
   end
 
   def llm_credits_errors
