@@ -57,7 +57,10 @@ class Outreach::Drafts::RegenerateService
 
   def compose(participant)
     with_llm_errors_wrapped(participant) do
-      compose_for_slot(participant)
+      composed = compose_for_slot(participant)
+      raise Error, "LLM regeneration failed (#{fallback_reason(composed)}). Draft was not changed." if composed[:fallback]
+
+      composed
     end
   end
 
@@ -103,6 +106,12 @@ class Outreach::Drafts::RegenerateService
       toolbox: toolbox,
       operator_hint: operator_prompt
     ).call
+  end
+
+  def fallback_reason(composed)
+    output = composed[:output]
+    reason = output.is_a?(Hash) ? output['fallback'] : nil
+    reason.presence || 'composer_fallback'
   end
 
   def apply_regeneration!(composed)

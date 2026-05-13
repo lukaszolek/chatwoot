@@ -43,6 +43,7 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
 
     composed = composer_class.new(participant: participant, conversation: conversation).call
     log_decision!(composed)
+    raise "composer_fallback:#{fallback_reason(composed)}" if composed[:fallback]
 
     deliver_or_create_draft!(conversation, composed)
   end
@@ -163,6 +164,12 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
     )
   rescue StandardError => e
     Rails.logger.warn("[outreach.send_template] decision_log_failed=#{e.class}: #{e.message.truncate(200)}")
+  end
+
+  def fallback_reason(composed)
+    output = composed[:output]
+    reason = output.is_a?(Hash) ? output['fallback'] : nil
+    reason.presence || 'unknown'
   end
 
   def already_replied?
