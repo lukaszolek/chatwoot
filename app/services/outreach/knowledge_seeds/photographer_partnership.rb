@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/ModuleLength, Style/ClassAndModuleChildren
 # Knowledge base for the photographer_partnership campaign.
 #
 # Two entry points:
@@ -131,20 +132,23 @@ module Outreach::KnowledgeSeeds
         position: 0,
         title: 'Ton kampanii — PL',
         content: <<~TEXT
-          - **Persona**: Łukasz Olek, założyciel Framky. First-person, warm, matter-of-fact.
-          - **Rejestr**: moderate, **Ty** (nie Pan/Pani). "Cześć {{first_name}}".
-          - **Bez superlatyw**: nie pisz "uwielbiam Twoje zdjęcia", "Twoje portfolio jest niesamowite". Lazy and generic.
-          - **Konkret nad ogólnik**: jeśli widać website snippet — wpleć JEDEN konkretny detal stylistyczny / niszowy.
+          - **Persona**: Łukasz Olek, założyciel Framky. Pierwsza osoba, ciepło, konkretnie, bez marketingowego tonu.
+          - **Rejestr**: profesjonalnie, ale po ludzku. Używaj **Ty/Twoje**. Pierwszy kontakt: "Cześć {{first_name}}", jeśli imię jest znane; inaczej "Dzień dobry".
+          - **Bez superlatyw**: nie pisz "uwielbiam Twoje zdjęcia", "Twoje portfolio jest niesamowite", "jestem zachwycony". Bez generycznych komplementów.
+          - **Konkret nad ogólnik**: jeśli jest website snippet, dodaj jedno konkretne zdanie otwierające. Jeśli nie ma snippetu, nie twierdź, że widzieliśmy portfolio.
+          - **Struktura**: spersonalizowany opener daj w osobnym krótkim akapicie. Dopiero potem zacznij standardowe przedstawienie Łukasza/Framky.
+          - **Terminologia**: używaj "link polecający", "prowizja", "galeria ścienna", "fine-art print", "oprawa bez szkła". Nie pisz o drewnianych ramach, szkle ani lakierze UV.
+          - **Stopka prawna**: zawsze dodaj informację, skąd mamy dane, link do polityki prywatności, STOP opt-out i pełne dane Framky.
           - **Sygnatura**:
-            ```
+
             Pozdrawiam,
 
             Łukasz
             Framky Founder
-            ```
-          - **CTA**: "Jedno słowo w odpowiedzi wystarczy" — nigdy presji, nigdy "ostatnia szansa".
+
+          - **CTA**: "Jedno słowo w odpowiedzi wystarczy" albo "Odpisz po prostu 'tak', a wyślę link do rejestracji". Bez presji.
           - **Gender agreement**: dobierz formy z imienia ("byłbyś" / "byłabyś" / neutralna gdy niepewne).
-          - **Długość**: intro ≤ 12 zdań; reminder ≤ 7 zdań; breakup ≤ 5 zdań.
+          - **Długość**: Intro ≤ 12 zdań bez obowiązkowej stopki; reminder ≤ 7 zdań; breakup ≤ 5 zdań.
         TEXT
       },
       {
@@ -190,23 +194,139 @@ module Outreach::KnowledgeSeeds
         TEXT
       },
       {
+        kind: 'tone',
+        locale: 'nl',
+        position: 0,
+        title: 'Tone - NL',
+        content: <<~TEXT
+          - **Persona**: Łukasz Olek, oprichter van Framky. Eerste persoon, warm, zakelijk en concreet.
+          - **Register**: beleefd-professioneel, **u/uw**. Eerste contact: "Beste {{first_name}}" als de voornaam bekend is; anders "Beste fotograaf". Geen "Hoi".
+          - **Geen clichés**: geen "Ik ben onder de indruk van uw werk", geen "uw foto’s zijn prachtig", geen overdreven complimenten.
+          - **Concreet boven generiek**: verwerk één concreet detail uit de website-snippet als die beschikbaar is. Als er geen snippet is, beweer niet dat we de website of het portfolio hebben bekeken.
+          - **Terminologie**: gebruik "persoonlijke verwijzingslink", "commissie", "wandgalerie", "fotoprint", "MDF-lijst zonder glas". Noem Framky geen houten lijsten en claim geen glas of UV-vernis.
+          - **Structuur**: zet de gepersonaliseerde openingszin in een eigen korte alinea. Begin daarna een nieuwe alinea met de introductie van
+            Łukasz/Framky.
+          - **Juridische afsluiting**: voeg altijd toe waarom de ontvanger de e-mail krijgt, een link naar de privacyverklaring, een STOP-opt-out en de volledige bedrijfsgegevens van
+            Framky.
+          - **Signatuur**:
+
+            Met vriendelijke groet,
+
+            Łukasz Olek
+            Founder, Framky
+
+          - **CTA**: "Antwoord gewoon met ‘ja’, dan stuur ik u de registratielink." Laagdrempelig, nooit druk.
+          - **Lengte**: Intro ≤ 12 zinnen exclusief de verplichte juridische afsluiting; Reminder ≤ 7 zinnen; Breakup ≤ 5 zinnen.
+        TEXT
+      },
+      {
         kind: 'intro_seed',
         locale: 'pl',
         position: 0,
-        title: 'Intro seed — bullets do pierwszego maila (PL)',
+        title: 'Intro seed — pierwszy mail (PL)',
         content: <<~TEXT
-          Bullets do pierwszego maila wysyłanego do fotografa. Komponer (intro) ma je przepisać DOSŁOWNIE — można dopasować tylko opener (anchor z website snippet) i sygnaturę. Nie generalizuj, nie skracaj, nie zamieniaj na "atrakcyjna prowizja".
+          Napisz pierwszy mail outreach do fotografa po polsku. Użyj poniższej treści jako stałej bazy. Możesz lekko dopasować tylko powitanie na podstawie dostępnych danych profilu i dodać maksymalnie jedno konkretne zdanie otwierające na podstawie website snippet, jeśli taki snippet faktycznie istnieje.
 
-          **Co dostajesz w programie partnerskim Framky:**
+          WAŻNE: obowiązkową stopkę prawną poniżej zawsze wstaw dosłownie na końcu maila. Nie streszczaj, nie usuwaj, nie przenoś. Stopka zaczyna się od "---" i kończy na "Tel.: +48 22 270 1091". Stopka nie liczy się do limitu długości.
 
-          - **20% prowizji** od kwoty netto każdego zamówienia klienta, który wejdzie przez Twój **link polecający** (last-click, 30-dniowe okno konwersji).
-          - **25% rabat dla Twojego klienta** od ceny katalogowej — naliczany automatycznie, gdy klient kupuje przez link polecający. Czyli klient zyskuje, Ty zyskujesz, bez żadnej dodatkowej sztuczki.
-          - **2% prowizji bezterminowo, gdy polecisz Framky innemu fotografowi** — zarabiasz na każdym zamówieniu klientów tego fotografa, dopóki jest aktywny w programie. To "drugi poziom" polecania: pasywny strumień, w który warto włożyć jeden mail do znajomego z branży.
-          - **Voucher 20 EUR na start**, żebyś sam przetestował jakość naszych galerii zanim cokolwiek polecisz klientowi.
-          - **Wypłaty co miesiąc** (SEPA dla UE / PayPal), próg 50 EUR, do 10. dnia za miesiąc poprzedni.
-          - **Bez limitu** liczby klientów, bez limitu czasu zarabiania, bez ekskluzywności.
+          Cześć {{first_name}},
 
-          CTA: jedno zdanie w odpowiedzi (np. "wchodzę") — odeślę link do rejestracji + voucher startowy.
+          Nazywam się Łukasz Olek i jestem założycielem Framky. Drukujemy i oprawiamy zdjęcia, które klienci wieszają u siebie w domu. Salon klienta to często najlepsza wizytówka fotografa.
+
+          Wydruk, który trafi do klienta, to fine-art print na papierze fotograficznym: dwanaście tuszy pigmentowych, 99% pokrycia przestrzeni PANTONE®, oprawiony przez nas bez szkła, żeby kolory nie traciły głębi. Zależy nam na wydruku, który odpowiada wartości Twojej pracy.
+
+          Chcemy zaprosić Cię do programu partnerskiego Framky:
+
+          - Twój klient zamawia galerię ścienną w naszym sklepie przez Twój osobisty link polecający.
+          - Otrzymujesz 20% prowizji od każdego zamówienia.
+          - Otrzymujesz dodatkowo 2% prowizji od obrotu fotografów, których polecisz do Framky.
+          - Średnia galeria ścienna za 200 euro netto daje 40 euro prowizji.
+          - Produkcję, oprawę, wysyłkę i obsługę klienta bierzemy w całości na siebie.
+
+          Rejestracja zajmuje około dwóch minut. Po rejestracji otrzymasz osobisty link polecający, dostęp do panelu rozliczeń oraz rabat na zamówienia do własnego studia.
+
+          Jeśli chcesz dołączyć, odpisz po prostu „TAK” — wtedy wyślę Ci link do rejestracji.
+
+          Pozdrawiam,
+
+          Łukasz
+          Framky Founder
+
+          ---
+          Otrzymujesz tę wiadomość, ponieważ znaleźliśmy Twoje publicznie dostępne dane kontaktowe opublikowane na stronie Twojego studia. Więcej informacji o tym, jak przetwarzamy dane osobowe, znajdziesz w naszej polityce prywatności: https://framky.com/pl-PL/polityka-prywatnosci
+
+          Jeśli nie chcesz otrzymywać od nas kolejnych wiadomości, odpowiedz „STOP”.
+
+          Framky Sp. z o.o.
+          ul. Heliotropów 29
+          04-796 Warszawa, Polska
+          E-mail: hello@framky.pl
+          Tel.: +48 22 270 1091
+
+          Ważne:
+          - Zachowaj dokładnie prowizje: 20% od zamówień klientów i 2% od poleconych fotografów.
+          - Nie dodawaj P.S. ani informacji o tymczasowej promocji.
+          - Nie dodawaj vouchera, rabatu 25%, kodów klienta ani innych benefitów, jeśli nie ma ich powyżej.
+          - Użyj informacji o dwunastu tuszach pigmentowych i 99% pokrycia przestrzeni PANTONE® tylko w dokładnym kontekście powyżej.
+          - Nie twierdź, że ramy są drewniane. Nie wspominaj o szkle ani lakierze UV.
+          - Pisz na „Ty”, ale profesjonalnie i bez przesadnej poufałości.
+          - Jeśli nie masz pewności co do płci odbiorcy, używaj neutralnych form.
+          - Nie pomijaj obowiązkowej stopki prawnej.
+        TEXT
+      },
+      {
+        kind: 'intro_seed',
+        locale: 'nl',
+        position: 0,
+        title: 'Intro seed - eerste mail (NL)',
+        content: <<~TEXT
+          Schrijf de eerste outreach-mail aan een fotograaf in het Nederlands. Gebruik deze inhoud als vaste basis. Pas alleen de aanhef licht aan op basis van beschikbare profielgegevens en voeg maximaal één concreet detail uit de website-snippet toe als dat echt beschikbaar is.
+
+          BELANGRIJK: neem de juridische afsluiting hieronder altijd letterlijk op aan het einde van de e-mail. Niet samenvatten, niet weglaten, niet verplaatsen. De juridische afsluiting begint bij "---" en eindigt bij "Tel.: +48 22 270 1091". Deze afsluiting telt niet mee voor de lengterichtlijn.
+
+
+          Beste {{first_name}},
+
+          Mijn naam is Łukasz Olek, oprichter van Framky. Wij printen en lijsten foto’s in die onze klanten thuis aan de muur hangen. De woonkamer van een klant is vaak de beste visitekaart die een fotograaf kan hebben.
+
+          Onze prints zijn fine-art prints op fotopapier: twaalf pigmentinkten, 99% dekking van het PANTONE®-kleurbereik, door ons ingelijst zonder glas zodat de kleuren hun diepte niet verliezen. Ons doel is een print die past bij de waarde van uw werk.
+
+          We nodigen u uit voor het Framky-partnerprogramma:
+
+          - Uw klant bestelt een wandgalerie in onze shop via uw persoonlijke verwijzingslink.
+          - U ontvangt 20% commissie op elke bestelling.
+          - U ontvangt daarnaast 2% commissie over de omzet van fotografen die u bij Framky aanbrengt.
+          - Een gemiddelde wandgalerie van 200 euro netto levert 40 euro commissie op.
+          - Productie, inlijsten, verzending en klantenservice verzorgen wij volledig.
+
+          Aanmelden duurt ongeveer twee minuten. Na registratie ontvangt u uw persoonlijke verwijzingslink, toegang tot het uitbetalingsportaal en een korting op bestellingen voor uw eigen studio.
+
+          Wilt u meedoen? Antwoord dan gewoon met “ja”, dan stuur ik u de registratielink.
+
+          Met vriendelijke groet,
+
+          Łukasz Olek
+          Founder, Framky
+
+          ---
+          U ontvangt deze e-mail omdat wij uw zakelijke contactgegevens hebben gevonden die openbaar zijn gepubliceerd op uw studio-website. Meer informatie over hoe wij persoonsgegevens verwerken vindt u in onze privacyverklaring: https://framky.com/nl-NL/privacybeleid
+
+          Als u geen verdere berichten van ons wilt ontvangen, antwoord dan met “STOP”.
+
+          Framky Sp. z o.o.
+          ul. Heliotropów 29
+          04-796 Warszawa, Polen
+          E-mail: hello@framky.pl
+          Tel.: +48 22 270 1091
+
+
+          Belangrijk:
+          - Behoud de commissiepercentages exact: 20% voor bestellingen van klanten en 2% voor aangebrachte fotografen.
+          - Gebruik geen P.S. over tijdelijke verhoging van commissie.
+          - Gebruik de claim over twaalf pigmentinkten en 99% dekking van het PANTONE®-kleurbereik alleen in de exacte context hierboven.
+          - Claim geen UV-vernis, houten lijsten of glas.
+          - Gebruik “u/uw”, niet “je/jij”.
+          - Voeg geen extra voordelen toe die niet hierboven staan.
         TEXT
       },
       {
@@ -272,3 +392,4 @@ module Outreach::KnowledgeSeeds
     ].freeze
   end
 end
+# rubocop:enable Metrics/ModuleLength, Style/ClassAndModuleChildren

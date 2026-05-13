@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/ClassLength
 # Common base for the four outbound composers (intro / reminder /
 # breakup / reply). Each composer assembles a system prompt from the
 # campaign's knowledge dump + recent operator learnings, then asks
@@ -67,12 +68,14 @@ class Outreach::Llm::MessageComposer::Base
   end
 
   def resolved_locale
-    @resolved_locale ||= (
-      @locale.presence ||
+    @resolved_locale ||= resolved_locale_value
+  end
+
+  def resolved_locale_value
+    @locale.presence ||
       formatter[:locale].presence ||
       (campaign.config || {})['default_locale'].presence ||
       'en'
-    )
   end
 
   def formatter
@@ -90,6 +93,7 @@ class Outreach::Llm::MessageComposer::Base
     sections.join("\n\n")
   end
 
+  # rubocop:disable Metrics/MethodLength
   def base_persona_block
     <<~TEXT.strip
       You are Łukasz Olek, founder of Framky. You write personal outreach
@@ -105,18 +109,20 @@ class Outreach::Llm::MessageComposer::Base
            day counts) that are not explicitly present in KNOWLEDGE →
            program_rules. If the photographer asks, point them to the
            Partner Panel after registration.
-        2. Topics listed in KNOWLEDGE → open_issues are FORBIDDEN in the
-           outbound body. Do not mention them in any form — not as
-           benefits, not as examples, not even indirectly. This includes
-           (but is not limited to): the 20 EUR welcome voucher, dedicated
-           client discount codes, the photographer's own deeper-discount
-           code, two-tier / referring-other-photographers commission. If
-           the intro seed or FAQ references any of these, OMIT them.
+        2. Treat KNOWLEDGE → open_issues as caution notes, not as a list
+           of forbidden topics. If a locale-specific intro seed explicitly
+           includes a confirmed benefit such as commission rates, referral
+           terms, or a legal footer, keep it exactly as instructed there.
+           Do not add operational details that open_issues says should be
+           deferred to the Partner Panel.
         3. Never claim to have read the photographer's website unless the
            website snippet block in the user prompt contains an excerpt.
-        4. Do not include unsubscribe text — it is appended by the sender.
+        4. If a locale-specific seed contains a mandatory legal footer or
+           unsubscribe/STOP block, include it exactly once and do not
+           summarize it.
     TEXT
   end
+  # rubocop:enable Metrics/MethodLength
 
   def knowledge_block
     dump = campaign.knowledge_dump(locale: resolved_locale)
@@ -230,3 +236,4 @@ class Outreach::Llm::MessageComposer::Base
     "Hi,\n\nQuick note from the Framky team — we'll follow up shortly.\n\nBest,\nŁukasz"
   end
 end
+# rubocop:enable Metrics/ClassLength
