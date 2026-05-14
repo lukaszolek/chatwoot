@@ -12,6 +12,7 @@ const tabs = [
     route: 'outreach_photographers',
   },
   { key: 'pipeline', label: 'Pipeline', route: 'outreach_pipeline' },
+  { key: 'stats', label: 'Statystyki', route: 'outreach_stats' },
   { key: 'campaigns', label: 'Campaigns', route: 'outreach_campaigns' },
   { key: 'knowledge', label: 'Knowledge', route: 'outreach_knowledge' },
   { key: 'learnings', label: 'Learnings', route: 'outreach_learnings' },
@@ -20,6 +21,7 @@ const tabs = [
 const activeKey = computed(() => {
   if (route.name === 'outreach_inbox') return 'inbox';
   if (route.name === 'outreach_pipeline') return 'pipeline';
+  if (route.name === 'outreach_stats') return 'stats';
   if (route.name === 'outreach_campaigns') return 'campaigns';
   if (route.name === 'outreach_knowledge') return 'knowledge';
   if (route.name === 'outreach_learnings') return 'learnings';

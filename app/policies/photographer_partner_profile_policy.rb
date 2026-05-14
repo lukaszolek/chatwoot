@@ -39,6 +39,14 @@ class PhotographerPartnerProfilePolicy < ApplicationPolicy
     index?
   end
 
+  def daily_new?
+    index?
+  end
+
+  def funnel?
+    index?
+  end
+
   # Fetching from the external Framky orders endpoint is a privileged
   # operation — it touches prod data and an outbound HTTPS call.
   def refresh_stats?

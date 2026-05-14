@@ -139,6 +139,8 @@ Rails.application.routes.draw do
                 post :refresh_stats
               end
             end
+            get 'stats/daily_new', to: 'stats#daily_new'
+            get 'stats/funnel', to: 'stats#funnel'
             get 'directory/search', to: 'directory#search'
             post 'directory/import', to: 'directory#import'
             post 'directory/import_filtered', to: 'directory#import_filtered'
