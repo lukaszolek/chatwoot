@@ -260,6 +260,7 @@ const senderName = c =>
           </div>
           <ConversationBox
             v-else
+            class="!flex-1 min-h-0 h-full"
             :inbox-id="currentChat.inbox_id || 0"
             is-inbox-view
             :is-contact-panel-open="false"
