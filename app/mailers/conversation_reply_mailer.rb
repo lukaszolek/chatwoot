@@ -5,6 +5,7 @@ class ConversationReplyMailer < ApplicationMailer
 
   include ConversationReplyMailerHelper
   include ReferencesHeaderBuilder
+  include EmailAddressParseable
   default from: ENV.fetch('MAILER_SENDER_EMAIL', 'Chatwoot <accounts@chatwoot.com>')
   layout :choose_layout
 
@@ -36,7 +37,7 @@ class ConversationReplyMailer < ApplicationMailer
 
   def email_reply(message)
     init_conversation_attributes(message.conversation)
-    return unless smtp_config_set_or_development? || channel_has_own_delivery_method?
+    return unless smtp_config_set_or_development? || email_smtp_enabled? || (email_imap_enabled? && email_oauth_enabled?)
 
     @message = message
     prepare_mail(true)
@@ -68,12 +69,6 @@ class ConversationReplyMailer < ApplicationMailer
     @agent = @conversation.assignee
     @inbox = @conversation.inbox
     @channel = @inbox.channel
-  end
-
-  def channel_has_own_delivery_method? # rubocop:disable Metrics/CyclomaticComplexity
-    return false unless @inbox&.email?
-
-    @channel&.smtp_enabled || @channel&.google? || @channel&.microsoft?
   end
 
   def should_use_conversation_email_address?
@@ -143,10 +138,6 @@ class ConversationReplyMailer < ApplicationMailer
 
   def channel_email_with_name
     sender_name(@channel.email)
-  end
-
-  def parse_email(email_string)
-    Mail::Address.new(email_string).address
   end
 
   def inbox_from_email_address

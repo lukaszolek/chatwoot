@@ -21,6 +21,107 @@
 # `Outreach::PhotographerDirectory::ConsentWriter` and
 # `Outreach::PhotographerDirectory::ProfileWriter`. Both emit audit trails
 # (CampaignAttributionEvent) so every mutation is traceable.
+# == Schema Information
+#
+# Table name: photographer_photographers
+#
+#  id                                                                           :bigint           not null, primary key
+#  address                                                                      :text
+#  address_verification_result                                                  :jsonb
+#  address_verification_status                                                  :enum             default("unverified"), not null
+#  address_verified_at                                                          :datetime
+#  address_verified_formatted                                                   :text
+#  address_verified_lat                                                         :decimal(10, 8)
+#  address_verified_lng                                                         :decimal(11, 8)
+#  auto_classification_confidence                                               :decimal(5, 2)
+#  build_priority                                                               :integer          default(0)
+#  business_name                                                                :text             not null
+#  country_code                                                                 :text
+#  crawl_success                                                                :boolean          default(TRUE)
+#  edit_token                                                                   :uuid
+#  email                                                                        :text
+#  email_obtained_by_us                                                         :boolean          default(FALSE)
+#  email_validated_at                                                           :datetime
+#  email_validation_status                                                      :enum             default("unknown")
+#  established_year                                                             :integer
+#  facebook_url                                                                 :text
+#  gdpr_delete_requested_at                                                     :timestamptz
+#  google_business_name                                                         :text
+#  google_photos_count                                                          :integer
+#  google_price_level                                                           :integer
+#  google_rating                                                                :decimal(2, 1)
+#  google_review_count                                                          :integer
+#  instagram_bio                                                                :text
+#  instagram_external_url                                                       :text
+#  instagram_followers                                                          :integer
+#  instagram_following                                                          :integer
+#  instagram_handle                                                             :text
+#  instagram_is_private                                                         :boolean
+#  instagram_last_sync_error                                                    :text
+#  instagram_last_sync_status                                                   :text
+#  instagram_last_synced_at                                                     :datetime
+#  instagram_posts_count                                                        :integer
+#  instagram_verified                                                           :boolean
+#  is_premium                                                                   :boolean          default(FALSE)
+#  last_crawled_at                                                              :datetime
+#  last_google_sync                                                             :datetime
+#  last_viewed_at                                                               :datetime
+#  latitude                                                                     :decimal(10, 8)
+#  letter_exports                                                               :jsonb
+#  linkedin_url                                                                 :text
+#  longitude                                                                    :decimal(11, 8)
+#  marketing_consent                                                            :boolean          default(FALSE)
+#  markets                                                                      :text             is an Array
+#  native_language                                                              :text             default("pl")
+#  owner_name                                                                   :text
+#  phone                                                                        :text
+#  pinterest_url                                                                :text
+#  preferred_language(Preferred language for edit interface (de, en, pl, etc.)) :text             default("de")
+#  profile_image_url                                                            :text
+#  public_email                                                                 :text
+#  public_phone                                                                 :text
+#  service_radius                                                               :integer
+#  slug                                                                         :text             not null
+#  status                                                                       :enum             default("pending"), not null
+#  structured_contact                                                           :jsonb
+#  terms_accepted                                                               :boolean          default(FALSE)
+#  terms_accepted_at                                                            :datetime
+#  unsubscribed_all_until                                                       :timestamptz
+#  unsubscribed_from_all_at                                                     :timestamptz
+#  unsubscribed_from_all_campaigns                                              :boolean          default(FALSE)
+#  verified_at                                                                  :datetime
+#  view_count                                                                   :integer          default(0)
+#  website                                                                      :text             not null
+#  welcome_email_requested                                                      :boolean          default(FALSE), not null
+#  welcome_email_sent_at                                                        :datetime
+#  whatsapp_available                                                           :boolean          default(FALSE)
+#  years_of_experience                                                          :integer
+#  created_at                                                                   :datetime         not null
+#  updated_at                                                                   :datetime         not null
+#  city_id                                                                      :bigint
+#  external_id                                                                  :text
+#  google_place_id                                                              :text
+#
+# Indexes
+#
+#  photographer_address_verification_idx              (address_verification_status)
+#  photographer_country_idx                           (country_code)
+#  photographer_email_validation_idx                  (email_validation_status)
+#  photographer_geo_idx                               (latitude,longitude)
+#  photographer_google_place_idx                      (google_place_id)
+#  photographer_location_idx                          (city_id)
+#  photographer_pending_city_review_idx               (status,created_at) WHERE (status = 'pending_city_review'::photographer_status)
+#  photographer_photographers_google_place_id_unique  (google_place_id) UNIQUE
+#  photographer_photographers_slug_unique             (slug) UNIQUE
+#  photographer_photographers_website_unique          (website) UNIQUE
+#  photographer_priority_idx                          (build_priority)
+#  photographer_slug_idx                              (slug)
+#  photographer_status_idx                            (status)
+#
+# Foreign Keys
+#
+#  photographer_photographers_website_websites_domain_fk  (website => websites.domain)
+#
 class PhotographerDirectory::Photographer < PhotographerDirectory::ApplicationRecord
   self.table_name = 'photographer_photographers'
   self.primary_key = 'id'
