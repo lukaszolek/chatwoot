@@ -131,6 +131,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_06_163428) do
     t.bigint "account_id"
     t.integer "bot_type", default: 0
     t.jsonb "bot_config", default: {}
+    t.string "secret"
     t.index ["account_id"], name: "index_agent_bots_on_account_id"
   end
 
@@ -258,6 +259,30 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_06_163428) do
     t.datetime "updated_at", null: false
     t.boolean "active", default: true, null: false
     t.index ["account_id"], name: "index_automation_rules_on_account_id"
+  end
+
+  create_table "calls", force: :cascade do |t|
+    t.bigint "account_id", null: false
+    t.bigint "inbox_id", null: false
+    t.bigint "conversation_id", null: false
+    t.bigint "contact_id", null: false
+    t.bigint "message_id"
+    t.bigint "accepted_by_agent_id"
+    t.string "provider_call_id", null: false
+    t.integer "provider", default: 0, null: false
+    t.integer "direction", null: false
+    t.string "status", default: "ringing", null: false
+    t.datetime "started_at"
+    t.integer "duration_seconds"
+    t.string "end_reason"
+    t.jsonb "meta", default: {}
+    t.text "transcript"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "contact_id"], name: "index_calls_on_account_id_and_contact_id"
+    t.index ["account_id", "conversation_id"], name: "index_calls_on_account_id_and_conversation_id"
+    t.index ["message_id"], name: "index_calls_on_message_id"
+    t.index ["provider", "provider_call_id"], name: "index_calls_on_provider_and_provider_call_id", unique: true
   end
 
   create_table "campaign_agent_tool_calls", force: :cascade do |t|
@@ -412,6 +437,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_06_163428) do
     t.datetime "updated_at", null: false
     t.integer "status", default: 1, null: false
     t.string "documentable_type"
+    t.boolean "edited", default: false, null: false
     t.index ["account_id"], name: "index_captain_assistant_responses_on_account_id"
     t.index ["assistant_id"], name: "index_captain_assistant_responses_on_assistant_id"
     t.index ["documentable_id", "documentable_type"], name: "idx_cap_asst_resp_on_documentable"
@@ -460,6 +486,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_06_163428) do
     t.datetime "updated_at", null: false
     t.integer "status", default: 0, null: false
     t.jsonb "metadata", default: {}
+    t.integer "sync_status"
+    t.datetime "last_synced_at"
+    t.datetime "last_sync_attempted_at"
+    t.index ["account_id", "sync_status"], name: "index_captain_documents_on_account_id_and_sync_status"
     t.index ["account_id"], name: "index_captain_documents_on_account_id"
     t.index ["assistant_id", "external_link"], name: "index_captain_documents_on_assistant_id_and_external_link", unique: true
     t.index ["assistant_id"], name: "index_captain_documents_on_assistant_id"
@@ -521,6 +551,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_06_163428) do
     t.string "hmac_token"
     t.boolean "hmac_mandatory", default: false
     t.jsonb "additional_attributes", default: {}
+    t.string "secret"
     t.index ["hmac_token"], name: "index_channel_api_on_hmac_token", unique: true
     t.index ["identifier"], name: "index_channel_api_on_identifier", unique: true
   end
@@ -1105,7 +1136,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_06_163428) do
     t.integer "apify_status", default: 0, null: false
     t.string "apify_error"
     t.jsonb "recent_posts", default: []
-    t.boolean "enrichment_pending", default: false
+    t.boolean "enrichment_pending", default: false, null: false
     t.decimal "voucher_value_multiplier", precision: 3, scale: 2, default: "1.0", null: false
     t.datetime "last_contacted_at"
     t.string "voucher_currency", default: "EUR", null: false
@@ -1450,6 +1481,22 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_06_163428) do
     t.index ["user_id"], name: "index_reporting_events_on_user_id"
   end
 
+  create_table "reporting_events_rollups", force: :cascade do |t|
+    t.integer "account_id", null: false
+    t.date "date", null: false
+    t.string "dimension_type", null: false
+    t.bigint "dimension_id", null: false
+    t.string "metric", null: false
+    t.bigint "count", default: 0, null: false
+    t.float "sum_value", default: 0.0, null: false
+    t.float "sum_value_business_hours", default: 0.0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id", "date", "dimension_type", "dimension_id", "metric"], name: "index_rollup_unique_key", unique: true
+    t.index ["account_id", "dimension_type", "date"], name: "index_rollup_summary"
+    t.index ["account_id", "metric", "date"], name: "index_rollup_timeseries"
+  end
+
   create_table "sla_events", force: :cascade do |t|
     t.bigint "applied_sla_id", null: false
     t.bigint "conversation_id", null: false
@@ -1576,6 +1623,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_05_06_163428) do
     t.integer "webhook_type", default: 0
     t.jsonb "subscriptions", default: ["conversation_status_changed", "conversation_updated", "conversation_created", "contact_created", "contact_updated", "message_created", "message_updated", "webwidget_triggered"]
     t.string "name"
+    t.string "secret"
     t.index ["account_id", "url"], name: "index_webhooks_on_account_id_and_url", unique: true
   end
 

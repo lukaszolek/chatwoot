@@ -1,3 +1,29 @@
+# == Schema Information
+#
+# Table name: campaign_pipeline_stages
+#
+#  id                       :bigint           not null, primary key
+#  auto_advance_after_hours :integer
+#  branch_rules             :jsonb            not null
+#  key                      :string           not null
+#  next_stage_key           :string
+#  on_enter_action          :integer          not null
+#  position                 :integer          not null
+#  template_slot            :string
+#  created_at               :datetime         not null
+#  updated_at               :datetime         not null
+#  outbound_campaign_id     :bigint           not null
+#
+# Indexes
+#
+#  idx_pipeline_stages_campaign_key                        (outbound_campaign_id,key) UNIQUE
+#  idx_pipeline_stages_campaign_position                   (outbound_campaign_id,position)
+#  index_campaign_pipeline_stages_on_outbound_campaign_id  (outbound_campaign_id)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (outbound_campaign_id => outbound_campaigns.id) ON DELETE => cascade
+#
 class CampaignPipelineStage < ApplicationRecord
   belongs_to :outbound_campaign
 

@@ -11,6 +11,44 @@
 # crashed secondary) those readers return nil — the callers MUST handle
 # it. Single-source-of-truth is the goal; offline behavior is the
 # trade-off.
+# == Schema Information
+#
+# Table name: photographer_partner_profiles
+#
+#  id                            :bigint           not null, primary key
+#  first_order_completed_at      :datetime
+#  last_order_completed_at       :datetime
+#  marketing_consent_state       :integer          default("unknown"), not null
+#  metadata                      :jsonb            not null
+#  notes                         :text
+#  order_stats_refreshed_at      :datetime
+#  orders_last_30d               :integer          default(0), not null
+#  orders_last_90d               :integer          default(0), not null
+#  orders_total                  :integer          default(0), not null
+#  partnership_status            :integer          default("imported"), not null
+#  partnership_status_changed_at :datetime
+#  tags                          :string           default([]), is an Array
+#  created_at                    :datetime         not null
+#  updated_at                    :datetime         not null
+#  account_id                    :bigint           not null
+#  contact_id                    :bigint
+#  external_id                   :string           not null
+#
+# Indexes
+#
+#  idx_on_order_stats_refreshed_at_0d81e748c4                      (order_stats_refreshed_at)
+#  idx_photographer_profiles_account_external                      (account_id,external_id) UNIQUE
+#  index_photographer_partner_profiles_on_account_id               (account_id)
+#  index_photographer_partner_profiles_on_contact_id               (contact_id)
+#  index_photographer_partner_profiles_on_last_order_completed_at  (last_order_completed_at)
+#  index_photographer_partner_profiles_on_marketing_consent_state  (marketing_consent_state)
+#  index_photographer_partner_profiles_on_partnership_status       (partnership_status)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#  fk_rails_...  (contact_id => contacts.id)
+#
 class PhotographerPartnerProfile < ApplicationRecord
   belongs_to :account
   belongs_to :contact, optional: true
