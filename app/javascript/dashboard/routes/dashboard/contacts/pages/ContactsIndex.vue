@@ -624,7 +624,9 @@ onMounted(async () => {
         :header-title="headerTitle"
         :current-page="currentPage"
         :total-items="totalItems"
-        :show-pagination-footer="!isFetchingList && hasContacts && !isSearchView"
+        :show-pagination-footer="
+          !isFetchingList && hasContacts && !isSearchView
+        "
         :active-sort="sortState.activeSort"
         :active-ordering="sortState.activeOrdering"
         :active-segment="activeSegment"

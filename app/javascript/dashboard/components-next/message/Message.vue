@@ -131,7 +131,6 @@ const props = defineProps({
   isEmailInbox: { type: Boolean, default: false },
   additionalAttributes: { type: Object, default: () => ({}) },
   private: { type: Boolean, default: false },
-  additionalAttributes: { type: Object, default: () => ({}) }, // eslint-disable-line vue/no-unused-properties
   sender: { type: Object, default: null },
   senderId: { type: Number, default: null },
   senderType: { type: String, default: null },
