@@ -56,6 +56,7 @@ const isRegenerating = computed(() =>
 const isPending = computed(() => status.value === 'pending');
 const isApproved = computed(() => status.value === 'approved');
 const isRejected = computed(() => status.value === 'rejected');
+const isDiscarded = computed(() => status.value === 'discarded');
 
 const subject = ref(props.contentAttributes?.email?.subject || '');
 const body = ref(props.content || '');
@@ -269,6 +270,19 @@ const reject = async () => {
     busy.value = null;
   }
 };
+
+const discard = async () => {
+  busy.value = 'discard';
+  error.value = null;
+  try {
+    await axios.post(`${baseUrl.value}/delete_outreach_draft`);
+    emit('updated');
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    busy.value = null;
+  }
+};
 </script>
 
 <!-- eslint-disable vue/no-bare-strings-in-template -->
@@ -282,6 +296,7 @@ const reject = async () => {
         'text-n-amber-11': isPending,
         'text-n-teal-11 bg-n-teal-3 border-n-teal-7': isApproved,
         'text-n-ruby-11 bg-n-ruby-3 border-n-ruby-7': isRejected,
+        'text-n-slate-11 bg-n-slate-3 border-n-slate-7': isDiscarded,
       }"
     >
       <span>
@@ -290,7 +305,9 @@ const reject = async () => {
             ? '✅ Outreach draft — wysłano'
             : isRejected
               ? '❌ Outreach draft — odrzucono'
-              : '🤖 Outreach draft — czeka na zatwierdzenie'
+              : isDiscarded
+                ? '🗑️ Outreach draft — usunięto'
+                : '🤖 Outreach draft — czeka na zatwierdzenie'
         }}
       </span>
       <span class="ml-auto opacity-70">
@@ -491,15 +508,43 @@ const reject = async () => {
             Anuluj edycję
           </button>
         </template>
-        <button
-          v-if="!editingBody"
-          type="button"
-          class="ml-auto px-3 py-2 text-xs font-medium text-n-ruby-11 hover:underline"
-          :disabled="busy === 'reject' || isRegenerating"
-          @click="reject"
-        >
-          Odrzuć (eskaluj)
-        </button>
+        <div v-if="!editingBody" class="ml-auto flex items-center gap-1">
+          <button
+            type="button"
+            class="px-3 py-2 text-xs font-medium text-n-ruby-11 hover:underline"
+            :disabled="busy === 'reject' || isRegenerating"
+            @click="reject"
+          >
+            Odrzuć (eskaluj)
+          </button>
+          <button
+            type="button"
+            title="Usuń draft (bez eskalacji)"
+            aria-label="Usuń draft"
+            class="p-2 text-xs text-n-slate-11 rounded hover:bg-n-slate-3 hover:text-n-ruby-11 disabled:opacity-50"
+            :disabled="busy === 'discard' || isRegenerating"
+            @click="discard"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 6h18" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+              <path d="M10 11v6" />
+              <path d="M14 11v6" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div

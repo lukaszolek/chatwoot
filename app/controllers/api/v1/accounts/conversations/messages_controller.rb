@@ -91,6 +91,17 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render json: { error: e.message }, status: :unprocessable_entity
   end
 
+  def delete_outreach_draft
+    Outreach::Drafts::DiscardService.new(
+      draft_message: message,
+      user: Current.user,
+      reason: 'manual_delete'
+    ).call
+    render json: { ok: true, draft_message_id: message.id }
+  rescue Outreach::Drafts::DiscardService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   def edit_outreach_draft
     Outreach::Drafts::EditService.new(
       draft_message: message,

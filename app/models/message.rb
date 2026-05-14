@@ -346,12 +346,27 @@ class Message < ApplicationRecord
   end
 
   def sync_created_outreach_labels
+    auto_discard_stale_outreach_drafts!
+
     if pending_outreach_draft?
       Outreach::ConversationLabels.mark_draft!(conversation)
     elsif sent_outreach_message?
       Outreach::ConversationLabels.mark_sent!(conversation)
     elsif incoming_outreach_reply?
       sync_incoming_outreach_label
+    end
+  end
+
+  def auto_discard_stale_outreach_drafts!
+    return unless outreach_conversation?
+    return if private?
+    return if outreach_draft?
+
+    reason = incoming? ? 'contact_replied' : 'agent_replied_externally'
+    conversation.messages.pending_outreach_drafts.where.not(id: id).find_each do |draft|
+      Outreach::Drafts::DiscardService.new(draft_message: draft, reason: reason).call
+    rescue Outreach::Drafts::DiscardService::Error => e
+      Rails.logger.warn("[outreach.drafts.auto_discard] draft=#{draft.id} error=#{e.message}")
     end
   end
 
@@ -375,7 +390,7 @@ class Message < ApplicationRecord
     case outreach_draft_status
     when 'approved'
       Outreach::ConversationLabels.mark_sent!(conversation)
-    when 'rejected', 'duplicate'
+    when 'rejected', 'duplicate', 'discarded'
       Outreach::ConversationLabels.clear_draft!(conversation)
     when 'pending'
       Outreach::ConversationLabels.mark_draft!(conversation)

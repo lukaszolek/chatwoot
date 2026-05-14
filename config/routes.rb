@@ -168,6 +168,7 @@ Rails.application.routes.draw do
                   post :approve_outreach_draft
                   post :regenerate_outreach_draft
                   post :reject_outreach_draft
+                  post :delete_outreach_draft
                   patch :edit_outreach_draft
                 end
               end
