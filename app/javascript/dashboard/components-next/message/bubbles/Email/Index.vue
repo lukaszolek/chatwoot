@@ -74,11 +74,15 @@ const textToShow = computed(() => {
 });
 
 const fullHTML = computed(() => {
-  // Translated content arrives as plaintext/markdown — format it to HTML
-  // (paragraphs, linkified URLs) so it renders symmetrically with the
-  // original, which is already structured HTML.
   if (hasTranslations.value && !renderOriginal.value) {
-    return new MessageFormatter(translationContent.value).formattedMessage;
+    // Mirror backend ProcessorService: HTML emails are translated as HTML
+    // (mime_type: 'text/html'), text-only emails and non-email messages
+    // are translated as plaintext. Only the plaintext path needs
+    // MessageFormatter to gain paragraphs and linkified URLs.
+    const sourceWasHtml = !!contentAttributes?.value?.email?.htmlContent?.full;
+    return sourceWasHtml
+      ? translationContent.value
+      : new MessageFormatter(translationContent.value).formattedMessage;
   }
   return originalEmailHtml.value;
 });
