@@ -1,6 +1,8 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
+import { useStore } from 'vuex';
 import OutreachPhotographersAPI from 'dashboard/api/outreachPhotographers';
+import OutreachThreadsPanel from './OutreachThreadsPanel.vue';
 
 const props = defineProps({
   profile: { type: Object, default: null },
@@ -9,6 +11,28 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'saved']);
+
+const store = useStore();
+const activeTab = ref('info');
+
+const TABS = [
+  { key: 'info', label: 'Dane' },
+  { key: 'threads', label: 'Wątki' },
+];
+
+// Reset to the info tab whenever a different photographer is opened so
+// operators don't accidentally see threads for the previous profile.
+watch(
+  () => props.profile?.id,
+  () => {
+    activeTab.value = 'info';
+  }
+);
+
+const closeSidebar = () => {
+  store.dispatch('clearSelectedState');
+  emit('close');
+};
 
 const CONSENT_OPTIONS = [
   { value: 'unknown', label: 'No answer yet', tone: 'slate' },
@@ -144,7 +168,8 @@ const save = async () => {
   <transition name="drawer">
     <aside
       v-if="profile"
-      class="fixed top-0 right-0 bottom-0 z-50 w-[480px] max-w-[90vw] flex flex-col bg-white border-l border-n-weak shadow-2xl"
+      class="fixed top-0 right-0 bottom-0 z-50 max-w-[95vw] flex flex-col bg-white border-l border-n-weak shadow-2xl transition-[width] duration-200 ease-out"
+      :class="activeTab === 'threads' ? 'w-[960px]' : 'w-[480px]'"
     >
       <header
         class="flex items-center justify-between px-4 py-3 border-b border-n-weak"
@@ -160,18 +185,43 @@ const save = async () => {
         <button
           type="button"
           class="text-xs text-n-slate-11 hover:underline"
-          @click="emit('close')"
+          @click="closeSidebar"
         >
           Close
         </button>
       </header>
 
-      <div v-if="error" class="px-4 py-2 text-sm bg-n-ruby-3 text-n-ruby-11">
+      <nav
+        class="flex items-center gap-1 px-2 border-b border-n-weak bg-n-surface-1"
+      >
+        <button
+          v-for="tab in TABS"
+          :key="tab.key"
+          type="button"
+          class="px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors"
+          :class="
+            activeTab === tab.key
+              ? 'border-n-brand text-n-brand'
+              : 'border-transparent text-n-slate-11 hover:text-n-slate-12'
+          "
+          @click="activeTab = tab.key"
+        >
+          {{ tab.label }}
+        </button>
+      </nav>
+
+      <div
+        v-show="activeTab === 'info' && error"
+        class="px-4 py-2 text-sm bg-n-ruby-3 text-n-ruby-11"
+      >
         <div>{{ error }}</div>
         <div v-if="errorHint" class="mt-1 text-xs">{{ errorHint }}</div>
       </div>
 
-      <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-sm">
+      <div
+        v-show="activeTab === 'info'"
+        class="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-sm"
+      >
         <!-- PII block — edits propagate to photographer-directory via ProfileWriter -->
         <section class="flex flex-col gap-3">
           <div class="flex items-center justify-between">
@@ -336,7 +386,13 @@ const save = async () => {
         </section>
       </div>
 
+      <OutreachThreadsPanel
+        v-show="activeTab === 'threads'"
+        :contact-id="profile.contact_id"
+      />
+
       <footer
+        v-show="activeTab === 'info'"
         class="flex items-center justify-between gap-2 px-4 py-3 border-t border-n-weak"
       >
         <span class="text-xs text-n-slate-11">
@@ -347,7 +403,7 @@ const save = async () => {
             type="button"
             class="px-3 py-1.5 text-sm border rounded border-n-weak"
             :disabled="saving"
-            @click="emit('close')"
+            @click="closeSidebar"
           >
             Cancel
           </button>
