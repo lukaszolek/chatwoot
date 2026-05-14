@@ -15,6 +15,7 @@ import TranslationToggle from 'dashboard/components-next/message/TranslationTogg
 import { useMessageContext } from '../../provider.js';
 import { MESSAGE_TYPES } from 'next/message/constants.js';
 import { useTranslations } from 'dashboard/composables/useTranslations';
+import MessageFormatter from 'shared/helpers/MessageFormatter.js';
 
 const { content, contentAttributes, attachments, messageType } =
   useMessageContext();
@@ -73,11 +74,12 @@ const textToShow = computed(() => {
 });
 
 const fullHTML = computed(() => {
-  // If translations exist and we're showing translations (not original)
+  // Translated content arrives as plaintext/markdown — format it to HTML
+  // (paragraphs, linkified URLs) so it renders symmetrically with the
+  // original, which is already structured HTML.
   if (hasTranslations.value && !renderOriginal.value) {
-    return translationContent.value;
+    return new MessageFormatter(translationContent.value).formattedMessage;
   }
-  // Otherwise show original HTML
   return originalEmailHtml.value;
 });
 
