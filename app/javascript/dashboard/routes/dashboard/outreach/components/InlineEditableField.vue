@@ -17,6 +17,15 @@ const props = defineProps({
   uppercase: { type: Boolean, default: false },
   datalistId: { type: String, default: null },
   disabled: { type: Boolean, default: false },
+  // Visual variants: 'default' = label + cell input, 'tag' = pill chip,
+  // 'heading' = unstyled large display (caller passes displayClass).
+  variant: {
+    type: String,
+    default: 'default',
+    validator: v => ['default', 'tag', 'heading'].includes(v),
+  },
+  // Extra classes applied to the read-only button (heading sizing etc.).
+  displayClass: { type: String, default: '' },
   // async (value) => updatedProfile  — caller does the API call
   saveFn: { type: Function, required: true },
 });
@@ -123,8 +132,15 @@ const onKeydown = e => {
 
 <!-- eslint-disable vue/no-bare-strings-in-template -->
 <template>
-  <div class="flex flex-col gap-1 min-w-0">
-    <div class="flex items-center gap-2">
+  <div
+    class="min-w-0"
+    :class="
+      variant === 'default'
+        ? 'flex flex-col gap-1'
+        : 'inline-flex items-center gap-1'
+    "
+  >
+    <div v-if="label && variant === 'default'" class="flex items-center gap-2">
       <span class="text-[11px] uppercase tracking-wide text-n-slate-11">
         {{ label }}
       </span>
@@ -136,12 +152,22 @@ const onKeydown = e => {
     <template v-if="!editing">
       <button
         type="button"
-        class="reset-base text-left text-sm text-n-slate-12 px-2 py-1 -mx-2 rounded hover:bg-n-alpha-1 cursor-text truncate"
-        :class="{
-          'text-n-slate-10 italic': displayValue == null,
-          'border border-n-ruby-9': errored,
-          uppercase: uppercase,
-        }"
+        class="reset-base text-left cursor-text"
+        :class="[
+          variant === 'tag'
+            ? 'inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-n-slate-3 text-n-slate-11 border border-n-weak hover:border-n-slate-7 leading-none uppercase tracking-wide'
+            : variant === 'heading'
+              ? 'text-n-slate-12 px-1 -mx-1 rounded hover:bg-n-alpha-1 truncate'
+              : 'text-sm text-n-slate-12 px-2 py-1 -mx-2 rounded hover:bg-n-alpha-1 truncate',
+          {
+            'text-n-slate-10 italic': displayValue == null,
+            'border border-n-ruby-9': errored,
+            uppercase: uppercase && variant !== 'tag',
+            'opacity-60': saving,
+          },
+          displayClass,
+        ]"
+        :title="saving ? 'zapisuję…' : errored ? 'błąd zapisu' : null"
         :disabled="disabled"
         @click="startEdit"
       >
@@ -166,8 +192,11 @@ const onKeydown = e => {
         v-else-if="type === 'select'"
         ref="inputRef"
         v-model="draft"
-        class="reset-base w-full h-8 px-2 text-sm bg-white border rounded"
-        :class="errored ? 'border-n-ruby-9' : 'border-n-weak'"
+        class="reset-base px-2 text-sm bg-white border rounded"
+        :class="[
+          variant === 'tag' ? 'h-6 text-[11px]' : 'w-full h-8',
+          errored ? 'border-n-ruby-9' : 'border-n-weak',
+        ]"
         @change="onSelectChange"
         @blur="cancelEdit"
         @keydown.esc.prevent="cancelEdit"
@@ -181,11 +210,19 @@ const onKeydown = e => {
         ref="inputRef"
         v-model="draft"
         :type="type"
-        class="reset-base w-full h-8 px-2 text-sm bg-white border rounded"
+        class="reset-base px-2 text-sm bg-white border rounded"
         :class="[
+          variant === 'tag' ? 'h-6 text-[11px]' : 'w-full h-8',
+          variant === 'heading' ? 'w-full' : '',
           errored ? 'border-n-ruby-9' : 'border-n-weak',
           uppercase ? 'uppercase' : '',
+          displayClass,
         ]"
+        :style="
+          variant === 'tag'
+            ? `width: ${Math.max((draft || '').length, 2) + 2}ch`
+            : ''
+        "
         :maxlength="maxlength || undefined"
         :list="datalistId || undefined"
         :placeholder="placeholder"
