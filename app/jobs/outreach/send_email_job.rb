@@ -52,7 +52,7 @@ class Outreach::SendEmailJob < ApplicationJob
 
     # update_columns skips validations/callbacks — last_outbound_at is an
     # audit field that must not re-run side effects on message create.
-    participant.update_columns(last_outbound_at: Time.current, updated_at: Time.current) # rubocop:disable Rails/SkipsModelValidations
+    advance_participant_after_send!(participant)
 
     Rails.logger.info(
       "[outreach.send_email] participant=#{participant.id} conversation=#{conversation.id} " \
@@ -123,6 +123,17 @@ class Outreach::SendEmailJob < ApplicationJob
   end
   # rubocop:enable Metrics/ParameterLists
 
+  def advance_participant_after_send!(participant)
+    stage = participant.outbound_campaign.pipeline_stages.find_by(key: participant.current_stage_key)
+    next_key = stage&.next_stage_key.presence || 'terminal'
+    participant.update!(
+      current_stage_key: next_key,
+      stage_entered_at: Time.current,
+      next_action_at: Time.current,
+      last_outbound_at: Time.current
+    )
+  end
+
   # The chatwoot reply mailer renders message.content through CommonMark
   # (ChatwootMarkdownRenderer). CommonMark collapses single-newline runs
   # into one paragraph, so a body like
@@ -145,6 +156,7 @@ class Outreach::SendEmailJob < ApplicationJob
   #   3. For non-list runs of single-newline lines (e.g. a signature),
   #      append two trailing spaces to each non-blank line so CommonMark
   #      emits <br>.
+  # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
   def normalize_for_email(body)
     return body if body.blank?
 
@@ -173,10 +185,11 @@ class Outreach::SendEmailJob < ApplicationJob
       # signature blocks on separate visible lines.
       decorated = line
       if !bullet && !line.strip.empty? && next_line.present? && !next_line.strip.empty? && !next_line.lstrip.start_with?('- ')
-        decorated = line.rstrip + '  '
+        decorated = "#{line.rstrip}  "
       end
       out << decorated
     end
     out.join("\n")
   end
+  # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 end

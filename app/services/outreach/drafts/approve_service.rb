@@ -5,8 +5,8 @@
 #   - Marks draft.draft_status = 'approved' (kept in the thread as
 #     audit trail).
 #   - Enqueues Outreach::SendEmailJob with subject/body from the draft.
-#   - Advances the participant to next_stage_key (intro → reminder_wait,
-#     reminder_send → breakup_wait, etc.) and stamps last_outbound_at.
+#   - Outreach::SendEmailJob advances the participant only after it creates
+#     the real public outgoing message.
 #
 # For the `reply` slot — there's no obvious "next" stage in the
 # blueprint (reply_router routes by classifier intent), so we just
@@ -31,7 +31,6 @@ class Outreach::Drafts::ApproveService
     validate_stop_opt_out!
     enqueue_email!(participant)
     mark_approved!
-    advance_participant!(participant)
 
     { sent_message_id: nil, advanced_to: participant.reload.current_stage_key }
   end
@@ -77,17 +76,6 @@ class Outreach::Drafts::ApproveService
         'approved_by_user_id' => user&.id,
         'approved_at' => Time.current.iso8601
       )
-    )
-  end
-
-  def advance_participant!(participant)
-    stage = participant.outbound_campaign.pipeline_stages.find_by(key: participant.current_stage_key)
-    next_key = stage&.next_stage_key.presence || 'terminal'
-    participant.update!(
-      current_stage_key: next_key,
-      stage_entered_at: Time.current,
-      next_action_at: Time.current,
-      last_outbound_at: Time.current
     )
   end
 end

@@ -407,9 +407,7 @@ class Message < ApplicationRecord
     return unless saved_change_to_additional_attributes?
 
     case outreach_draft_status
-    when 'approved'
-      Outreach::ConversationLabels.mark_sent!(conversation)
-    when 'rejected', 'duplicate', 'discarded'
+    when 'approved', 'rejected', 'duplicate', 'discarded'
       Outreach::ConversationLabels.clear_draft!(conversation)
     when 'pending'
       Outreach::ConversationLabels.mark_draft!(conversation)
