@@ -6,6 +6,7 @@ class Outreach::Llm::MessageComposer::Intro < Outreach::Llm::MessageComposer::Ba
 
   private
 
+  # rubocop:disable Metrics/MethodLength
   def slot_instruction
     <<~TEXT.strip
       SLOT INSTRUCTION — INTRO (first touch):
@@ -29,6 +30,12 @@ class Outreach::Llm::MessageComposer::Intro < Outreach::Llm::MessageComposer::Ba
             WITHOUT claiming you read the site.
           * The salutation name to match {{first_name}}, gender-agreement
             forms (Polish byłbyś/byłabyś etc.) to match gender from first name.
+          * Recipient number agreement is mandatory. If the profile, business
+            name, snippet, or salutation indicates a duo, married couple,
+            two named photographers, or a team, keep plural address
+            consistently throughout the entire email: opener, body, bullets,
+            CTA, legal footer, and opt-out. Never switch from a plural opener
+            to singular benefits or singular CTA later in the same draft.
 
       PRIORITY 2 — tone and voice rules (KNOWLEDGE → copywriting, tone).
         Apply the cold-email principles: write like a peer, every sentence
@@ -50,4 +57,5 @@ class Outreach::Llm::MessageComposer::Intro < Outreach::Llm::MessageComposer::Ba
       over-compress).
     TEXT
   end
+  # rubocop:enable Metrics/MethodLength
 end

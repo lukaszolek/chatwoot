@@ -149,6 +149,7 @@ module Outreach::KnowledgeSeeds
           - **CTA**: "Jedno słowo w odpowiedzi wystarczy" albo "Odpisz po prostu 'tak', a wyślę link do rejestracji". Bez presji.
           - **Gender agreement**: dobierz formy z imienia ("byłbyś" / "byłabyś" / neutralna gdy niepewne).
           - **Długość**: Intro ≤ 12 zdań bez obowiązkowej stopki; reminder ≤ 7 zdań; breakup ≤ 5 zdań.
+          - **Zgodność liczby adresata**: jeśli profil, nazwa firmy, opis strony lub snippet wskazuje na dwie osoby / duet / małżeństwo / zespół, cały mail pisz konsekwentnie w liczbie mnogiej: „tworzycie”, „Wasz klient”, „otrzymujecie”, „jeśli chcecie dołączyć”, „odpiszcie”. Nie mieszaj liczby mnogiej w openerze z liczbą pojedynczą w dalszej części maila. Jeśli nie ma pewności, że to duet/zespół, użyj neutralnej formy albo liczby pojedynczej zgodnej z imieniem.
         TEXT
       },
       {
@@ -272,6 +273,7 @@ module Outreach::KnowledgeSeeds
           - Pisz na „Ty”, ale profesjonalnie i bez przesadnej poufałości.
           - Jeśli nie masz pewności co do płci odbiorcy, używaj neutralnych form.
           - Nie pomijaj obowiązkowej stopki prawnej.
+          - Jeśli odbiorcą jest duet, małżeństwo, studio prowadzone przez dwie osoby albo zespół, dostosuj CAŁY mail do liczby mnogiej. Dotyczy to nie tylko pierwszego akapitu, ale też bulletów, CTA, stopki prawnej i opt-out.
         TEXT
       },
       {
