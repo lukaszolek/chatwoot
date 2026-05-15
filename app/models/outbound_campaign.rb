@@ -1,3 +1,34 @@
+# == Schema Information
+#
+# Table name: outbound_campaigns
+#
+#  id                     :bigint           not null, primary key
+#  audience_source_config :jsonb            not null
+#  config                 :jsonb            not null
+#  manual_review_mode     :boolean          default(TRUE), not null
+#  name                   :string           not null
+#  program_key            :string           not null
+#  status                 :integer          default("draft"), not null
+#  created_at             :datetime         not null
+#  updated_at             :datetime         not null
+#  account_id             :bigint           not null
+#  inbox_id               :bigint
+#  sender_user_id         :bigint
+#
+# Indexes
+#
+#  idx_outbound_campaigns_account_program      (account_id,program_key) UNIQUE
+#  index_outbound_campaigns_on_account_id      (account_id)
+#  index_outbound_campaigns_on_inbox_id        (inbox_id)
+#  index_outbound_campaigns_on_sender_user_id  (sender_user_id)
+#  index_outbound_campaigns_on_status          (status)
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#  fk_rails_...  (inbox_id => inboxes.id)
+#  fk_rails_...  (sender_user_id => users.id)
+#
 class OutboundCampaign < ApplicationRecord
   belongs_to :account
   belongs_to :inbox, optional: true

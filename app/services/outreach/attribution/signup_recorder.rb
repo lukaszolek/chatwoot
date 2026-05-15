@@ -29,10 +29,25 @@ class Outreach::Attribution::SignupRecorder
 
   def resolve_profile!
     profile = PhotographerPartnerProfile.find_by(external_id: @payload['external_id']) ||
-              PhotographerPartnerProfile.where('LOWER(email) = ?', @payload['email'].to_s.downcase).first
+              profile_by_email
     raise ProfileNotFound, "no profile for external_id=#{@payload['external_id']} email=#{@payload['email']}" unless profile
 
     profile
+  end
+
+  # PII (email) lives only in photographer-directory, so we resolve the
+  # source row first and look up the profile by external_id.
+  def profile_by_email
+    email = @payload['email'].to_s.downcase
+    return nil if email.blank?
+
+    directory_id = PhotographerDirectory::Photographer
+                   .where('LOWER(email) = ?', email)
+                   .limit(1)
+                   .pick(:id)
+    return nil if directory_id.blank?
+
+    PhotographerPartnerProfile.find_by(external_id: directory_id.to_s)
   end
 
   def resolve_participant(profile)

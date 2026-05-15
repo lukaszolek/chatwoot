@@ -1,3 +1,42 @@
+# == Schema Information
+#
+# Table name: influencer_offers
+#
+#  id                      :bigint           not null, primary key
+#  available_packages      :jsonb
+#  consent_data_processing :boolean          default(FALSE)
+#  consent_terms           :boolean          default(FALSE)
+#  custom_message          :text
+#  expires_at              :datetime
+#  offer_page_version      :string
+#  referral_link           :string
+#  rights_level            :string           default("standard")
+#  selected_packages       :jsonb
+#  status                  :integer          default("pending"), not null
+#  terms_accepted_at       :datetime
+#  token                   :string           not null
+#  voucher_code            :string
+#  voucher_currency        :string           default("EUR")
+#  voucher_value           :decimal(10, 2)
+#  created_at              :datetime         not null
+#  updated_at              :datetime         not null
+#  account_id              :bigint           not null
+#  created_by_id           :bigint
+#  influencer_profile_id   :bigint           not null
+#
+# Indexes
+#
+#  index_influencer_offers_on_account_id             (account_id)
+#  index_influencer_offers_on_created_by_id          (created_by_id)
+#  index_influencer_offers_on_influencer_profile_id  (influencer_profile_id)
+#  index_influencer_offers_on_token                  (token) UNIQUE
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#  fk_rails_...  (created_by_id => users.id)
+#  fk_rails_...  (influencer_profile_id => influencer_profiles.id)
+#
 class InfluencerOffer < ApplicationRecord
   CURRENT_OFFER_PAGE_VERSION = '1.0'.freeze
 

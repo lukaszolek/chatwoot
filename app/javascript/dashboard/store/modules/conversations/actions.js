@@ -6,6 +6,7 @@ import { createPendingMessage } from 'dashboard/helper/commons';
 import {
   buildConversationList,
   isOnMentionsView,
+  isOnParticipatingView,
   isOnUnattendedView,
   isOnFoldersView,
 } from './helpers/actionHelpers';
@@ -196,7 +197,7 @@ const actions = {
       try {
         await dispatch('fetchPreviousMessages', {
           after,
-          before: data.messages[0].id,
+          before: data.messages?.[0]?.id,
           conversationId: data.id,
         });
         commit(types.SET_CHAT_DATA_FETCHED, data.id);
@@ -374,6 +375,7 @@ const actions = {
       !hasAppliedFilters &&
       !isOnFoldersView(rootState) &&
       !isOnMentionsView(rootState) &&
+      !isOnParticipatingView(rootState) &&
       !isOnUnattendedView(rootState) &&
       isMatchingInboxFilter
     ) {
@@ -398,6 +400,7 @@ const actions = {
     const {
       meta: { sender },
     } = conversation;
+
     commit(types.UPDATE_CONVERSATION, conversation);
 
     dispatch('conversationLabels/setConversationLabel', {
@@ -460,11 +463,7 @@ const actions = {
   },
 
   sendEmailTranscript: async (_, { conversationId, email }) => {
-    try {
-      await ConversationApi.sendEmailTranscript({ conversationId, email });
-    } catch (error) {
-      throw new Error(error);
-    }
+    await ConversationApi.sendEmailTranscript({ conversationId, email });
   },
 
   updateCustomAttributes: async (

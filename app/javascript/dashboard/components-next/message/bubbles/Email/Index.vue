@@ -15,6 +15,7 @@ import TranslationToggle from 'dashboard/components-next/message/TranslationTogg
 import { useMessageContext } from '../../provider.js';
 import { MESSAGE_TYPES } from 'next/message/constants.js';
 import { useTranslations } from 'dashboard/composables/useTranslations';
+import MessageFormatter from 'shared/helpers/MessageFormatter.js';
 
 const { content, contentAttributes, attachments, messageType } =
   useMessageContext();
@@ -73,11 +74,16 @@ const textToShow = computed(() => {
 });
 
 const fullHTML = computed(() => {
-  // If translations exist and we're showing translations (not original)
   if (hasTranslations.value && !renderOriginal.value) {
-    return translationContent.value;
+    // Mirror backend ProcessorService: HTML emails are translated as HTML
+    // (mime_type: 'text/html'), text-only emails and non-email messages
+    // are translated as plaintext. Only the plaintext path needs
+    // MessageFormatter to gain paragraphs and linkified URLs.
+    const sourceWasHtml = !!contentAttributes?.value?.email?.htmlContent?.full;
+    return sourceWasHtml
+      ? translationContent.value
+      : new MessageFormatter(translationContent.value).formattedMessage;
   }
-  // Otherwise show original HTML
   return originalEmailHtml.value;
 });
 
@@ -225,5 +231,11 @@ const handleSeeOriginal = () => {
       display: inline-block;
     }
   }
+}
+
+// Email clients (Gmail, Outlook) hardcode dir="ltr" on wrapper elements.
+// In RTL apps this forces email content LTR regardless of actual text.
+[dir='rtl'] .letter-render [dir='ltr'] {
+  direction: inherit;
 }
 </style>

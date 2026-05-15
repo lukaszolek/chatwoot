@@ -81,10 +81,11 @@ export const mutations = {
   },
 
   [types.SET_PREVIOUS_CONVERSATIONS](_state, { id, data }) {
-    if (data.length) {
-      const [chat] = _state.allConversations.filter(c => c.id === id);
-      chat.messages.unshift(...data);
-    }
+    if (!data.length) return;
+    const [chat] = _state.allConversations.filter(c => c.id === id);
+    if (!chat) return;
+    if (!chat.messages) chat.messages = [];
+    chat.messages.unshift(...data);
   },
   [types.SET_ALL_ATTACHMENTS](_state, { id, data }) {
     _state.attachments[id] = [...data];
@@ -228,7 +229,10 @@ export const mutations = {
   },
 
   [types.ADD_CONVERSATION](_state, conversation) {
-    _state.allConversations.push(conversation);
+    const exists = _state.allConversations.some(c => c.id === conversation.id);
+    if (!exists) {
+      _state.allConversations.push(conversation);
+    }
   },
 
   [types.DELETE_CONVERSATION](_state, conversationId) {
@@ -255,7 +259,11 @@ export const mutations = {
         emitter.emit(BUS_EVENTS.SCROLL_TO_MESSAGE);
       }
     } else {
-      _state.allConversations.push(conversation);
+      const { conversationType } = _state.conversationFilters || {};
+      const { MENTION, PARTICIPATING } = wootConstants.CONVERSATION_TYPE;
+      if (![MENTION, PARTICIPATING].includes(conversationType)) {
+        _state.allConversations.push(conversation);
+      }
     }
   },
 

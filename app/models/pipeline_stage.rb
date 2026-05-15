@@ -3,8 +3,8 @@
 # Table name: pipeline_stages
 #
 #  id         :bigint           not null, primary key
-#  title      :string           not null
 #  position   :integer          default(0), not null
+#  title      :string           not null
 #  created_at :datetime         not null
 #  updated_at :datetime         not null
 #  label_id   :bigint           not null
@@ -12,8 +12,12 @@
 # Indexes
 #
 #  index_pipeline_stages_on_label_id               (label_id)
-#  index_pipeline_stages_on_label_id_and_position   (label_id,position)
-#  index_pipeline_stages_on_label_id_and_title      (label_id,title) UNIQUE
+#  index_pipeline_stages_on_label_id_and_position  (label_id,position)
+#  index_pipeline_stages_on_label_id_and_title     (label_id,title) UNIQUE
+#
+# Foreign Keys
+#
+#  fk_rails_...  (label_id => labels.id)
 #
 class PipelineStage < ApplicationRecord
   belongs_to :label, touch: true

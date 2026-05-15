@@ -13,6 +13,7 @@
 #
 # Expected header:
 #   X-Framky-Signature: hex(HMAC-SHA256(secret, raw_body))
+#   (optional "sha256=" prefix is accepted for GitHub-style senders)
 class Webhooks::Outreach::PartnershipSignupsController < ActionController::API
   SIGNATURE_HEADER = 'X-Framky-Signature'.freeze
   SECRET_ENV = 'OUTREACH_PARTNERSHIP_WEBHOOK_SECRET'.freeze
@@ -41,7 +42,7 @@ class Webhooks::Outreach::PartnershipSignupsController < ActionController::API
     secret = ENV.fetch(SECRET_ENV, nil)
     return false if secret.blank?
 
-    provided = request.headers[SIGNATURE_HEADER].to_s
+    provided = request.headers[SIGNATURE_HEADER].to_s.delete_prefix('sha256=')
     return false if provided.blank?
 
     expected = OpenSSL::HMAC.hexdigest('SHA256', secret, raw_body)

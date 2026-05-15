@@ -1,3 +1,30 @@
+# == Schema Information
+#
+# Table name: influencer_searches
+#
+#  id                :bigint           not null, primary key
+#  credits_used      :float
+#  last_credits_left :float
+#  page_size         :integer          default(5), not null
+#  pages_fetched     :integer          default(0), not null
+#  query_params      :jsonb
+#  query_signature   :string           not null
+#  results           :jsonb
+#  results_count     :integer          default(0)
+#  created_at        :datetime         not null
+#  updated_at        :datetime         not null
+#  account_id        :bigint           not null
+#
+# Indexes
+#
+#  index_influencer_searches_on_account_id                      (account_id)
+#  index_influencer_searches_on_account_id_and_created_at       (account_id,created_at)
+#  index_influencer_searches_on_account_id_and_query_signature  (account_id,query_signature) UNIQUE
+#
+# Foreign Keys
+#
+#  fk_rails_...  (account_id => accounts.id)
+#
 class InfluencerSearch < ApplicationRecord
   belongs_to :account
 

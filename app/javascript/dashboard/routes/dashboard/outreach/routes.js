@@ -3,6 +3,7 @@ import OutreachIndex from './pages/OutreachIndex.vue';
 import OutreachInbox from './pages/OutreachInbox.vue';
 import OutreachPhotographers from './pages/OutreachPhotographers.vue';
 import OutreachPipeline from './pages/OutreachPipeline.vue';
+import OutreachStats from './pages/OutreachStats.vue';
 import OutreachCampaigns from './pages/OutreachCampaigns.vue';
 import OutreachKnowledge from './pages/OutreachKnowledge.vue';
 import OutreachLearnings from './pages/OutreachLearnings.vue';
@@ -39,6 +40,12 @@ export const routes = [
         path: 'pipeline',
         name: 'outreach_pipeline',
         component: OutreachPipeline,
+        meta: commonMeta,
+      },
+      {
+        path: 'stats',
+        name: 'outreach_stats',
+        component: OutreachStats,
         meta: commonMeta,
       },
       {
