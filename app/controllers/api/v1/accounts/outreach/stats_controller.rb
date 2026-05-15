@@ -38,19 +38,24 @@ class Api::V1::Accounts::Outreach::StatsController < Api::V1::Accounts::BaseCont
     cohort_ids = first_sent.select { |_, ts| ts >= since }.keys
     profiles   = Current.account.photographer_partner_profiles.where(id: cohort_ids).to_a
 
-    statuses = profiles.map { |p| PhotographerPartnerProfile.partnership_statuses[p.partnership_status] }
+    statuses = profiles.map { |p| p.partnership_status.to_s }
+    # Enum rank is misleading for funnel — `declined` (6) / `do_not_contact` (7) sort
+    # higher than `signed_up` (5) but are side-exits, not deeper progress. We
+    # whitelist current statuses per stage instead so the funnel matches the
+    # pipeline view (e.g. Zarejestrowani == pipeline "signed_up" only).
     stages = [
-      { key: 'sent',       label: 'Wysłane',        min_rank: 0 },
-      { key: 'contacted',  label: 'Skontaktowani',  min_rank: 2 },
-      { key: 'replied',    label: 'Odpowiedzieli',  min_rank: 3 },
-      { key: 'interested', label: 'Zainteresowani', min_rank: 4 },
-      { key: 'signed_up',  label: 'Zarejestrowani', min_rank: 5 }
+      { key: 'sent',       label: 'Wysłane',        statuses: %w[imported qualified contacted replied interested signed_up declined do_not_contact completed] },
+      { key: 'contacted',  label: 'Skontaktowani',  statuses: %w[contacted replied interested signed_up declined do_not_contact completed] },
+      { key: 'replied',    label: 'Odpowiedzieli',  statuses: %w[replied interested signed_up declined do_not_contact completed] },
+      { key: 'interested', label: 'Zainteresowani', statuses: %w[interested signed_up completed] },
+      { key: 'signed_up',  label: 'Zarejestrowani', statuses: %w[signed_up completed] }
     ]
     cohort = statuses.size
     rows = stages.map do |s|
-      count = statuses.count { |r| r >= s[:min_rank] }
+      allowed = s[:statuses].to_set
+      count = statuses.count { |st| allowed.include?(st) }
       pct   = cohort.zero? ? 0 : (count.to_f / cohort * 100).round(1)
-      s.merge(count: count, pct: pct)
+      { key: s[:key], label: s[:label], count: count, pct: pct }
     end
 
     render json: { window_days: window, cohort_size: cohort, stages: rows }
