@@ -77,6 +77,8 @@ class Outreach::BlueprintApplier
     campaign.config ||= {}
     default_locale = blueprint['default_locale']
     campaign.config = campaign.config.merge('default_locale' => default_locale) if default_locale
+    followup_enabled_locales = blueprint['followup_enabled_locales']
+    campaign.config = campaign.config.merge('followup_enabled_locales' => Array(followup_enabled_locales)) if followup_enabled_locales
     campaign.save!
     campaign
   end

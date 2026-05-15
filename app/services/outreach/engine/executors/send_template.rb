@@ -33,6 +33,7 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
 
   def call
     return if halt_for_pacing_guard!
+    return if halt_for_disabled_followup_locale!
 
     composer_class = composer_class_for_stage
     return unless composer_class
@@ -56,6 +57,34 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
     return park_until_gap_elapsed! if gap_not_elapsed?
 
     false
+  end
+
+  def halt_for_disabled_followup_locale!
+    return false unless followup_slot?
+    return false if followup_enabled_for_locale?
+
+    pause_terminal!(reason: "followup_disabled_for_locale:#{participant_locale}")
+  end
+
+  def followup_slot?
+    %w[reminder breakup].include?(stage.template_slot.to_s)
+  end
+
+  def followup_enabled_for_locale?
+    enabled = (campaign.config || {})['followup_enabled_locales']
+    return true if enabled.blank?
+
+    Array(enabled).map { |locale| locale.to_s.downcase }.include?(participant_locale)
+  end
+
+  def participant_locale
+    @participant_locale ||= begin
+      locale = (participant.metadata || {})['locale'].presence ||
+               participant.participatable.try(:preferred_language).presence ||
+               (campaign.config || {})['default_locale'].presence ||
+               'en'
+      locale.to_s.downcase
+    end
   end
 
   def composer_class_for_stage

@@ -17,6 +17,8 @@
 program_key: photographer_partnership
 name: Photographer Partnership
 default_locale: en
+followup_enabled_locales:
+  - pl
 
 stages:
   - key: intro
