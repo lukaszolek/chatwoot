@@ -150,6 +150,33 @@ module Outreach::KnowledgeSeeds
           - **Gender agreement**: dobierz formy z imienia ("byłbyś" / "byłabyś" / neutralna gdy niepewne).
           - **Długość**: Intro ≤ 12 zdań bez obowiązkowej stopki; reminder ≤ 7 zdań; breakup ≤ 5 zdań.
           - **Zgodność liczby adresata**: jeśli profil, nazwa firmy, opis strony lub snippet wskazuje na dwie osoby / duet / małżeństwo / zespół, cały mail pisz konsekwentnie w liczbie mnogiej: „tworzycie”, „Wasz klient”, „otrzymujecie”, „jeśli chcecie dołączyć”, „odpiszcie”. Nie mieszaj liczby mnogiej w openerze z liczbą pojedynczą w dalszej części maila. Jeśli nie ma pewności, że to duet/zespół, użyj neutralnej formy albo liczby pojedynczej zgodnej z imieniem.
+
+          ## Reguły pierwszego akapitu / personalizacji
+          - Nie zaczynaj od metadanych typu: „Prowadzisz [nazwa firmy]”, „działasz pod marką…”, „regularnie publikujesz na Instagramie”, „budujesz portfolio online”, jeśli dostępny jest jakikolwiek opis stylu, podejścia do sesji albo realnej oferty fotograficznej. Takie zdania są słabe i nic nie wnoszą.
+          - Priorytet źródeł do pierwszego akapitu:
+            1. opis „o mnie”,
+            2. opis podejścia do sesji,
+            3. opis fotografii ślubnej / rodzinnej / portretowej,
+            4. typy sesji dobrze pasujące do zdjęć do domu: ślubne, rodzinne, dziecięce, noworodkowe, ciążowe, portretowe, kobiece, narzeczeńskie.
+          - Jeśli fotograf oferuje kilka obszarów, wybierz w openerze ten najbardziej pasujący do galerii ściennej w domu: śluby, rodziny, dzieci, noworodki, ciąża, portrety, sesje kobiece, pary. Pomijaj fotografię produktową, biznesową, reklamową, wnętrzarską, gastronomiczną, stomatologiczną, dokumentową, wirtualne spacery i film, chyba że to jedyne dostępne informacje.
+          - Skupiaj się na fotografii, nie na filmach, rolkach, spacerach wirtualnych, social mediach ani samej marce/studiu.
+          - Nie wybieraj przypadkowych, pobocznych szczegółów tylko dlatego, że są konkretne. Konkret ma być trafny sprzedażowo: ma prowadzić do myśli, że zdjęcia klienta mogą trafić na ścianę.
+          - Jeśli dostępne informacje są ubogie, lepiej użyć bezpiecznego ogólnego openeru o typie sesji niż udawać głęboką personalizację.
+          - Unikaj zdań w stylu „Właśnie takie kadry zyskują najwięcej…”, jeśli wcześniej nie ma jasnego, konkretnego podmiotu. Zadbaj, żeby pierwsze dwa zdania były gramatycznie samodzielne i naturalne po polsku.
+
+          **Nie używaj takich openerów:**
+          - „Prowadzisz [nazwa firmy] i aktywnie budujesz markę online.”
+          - „Prowadzisz portfolio pod marką…”
+          - „Regularnie publikujesz nowe prace na Instagramie.”
+          - „W Twoim portfolio widać szeroki zakres usług.”
+          - „Działasz w [miasto] i dojeżdżasz do klientów.”
+          - „Tworzysz wirtualne spacery i filmy…” — jeśli są też sesje zdjęciowe.
+
+          **Przykłady lepszych openerów:**
+          - „W sesjach rodzinnych i dziecięcych stawiasz na swobodę, bliskość i prawdziwe momenty. To właśnie takie zdjęcia rodzice najczęściej chcą mieć na ścianie, nie tylko w galerii online.”
+          - „Fotografujesz śluby w naturalny, reportażowy sposób, bez sztywnego pozowania. Takie kadry łatwo stają się pamiątką, do której para chce wracać codziennie, nie tylko na ekranie.”
+          - „W portretach i sesjach kobiecych ważne są dla Ciebie atmosfera, zaufanie i to, żeby osoba przed obiektywem poczuła się swobodnie. Gotowy wydruk może być naturalnym przedłużeniem takiej sesji.”
+
         TEXT
       },
       {
