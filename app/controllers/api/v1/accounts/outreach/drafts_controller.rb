@@ -1,7 +1,7 @@
 class Api::V1::Accounts::Outreach::DraftsController < Api::V1::Accounts::BaseController
   before_action :check_authorization
 
-  MAX_BULK_APPROVE = 100
+  MAX_BULK_APPROVE = 200
   DEFAULT_BULK_APPROVE = 10
 
   def approve_pending

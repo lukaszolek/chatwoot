@@ -45,8 +45,8 @@ const RATING_OPTIONS = [
   { value: '3.5', label: '★ 3.5+' },
   { value: '3.0', label: '★ 3.0+' },
 ];
-const BULK_LIMIT_OPTIONS = [10, 25, 50, 100, 200];
-const BULK_APPROVE_LIMIT_OPTIONS = [10, 25, 50];
+const BULK_LIMIT_OPTIONS = [10, 25, 50, 100, 200, 300, 400];
+const BULK_APPROVE_LIMIT_OPTIONS = [10, 25, 50, 100, 200];
 
 const fetchFacets = async () => {
   try {

@@ -16,7 +16,7 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
   before_action :check_authorization
 
   PER_PAGE = 30
-  MAX_BULK_IMPORT = 200
+  MAX_BULK_IMPORT = 400
 
   def search
     scope = apply_search_filters(base_scope)
