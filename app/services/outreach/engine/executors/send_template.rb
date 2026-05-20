@@ -21,9 +21,13 @@
 #     happens when the operator approves the draft (Messages::ApproveOutreachDraft).
 #   - autopilot → enqueue Outreach::SendEmailJob, advance stage,
 #     stamp last_outbound_at.
+# rubocop:disable Metrics/ClassLength
 class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::Base
   MAX_OUTBOUND = 3
   MIN_GAP = 7.days
+  DEFAULT_FOLLOWUP_ENABLED_LOCALES = {
+    'photographer_partnership' => %w[pl]
+  }.freeze
 
   COMPOSERS = {
     'intro' => Outreach::Llm::MessageComposer::Intro,
@@ -71,10 +75,15 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
   end
 
   def followup_enabled_for_locale?
-    enabled = (campaign.config || {})['followup_enabled_locales']
-    return true if enabled.blank?
+    enabled_followup_locales.include?(participant_locale)
+  end
 
-    Array(enabled).map { |locale| locale.to_s.downcase }.include?(participant_locale)
+  def enabled_followup_locales
+    configured = (campaign.config || {})['followup_enabled_locales']
+    enabled = configured.presence || DEFAULT_FOLLOWUP_ENABLED_LOCALES[campaign.program_key]
+    return [] if enabled.blank?
+
+    Array(enabled).map { |locale| locale.to_s.downcase }
   end
 
   def participant_locale
@@ -255,3 +264,4 @@ class Outreach::Engine::Executors::SendTemplate < Outreach::Engine::Executors::B
     participant.update!(last_outbound_at: Time.current)
   end
 end
+# rubocop:enable Metrics/ClassLength
