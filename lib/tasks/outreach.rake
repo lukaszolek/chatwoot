@@ -142,15 +142,8 @@ namespace :outreach do
                      .order(:created_at)
       scope = scope.limit(limit) if limit&.positive?
 
-      candidates = scope.select do |draft|
-        conversation = draft.conversation
-        participant_id = draft.additional_attributes['campaign_participant_id'].to_s
-        next false unless conversation
-
-        conversation.messages
-                    .where(message_type: :outgoing, private: false)
-                    .where("messages.additional_attributes->'outreach'->>'campaign_participant_id' = ?", participant_id)
-                    .none?
+      candidates = scope.reject do |draft|
+        public_outgoing_after_draft_approval?(draft)
       end
 
       puts "campaign=#{campaign.id} #{campaign.program_key} slot=#{slot}"
@@ -203,6 +196,24 @@ namespace :outreach do
       current = Array(conversation.label_list).map(&:to_s)
       labels = ((current - %w[outreach_sent outreach_error]) + ['outreach_draft']).uniq
       conversation.update!(label_list: labels, status: :open)
+    end
+
+    def public_outgoing_after_draft_approval?(draft)
+      conversation = draft.conversation
+      return false unless conversation
+
+      cutoff = draft_approval_cutoff(draft)
+      conversation.messages
+                  .where(message_type: :outgoing, private: false)
+                  .exists?(['messages.created_at >= ?', cutoff])
+    end
+
+    def draft_approval_cutoff(draft)
+      approved_at = draft.additional_attributes.to_h['approved_at']
+      parsed = Time.zone.parse(approved_at.to_s) if approved_at.present?
+      (parsed || draft.updated_at || draft.created_at) - 5.minutes
+    rescue ArgumentError
+      (draft.updated_at || draft.created_at) - 5.minutes
     end
   end
 end
