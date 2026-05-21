@@ -98,6 +98,7 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
       re_enrolled: 0,
       already_enrolled: 0,
       skipped_dnc: 0,
+      skipped_duplicate_email: 0,
       failed: 0,
       errors: []
     }

@@ -102,6 +102,11 @@ class Outreach::Engine::ConversationResolver
   end
 
   def find_existing_conversation(inbox)
+    find_existing_conversation_for_participant(inbox) ||
+      find_existing_conversation_for_campaign(inbox)
+  end
+
+  def find_existing_conversation_for_participant(inbox)
     Conversation
       .where(account: account, inbox: inbox, contact: contact)
       .where("additional_attributes->>'campaign_participant_id' = ?", @participant.id.to_s)
@@ -109,8 +114,32 @@ class Outreach::Engine::ConversationResolver
       .first
   end
 
+  def find_existing_conversation_for_campaign(inbox)
+    Conversation
+      .where(account: account, inbox: inbox, contact: contact)
+      .where(
+        "additional_attributes->>'outbound_campaign_id' = ? OR additional_attributes->>'outbound_campaign_program_key' = ?",
+        campaign.id.to_s,
+        campaign.program_key
+      )
+      .order(updated_at: :desc)
+      .first
+  end
+
   def assign_conversation!(conversation)
+    sync_conversation_outreach_attributes!(conversation)
     @participant.update!(conversation: conversation)
     conversation
+  end
+
+  def sync_conversation_outreach_attributes!(conversation)
+    attrs = conversation.additional_attributes.to_h.merge(
+      'campaign_participant_id' => @participant.id,
+      'outbound_campaign_id' => campaign.id,
+      'outbound_campaign_program_key' => campaign.program_key
+    )
+    return if attrs == conversation.additional_attributes.to_h
+
+    conversation.update!(additional_attributes: attrs)
   end
 end

@@ -16,7 +16,7 @@
 #      the intro mail.
 class Outreach::Enrollment::EnrollFromDirectory
   Result = Struct.new(:enrolled, :re_enrolled, :already_enrolled, :skipped_dnc,
-                      :failed, :errors, keyword_init: true)
+                      :skipped_duplicate_email, :failed, :errors, keyword_init: true)
 
   CONTACT_IDENTIFIER_PREFIX = 'photographer_directory'.freeze
 
@@ -27,7 +27,7 @@ class Outreach::Enrollment::EnrollFromDirectory
 
   def perform
     result = Result.new(enrolled: 0, re_enrolled: 0, already_enrolled: 0,
-                        skipped_dnc: 0, failed: 0, errors: [])
+                        skipped_dnc: 0, skipped_duplicate_email: 0, failed: 0, errors: [])
     campaign = find_partnership_campaign!
 
     PhotographerDirectory::Photographer.where(id: @directory_ids).find_each do |source|
@@ -64,6 +64,8 @@ class Outreach::Enrollment::EnrollFromDirectory
       participant = CampaignParticipant.find_by(outbound_campaign: campaign, participatable: profile)
       if participant
         handle_existing(participant, result)
+      elsif duplicate_email_participant?(campaign, profile)
+        result.skipped_duplicate_email += 1
       else
         create_participant!(campaign, profile)
         result.enrolled += 1
@@ -86,6 +88,45 @@ class Outreach::Enrollment::EnrollFromDirectory
       outbound_campaign: campaign, account: account, participatable: profile,
       current_stage_key: 'intro', stage_entered_at: Time.current, next_action_at: Time.current
     )
+  end
+
+  def duplicate_email_participant?(campaign, profile)
+    contact = profile.contact
+    email = profile.email.to_s.downcase.strip
+    return false if contact.blank? && email.blank?
+
+    return true if duplicate_contact_participant?(campaign, profile, contact)
+
+    duplicate_profile_email_participant?(campaign, profile, email)
+  end
+
+  def duplicate_contact_participant?(campaign, profile, contact)
+    return false unless contact
+
+    campaign.participants
+            .where(account: account, participatable_type: 'PhotographerPartnerProfile')
+            .where.not(paused: true)
+            .where.not(participatable_id: profile.id)
+            .joins('INNER JOIN photographer_partner_profiles ppp ON ppp.id = campaign_participants.participatable_id')
+            .exists?(ppp: { contact_id: contact.id })
+  end
+
+  def duplicate_profile_email_participant?(campaign, profile, email)
+    return false if email.blank?
+
+    profiles = PhotographerPartnerProfile
+               .where(account: account, id: campaign.participants
+                                                 .where(participatable_type: 'PhotographerPartnerProfile')
+                                                 .where.not(paused: true)
+                                                 .where.not(participatable_id: profile.id)
+                                                 .select(:participatable_id))
+               .to_a
+    PhotographerPartnerProfile.preload_sources!(profiles)
+    profiles.any? { |other_profile| same_profile_email?(other_profile, email) }
+  end
+
+  def same_profile_email?(other_profile, email)
+    email.present? && other_profile&.email.to_s.downcase.strip == email
   end
 
   def upsert_profile(source)
@@ -114,7 +155,7 @@ class Outreach::Enrollment::EnrollFromDirectory
     :unknown
   end
 
-  def ensure_contact(source)
+  def ensure_contact(source) # rubocop:disable Metrics/AbcSize
     identifier = "#{CONTACT_IDENTIFIER_PREFIX}:#{source.id}"
     # Identifier-first: the canonical link when chatwoot has already
     # imported this directory row before.

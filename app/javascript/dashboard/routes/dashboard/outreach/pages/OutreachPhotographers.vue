@@ -23,6 +23,11 @@ const bulkApproving = ref(false);
 const bulkApproveLimit = ref(10);
 const bulkApproveSummary = ref(null);
 const campaignHealth = ref(null);
+const activeCampaignId = ref(null);
+const healthExpanded = ref(false);
+const healthBusyParticipantId = ref(null);
+const healthActionSummary = ref(null);
+const editingProfile = ref(null);
 
 const filters = ref({
   q: '',
@@ -110,6 +115,7 @@ const fetchCampaignHealth = async () => {
   const campaign = (data || []).find(
     item => item.program_key === 'photographer_partnership'
   );
+  activeCampaignId.value = campaign?.id || null;
   campaignHealth.value = campaign?.generation_health || null;
 };
 
@@ -193,6 +199,17 @@ const hasGenerationHealthWarning = computed(() => {
 });
 const hasLlmCreditsError = computed(
   () => (campaignHealth.value?.llm_credits_error_count || 0) > 0
+);
+const generationErrorItems = computed(
+  () =>
+    campaignHealth.value?.generation_error_items ||
+    campaignHealth.value?.recent_generation_errors ||
+    []
+);
+const visibleGenerationErrorItems = computed(() =>
+  healthExpanded.value
+    ? generationErrorItems.value
+    : generationErrorItems.value.slice(0, 5)
 );
 const hasDirectoryPagination = computed(
   () => directoryTotal.value > directoryPerPage.value
@@ -292,6 +309,69 @@ const approvePendingDrafts = async () => {
   }
 };
 
+const retryGenerationError = async item => {
+  if (!activeCampaignId.value) return;
+
+  healthBusyParticipantId.value = item.participant_id;
+  healthActionSummary.value = null;
+  error.value = null;
+  try {
+    await OutreachCampaignsAPI.retryGeneration(
+      activeCampaignId.value,
+      item.participant_id
+    );
+    healthActionSummary.value = `Retry queued for ${
+      item.profile_name || `participant ${item.participant_id}`
+    }.`;
+    await runSearch();
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    healthBusyParticipantId.value = null;
+  }
+};
+
+const markGenerationErrorNotRelevant = async item => {
+  if (!activeCampaignId.value) return;
+  const confirmed = window.confirm(
+    `Mark ${item.profile_name || `participant ${item.participant_id}`} as not relevant and stop outreach?`
+  );
+  if (!confirmed) return;
+
+  healthBusyParticipantId.value = item.participant_id;
+  healthActionSummary.value = null;
+  error.value = null;
+  try {
+    await OutreachCampaignsAPI.markNotRelevant(
+      activeCampaignId.value,
+      item.participant_id
+    );
+    healthActionSummary.value = `Marked ${
+      item.profile_name || `participant ${item.participant_id}`
+    } as not relevant.`;
+    await runSearch();
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    healthBusyParticipantId.value = null;
+  }
+};
+
+const openGenerationErrorProfile = async item => {
+  if (!item.profile_id) return;
+
+  healthBusyParticipantId.value = item.participant_id;
+  error.value = null;
+  try {
+    const { data } = await OutreachPhotographersAPI.show(item.profile_id);
+    editingProfile.value = data;
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    healthBusyParticipantId.value = null;
+  }
+};
+
 // ---------- Add photographer manually ----------
 function blankAddForm() {
   return {
@@ -326,7 +406,6 @@ const submitAdd = async () => {
 };
 
 // ---------- Edit sidebar ----------
-const editingProfile = ref(null);
 const openEdit = profile => {
   editingProfile.value = profile;
 };
@@ -691,8 +770,107 @@ watch(
         errors: {{ campaignHealth.llm_credits_error_count }} · stale processing:
         {{ campaignHealth.stale_processing_count }}
       </div>
+      <div
+        v-if="healthActionSummary"
+        class="mt-2 text-xs font-medium text-n-teal-11"
+      >
+        {{ healthActionSummary }}
+      </div>
+      <div
+        v-if="generationErrorItems.length"
+        class="mt-3 overflow-hidden border rounded border-n-weak bg-white/50"
+      >
+        <table class="w-full text-xs">
+          <thead class="text-left bg-white/60">
+            <tr>
+              <th class="px-2 py-1.5 font-medium">Photographer</th>
+              <th class="px-2 py-1.5 font-medium">Email</th>
+              <th class="px-2 py-1.5 font-medium">Locale</th>
+              <th class="px-2 py-1.5 font-medium">Error</th>
+              <th class="px-2 py-1.5 font-medium text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="item in visibleGenerationErrorItems"
+              :key="item.participant_id"
+              class="border-t border-n-weak"
+            >
+              <td class="px-2 py-1.5 align-top">
+                <button
+                  v-if="item.profile_id"
+                  type="button"
+                  class="font-semibold text-left text-n-brand hover:underline"
+                  :disabled="healthBusyParticipantId === item.participant_id"
+                  @click="openGenerationErrorProfile(item)"
+                >
+                  {{
+                    item.profile_name || `Participant ${item.participant_id}`
+                  }}
+                </button>
+                <strong v-else>
+                  {{
+                    item.profile_name || `Participant ${item.participant_id}`
+                  }}
+                </strong>
+                <div v-if="item.last_error_at" class="text-n-slate-10">
+                  {{ formatDate(item.last_error_at) }}
+                </div>
+              </td>
+              <td class="px-2 py-1.5 align-top text-n-slate-11">
+                {{ item.email || '—' }}
+              </td>
+              <td class="px-2 py-1.5 align-top text-n-slate-11">
+                {{ item.locale || item.country_code || '—' }}
+              </td>
+              <td class="px-2 py-1.5 align-top text-n-slate-11">
+                {{ item.last_error }}
+              </td>
+              <td class="px-2 py-1.5 align-top text-right whitespace-nowrap">
+                <button
+                  v-if="item.profile_id"
+                  type="button"
+                  class="mr-3 font-medium text-n-brand hover:underline disabled:opacity-50"
+                  :disabled="healthBusyParticipantId === item.participant_id"
+                  @click="openGenerationErrorProfile(item)"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  class="mr-3 font-medium text-n-teal-11 hover:underline disabled:opacity-50"
+                  :disabled="healthBusyParticipantId === item.participant_id"
+                  @click="retryGenerationError(item)"
+                >
+                  Retry
+                </button>
+                <button
+                  type="button"
+                  class="font-medium text-n-ruby-11 hover:underline disabled:opacity-50"
+                  :disabled="healthBusyParticipantId === item.participant_id"
+                  @click="markGenerationErrorNotRelevant(item)"
+                >
+                  Not relevant
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <button
+          v-if="generationErrorItems.length > 5"
+          type="button"
+          class="px-2 py-2 text-xs font-medium text-n-brand hover:underline"
+          @click="healthExpanded = !healthExpanded"
+        >
+          {{
+            healthExpanded
+              ? 'Show fewer errors'
+              : `Show all ${generationErrorItems.length} errors`
+          }}
+        </button>
+      </div>
       <ul
-        v-if="campaignHealth.recent_generation_errors?.length"
+        v-else-if="campaignHealth.recent_generation_errors?.length"
         class="mt-2 ml-0 pl-4 space-y-1 list-disc list-inside"
       >
         <li
