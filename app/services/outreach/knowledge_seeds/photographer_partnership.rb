@@ -427,7 +427,7 @@ module Outreach::KnowledgeSeeds
 
           Beste {{first_name}},
 
-          Mijn naam is Łukasz Olek, oprichter van Framky. Wij printen en lijsten foto’s in die onze klanten thuis aan de muur hangen. De woonkamer van een klant is vaak de beste visitekaart die een fotograaf kan hebben.
+          Mijn naam is Łukasz Olek, oprichter van Framky. Wij printen en lijsten foto’s in die uw klanten thuis aan de muur kunnen hangen. De woonkamer van een klant is vaak de beste visitekaart die een fotograaf kan hebben.
 
           Onze prints zijn fine-art prints op fotopapier: twaalf pigmentinkten, 99% dekking van het PANTONE®-kleurbereik, door ons ingelijst zonder glas zodat de kleuren hun diepte niet verliezen. Ons doel is een print die past bij de waarde van uw werk.
 
@@ -471,6 +471,11 @@ module Outreach::KnowledgeSeeds
           - Begin de e-mail niet met een opening over alleen de studionaam, Instagram, locatie of "online portfolio" als er informatie is over stijl, werkwijze of diensten.
           - Kies in de openingsalinea eerst fotografie die goed past bij een wandgalerie thuis: bruiloft, gezin, kinderen, newborn, zwangerschap, portret, boudoir, koppels. Vermijd vastgoed/interieur, product, bedrijf, documentfoto's, video en virtuele tours als er ook zulke persoonlijke sessies beschikbaar zijn.
           - Als de snippet weinig zegt, gebruik dan een veilige algemene opening over het type shoot in plaats van een geforceerd persoonlijk detail.
+          - Gebruik in de opening niet steeds de formule "maar veel bestanden blijven na de shoot vooral op een scherm staan". Dat klinkt negatief en te sjabloonmatig. Maak liever een positieve brug naar het product: "verdienen een plek aan de muur", "passen goed bij een tastbare plek in huis", "willen ouders/koppels vaak dagelijks terugzien".
+          - Houd de opening natuurlijk en concreet. Goede vormen:
+            - "In uw newborn-, zwangerschaps- en gezinsfotografie draait het om kleine, intieme momenten die voor ouders veel waarde houden. Dat zijn precies de beelden die vaak een vaste plek in huis verdienen."
+            - "Uw paardenfotografie draait om kracht, rust en de band tussen mens en dier. Juist zulke beelden lenen zich goed voor een plek aan de muur, niet alleen voor een digitale galerij."
+            - "U fotografeert momenten rond liefde, nieuw leven en communies: beelden die voor gezinnen vaak een blijvende emotionele waarde hebben. Juist zulke foto's passen goed bij een tastbare plek in huis."
         TEXT
       },
       {
