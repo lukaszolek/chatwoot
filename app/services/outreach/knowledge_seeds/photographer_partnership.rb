@@ -185,19 +185,102 @@ module Outreach::KnowledgeSeeds
         position: 0,
         title: 'Tone — EN',
         content: <<~TEXT
-          - **Persona**: Łukasz Olek, founder of Framky. First-person, warm, matter-of-fact.
-          - **Register**: moderate, first-name basis. "Hi {{first_name}}".
-          - **No clichés**: avoid "I love your work", "your photos are amazing".
-          - **Specific over generic**: weave in one concrete detail from the website snippet if available.
+          - **Persona**: Łukasz Olek, founder of Framky. First-person, warm, matter-of-fact, not corporate.
+          - **Register**: polite and professional, usually first-name basis. First touch: "Hi {{first_name}}" if a first name is known; otherwise "Hello".
+          - **No clichés**: avoid "I love your work", "your photos are amazing", "I came across your portfolio", "I hope this finds you well", and generic praise.
+          - **Specific over generic**: weave in one concrete detail from the website snippet if available. If there is no snippet, do not claim we looked at the website or portfolio.
+          - **Terminology**: use "personal referral link", "commission", "wall gallery", "fine-art print", "MDF frame without glass". Do not call Framky frames wooden and do not claim glass or UV varnish.
+          - **Structure**: put the personalized opener in its own short paragraph. Start a new paragraph before introducing Łukasz/Framky.
+          - **Legal footer**: always include why the recipient receives the email, a privacy policy link, STOP opt-out, and full Framky company details.
           - **Signature**:
             ```
             Best,
 
-            Łukasz
+            Łukasz Olek
             Framky Founder
             ```
-          - **CTA**: "A one-line reply is enough" — never pressure.
-          - **Length**: intro ≤ 12 sentences; reminder ≤ 7 sentences; breakup ≤ 5 sentences.
+          - **CTA**: "Just reply 'yes' and I will send the registration link." Keep it low-friction, never pushy.
+          - **Length**: intro ≤ 12 sentences excluding the required legal footer; reminder ≤ 7 sentences; breakup ≤ 5 sentences.
+          - **Recipient number agreement**: if the profile, business name, website snippet, or salutation points to two photographers, a couple, a married pair, or a team, keep the whole email consistently plural: "your clients", "your personal referral link", "you receive", "if you would like to join". Do not open in plural and then switch to singular benefits or CTA.
+
+          ## First Paragraph / Personalization Rules
+          - Do not open with metadata such as "You run [studio name]", "you work under the brand...", "you regularly post on Instagram", or "you are building your online portfolio" if there is any information about style, approach, or real photography services.
+          - Prioritize these sources for the opener:
+            1. "about me" text,
+            2. description of the shooting experience or approach,
+            3. wedding, family, children, newborn, maternity, portrait, boudoir, or couples photography,
+            4. session types that naturally fit photos displayed at home.
+          - If the photographer offers several areas, choose the one that best fits a wall gallery at home: weddings, families, children, newborn, maternity, portraits, boudoir, couples. Skip product, corporate, real estate/interior, food, dental/medical, passport/document photography, virtual tours, and video unless that is the only information available.
+          - Focus on photography, not films, reels, virtual tours, social media, or the studio/brand name alone.
+          - Do not pick a random side detail just because it is concrete. The detail should logically lead to the idea that clients' photos can live on a wall.
+          - If the available information is thin, use a safe general opener about the session type instead of forcing deep personalization.
+          - Make the first two sentences grammatically complete and natural in English. Avoid vague references such as "these images" if it is not clear what images you mean.
+
+          **Do not use openers like:**
+          - "You run [studio name] and actively build your online brand."
+          - "You regularly publish new work on Instagram."
+          - "Your portfolio shows a wide range of services."
+          - "You work in [city] and the surrounding area."
+          - "You create virtual tours and videos..." if photo sessions are also available.
+
+          **Better opener examples:**
+          - "Your family and children's sessions seem to focus on ease, closeness, and real moments. Those are exactly the kind of images parents often want to see at home, not only in an online gallery."
+          - "You photograph weddings in a natural, documentary way, without forcing stiff poses. That kind of work often becomes something couples want to return to every day, not only on a screen."
+          - "In portraits and boudoir sessions, trust and a relaxed atmosphere seem central to your work. A finished print can be a natural continuation of that kind of personal session."
+
+          **Subject lines**: 2-4 words, calm and concrete, no first name, urgency, percentages, or emoji. Good shapes: "photos on the wall", "wall galleries", "prints for clients", "quick question", "framky partnership".
+        TEXT
+      },
+      {
+        kind: 'tone',
+        locale: 'fr',
+        position: 0,
+        title: 'Ton — FR',
+        content: <<~TEXT
+          - **Persona** : Łukasz Olek, fondateur de Framky. Première personne, chaleureux, concret, sans ton marketing.
+          - **Registre** : professionnel et poli, **vous/votre**. Premier contact : "Bonjour {{first_name}}" si le prénom est connu ; sinon "Bonjour". Pas de ton trop familier.
+          - **Pas de clichés** : éviter "j'adore votre travail", "vos photos sont magnifiques", "je suis impressionné", "je suis tombé sur votre portfolio" et les compliments génériques.
+          - **Le concret avant le générique** : intégrer un seul détail concret issu du snippet du site si disponible. S'il n'y a pas de snippet, ne pas prétendre avoir consulté le site ou le portfolio.
+          - **Terminologie** : utiliser "lien de parrainage personnel", "commission", "galerie murale", "tirage fine-art", "cadre MDF sans verre". Ne pas dire que les cadres sont en bois et ne pas mentionner de verre ni de vernis UV.
+          - **Structure** : placer l'ouverture personnalisée dans un court paragraphe séparé. Commencer ensuite un nouveau paragraphe pour présenter Łukasz/Framky.
+          - **Mention légale** : toujours ajouter pourquoi le destinataire reçoit l'e-mail, un lien vers la politique de confidentialité, l'option STOP et les coordonnées complètes de Framky.
+          - **Signature** :
+
+            Bien cordialement,
+
+            Łukasz Olek
+            Founder, Framky
+
+          - **CTA** : "Répondez simplement « oui » et je vous enverrai le lien d'inscription." Simple, sans pression.
+          - **Longueur** : intro ≤ 12 phrases hors mention légale obligatoire ; reminder ≤ 7 phrases ; breakup ≤ 5 phrases.
+          - **Accord du destinataire** : si le profil, le nom de l'entreprise, le snippet ou la salutation indique deux photographes, un couple, un duo marié ou une équipe, écrire tout l'e-mail de manière cohérente au pluriel : "vos clients", "votre lien de parrainage", "vous recevez", "si vous souhaitez rejoindre". Ne pas commencer au pluriel puis passer au singulier.
+
+          ## Règles pour le premier paragraphe / la personnalisation
+          - Ne pas commencer par des métadonnées comme : "Vous dirigez [nom du studio]", "vous travaillez sous la marque...", "vous publiez régulièrement sur Instagram", "vous développez votre portfolio en ligne", s'il existe une information sur le style, l'approche ou une vraie offre photographique.
+          - Priorité pour l'ouverture :
+            1. texte "à propos",
+            2. description de l'approche pendant les séances,
+            3. photographie de mariage, famille, enfants, nouveau-né, grossesse, portrait, boudoir ou couple,
+            4. types de séances qui correspondent naturellement à des photos affichées à la maison.
+          - Si le photographe propose plusieurs domaines, choisir celui qui correspond le mieux à une galerie murale chez un client : mariage, famille, enfants, nouveau-né, grossesse, portraits, boudoir, couples. Éviter produit, corporate, immobilier/intérieur, gastronomie, médical/dentaire, photos d'identité/documents, visites virtuelles et vidéo, sauf si c'est la seule information disponible.
+          - Se concentrer sur la photographie, pas sur les films, reels, visites virtuelles, réseaux sociaux ou seulement le nom du studio.
+          - Ne pas choisir un détail secondaire au hasard simplement parce qu'il est concret. Le détail doit mener naturellement à l'idée que les photos des clients peuvent vivre sur un mur.
+          - Si les informations sont faibles, utiliser une ouverture générale mais sûre sur le type de séance plutôt qu'une personnalisation forcée.
+          - Les deux premières phrases doivent être autonomes et naturelles en français. Éviter les références vagues comme "ces images" si le sujet n'est pas clair.
+
+          **Ne pas utiliser ce type d'ouverture :**
+          - "Vous dirigez [nom du studio] et développez activement votre marque en ligne."
+          - "Vous publiez régulièrement de nouveaux travaux sur Instagram."
+          - "Votre portfolio montre une large gamme de services."
+          - "Vous travaillez à [ville] et dans les environs."
+          - "Vous créez des visites virtuelles et des vidéos..." s'il y a aussi des séances photo.
+
+          **Exemples de meilleures ouvertures :**
+          - "Dans vos séances famille et enfants, l'accent semble mis sur la douceur, la proximité et les vrais moments. Ce sont justement des images que les parents veulent souvent voir chez eux, pas seulement dans une galerie en ligne."
+          - "Vous photographiez les mariages dans un style naturel et reportage, sans poses figées. Ce type de photos devient vite un souvenir auquel un couple veut revenir au quotidien, pas seulement sur un écran."
+          - "Dans vos portraits et séances boudoir, la confiance et une atmosphère détendue semblent essentielles. Un tirage fini peut être le prolongement naturel d'une séance aussi personnelle."
+
+          **Objets d'e-mail** : 2-4 mots, calmes et concrets, sans prénom, urgence, pourcentage ni emoji. Bons exemples : "photos au mur", "galeries murales", "tirages clients", "petite question", "partenariat framky".
         TEXT
       },
       {
@@ -388,6 +471,119 @@ module Outreach::KnowledgeSeeds
           - Begin de e-mail niet met een opening over alleen de studionaam, Instagram, locatie of "online portfolio" als er informatie is over stijl, werkwijze of diensten.
           - Kies in de openingsalinea eerst fotografie die goed past bij een wandgalerie thuis: bruiloft, gezin, kinderen, newborn, zwangerschap, portret, boudoir, koppels. Vermijd vastgoed/interieur, product, bedrijf, documentfoto's, video en virtuele tours als er ook zulke persoonlijke sessies beschikbaar zijn.
           - Als de snippet weinig zegt, gebruik dan een veilige algemene opening over het type shoot in plaats van een geforceerd persoonlijk detail.
+        TEXT
+      },
+      {
+        kind: 'intro_seed',
+        locale: 'en',
+        position: 0,
+        title: 'Intro seed — first email (EN)',
+        content: <<~TEXT
+          Write the first outreach email to a photographer in English. Use the content below as the fixed base. You may only adjust the greeting based on available profile data and add at most one concrete opening sentence from the website snippet if that snippet actually exists.
+
+          IMPORTANT: always include the legal footer below verbatim at the end of the email. Do not summarize, remove, or move it. The legal footer starts with "---" and ends with "Tel.: +48 22 270 1091". The footer does not count toward the length guideline.
+
+          Hi {{first_name}},
+
+          My name is Łukasz Olek, founder of Framky. We print and frame photos that clients hang at home. A client's living room is often the best showcase a photographer can have.
+
+          The print your client receives is a fine-art print on photographic paper: twelve pigment inks, 99% coverage of the PANTONE® color space, framed by us without glass so the colors keep their depth. We care about a print that matches the value of your work.
+
+          We would like to invite you to the Framky partner program:
+
+          - Your client orders a wall gallery in our shop through your personal referral link.
+          - You receive 20% commission on every order.
+          - You also receive 2% commission on the revenue of photographers you refer to Framky.
+          - An average wall gallery worth 200 euro net gives you 40 euro commission.
+          - We handle production, framing, shipping, and customer service in full.
+
+          Registration takes about two minutes. After registering, you receive your personal referral link, access to the payout panel, and a discount on orders for your own studio.
+
+          If you would like to join, just reply "yes" and I will send you the registration link.
+
+          Best,
+
+          Łukasz Olek
+          Framky Founder
+
+          ---
+          You are receiving this email because we found your publicly available business contact details published on your studio website. You can find more information about how we process personal data in our privacy policy: https://framky.com/en-gb/privacy-policy
+
+          If you do not want to receive further messages from us, reply "STOP".
+
+          Framky Sp. z o.o.
+          ul. Heliotropów 29
+          04-796 Warsaw, Poland
+          E-mail: hello@framky.pl
+          Tel.: +48 22 270 1091
+
+          Important:
+          - Keep the commission rates exactly: 20% for client orders and 2% for referred photographers.
+          - Do not add a P.S. or any temporary promotion.
+          - Do not add vouchers, a 25% client discount, client codes, or other benefits if they are not listed above.
+          - Use the claim about twelve pigment inks and 99% PANTONE® color-space coverage only in the exact context above.
+          - Do not claim that the frames are wooden. Do not mention glass or UV varnish.
+          - If the recipient is a duo, married pair, studio run by two people, or a team, adapt the whole email consistently to plural address. This applies to the opener, bullets, CTA, legal footer, and opt-out.
+          - Do not open with only the studio name, Instagram, location, or "online portfolio" if there is information about style, approach, or services.
+          - In the opening paragraph, prefer photography that fits a home wall gallery: wedding, family, children, newborn, maternity, portrait, boudoir, couples. Avoid real estate/interior, product, corporate, passport/document, video, and virtual tours if personal sessions are also available.
+          - If the snippet is thin, use a safe general opener about the session type instead of a forced personal detail.
+        TEXT
+      },
+      {
+        kind: 'intro_seed',
+        locale: 'fr',
+        position: 0,
+        title: 'Intro seed — premier e-mail (FR)',
+        content: <<~TEXT
+          Rédige le premier e-mail outreach à un photographe en français. Utilise le contenu ci-dessous comme base fixe. Tu peux seulement ajuster légèrement la salutation selon les données du profil et ajouter au maximum une phrase d'ouverture concrète issue du snippet du site, si ce snippet existe réellement.
+
+          IMPORTANT : ajoute toujours la mention légale ci-dessous telle quelle à la fin de l'e-mail. Ne la résume pas, ne la supprime pas, ne la déplace pas. La mention légale commence par "---" et se termine par "Tel.: +48 22 270 1091". Elle ne compte pas dans la limite de longueur.
+
+          Bonjour {{first_name}},
+
+          Je m'appelle Łukasz Olek et je suis le fondateur de Framky. Nous imprimons et encadrons des photos que les clients accrochent chez eux. Le salon d'un client est souvent la meilleure vitrine qu'un photographe puisse avoir.
+
+          Le tirage reçu par le client est un tirage fine-art sur papier photo : douze encres pigmentaires, 99 % de couverture de l'espace couleur PANTONE®, encadré par nos soins sans verre afin que les couleurs gardent leur profondeur. Nous voulons un tirage à la hauteur de la valeur de votre travail.
+
+          Nous aimerions vous inviter au programme partenaire Framky :
+
+          - Votre client commande une galerie murale dans notre boutique via votre lien de parrainage personnel.
+          - Vous recevez 20 % de commission sur chaque commande.
+          - Vous recevez aussi 2 % de commission sur le chiffre d'affaires des photographes que vous recommandez à Framky.
+          - Une galerie murale moyenne de 200 euros net génère 40 euros de commission.
+          - Nous prenons entièrement en charge la production, l'encadrement, l'expédition et le service client.
+
+          L'inscription prend environ deux minutes. Après l'inscription, vous recevez votre lien de parrainage personnel, l'accès au panneau de paiement et une remise sur les commandes pour votre propre studio.
+
+          Si vous souhaitez rejoindre le programme, répondez simplement « oui » et je vous enverrai le lien d'inscription.
+
+          Bien cordialement,
+
+          Łukasz Olek
+          Founder, Framky
+
+          ---
+          Vous recevez cet e-mail parce que nous avons trouvé vos coordonnées professionnelles publiquement disponibles sur le site de votre studio. Vous trouverez plus d'informations sur la manière dont nous traitons les données personnelles dans notre politique de confidentialité : https://framky.com/fr-FR/politique-confidentialite
+
+          Si vous ne souhaitez plus recevoir de messages de notre part, répondez « STOP ».
+
+          Framky Sp. z o.o.
+          ul. Heliotropów 29
+          04-796 Varsovie, Pologne
+          E-mail: hello@framky.pl
+          Tel.: +48 22 270 1091
+
+          Important :
+          - Conserve exactement les taux de commission : 20 % sur les commandes des clients et 2 % sur les photographes parrainés.
+          - N'ajoute pas de P.S. ni d'information sur une promotion temporaire.
+          - N'ajoute pas de bon, de remise client de 25 %, de code client ou d'autre avantage s'ils ne figurent pas ci-dessus.
+          - Utilise l'information sur les douze encres pigmentaires et les 99 % de couverture de l'espace PANTONE® uniquement dans le contexte exact ci-dessus.
+          - Ne dis pas que les cadres sont en bois. Ne mentionne pas de verre ni de vernis UV.
+          - Utilise "vous/votre", pas "tu/ton".
+          - Si le destinataire est un duo, un couple marié, un studio géré par deux personnes ou une équipe, adapte tout l'e-mail au pluriel de manière cohérente. Cela concerne l'ouverture, les bullets, le CTA, la mention légale et l'opt-out.
+          - Ne commence pas par une phrase sur le seul nom du studio, Instagram, la localisation ou le "portfolio en ligne" s'il existe une information sur le style, l'approche ou les services.
+          - Dans le premier paragraphe, choisis d'abord une photographie qui correspond bien à une galerie murale chez le client : mariage, famille, enfants, nouveau-né, grossesse, portrait, boudoir, couples. Évite immobilier/intérieur, produit, corporate, documents, vidéo et visites virtuelles si des séances personnelles sont aussi disponibles.
+          - Si le snippet est pauvre, utilise une ouverture générale sûre sur le type de séance plutôt qu'un détail personnel forcé.
         TEXT
       },
       {
