@@ -494,28 +494,24 @@ watch(
           {{ s.label }}
         </option>
       </select>
-      <input
+      <select
         v-model="filters.country_code"
-        type="text"
-        placeholder="Country"
-        maxlength="2"
-        list="photographer-countries"
-        class="reset-base flex-none w-24 h-10 px-3 text-sm uppercase bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10"
-      />
-      <datalist id="photographer-countries">
-        <option v-for="c in countryOptions" :key="c" :value="c" />
-      </datalist>
-      <input
+        class="!w-32 !mb-0 flex-none h-10 text-sm bg-white border rounded border-n-weak"
+      >
+        <option value="">Country</option>
+        <option v-for="c in countryOptions" :key="c" :value="c">
+          {{ c }}
+        </option>
+      </select>
+      <select
         v-model="filters.locale"
-        type="text"
-        placeholder="Locale"
-        maxlength="5"
-        list="photographer-locales"
-        class="reset-base flex-none w-24 h-10 px-3 text-sm bg-white border rounded border-n-weak text-n-slate-12 placeholder-n-slate-10"
-      />
-      <datalist id="photographer-locales">
-        <option v-for="l in localeOptions" :key="l" :value="l" />
-      </datalist>
+        class="!w-24 !mb-0 flex-none h-10 text-sm bg-white border rounded border-n-weak"
+      >
+        <option value="">Locale</option>
+        <option v-for="l in localeOptions" :key="l" :value="l">
+          {{ l }}
+        </option>
+      </select>
       <select
         v-model="filters.category"
         class="!w-40 !mb-0 flex-none h-10 text-sm bg-white border rounded border-n-weak"
