@@ -392,7 +392,7 @@ module Outreach::KnowledgeSeeds
           Framky Founder
 
           ---
-          Otrzymujesz tę wiadomość, ponieważ znaleźliśmy Twoje publicznie dostępne dane kontaktowe opublikowane na stronie Twojego studia. Więcej informacji o tym, jak przetwarzamy dane osobowe, znajdziesz w naszej polityce prywatności: https://framky.com/pl-PL/polityka-prywatnosci
+          Otrzymujesz tę wiadomość, ponieważ znaleźliśmy Twoje publicznie dostępne dane kontaktowe opublikowane na stronie Twojego studia. Więcej informacji o tym, jak przetwarzamy dane osobowe, znajdziesz w naszej polityce prywatności: https://framky.com/pl-pl/polityka-prywatnosci
 
           Jeśli nie chcesz otrzymywać od nas kolejnych wiadomości, odpowiedz „STOP”.
 
@@ -449,7 +449,7 @@ module Outreach::KnowledgeSeeds
           Founder, Framky
 
           ---
-          U ontvangt deze e-mail omdat wij uw zakelijke contactgegevens hebben gevonden die openbaar zijn gepubliceerd op uw studio-website. Meer informatie over hoe wij persoonsgegevens verwerken vindt u in onze privacyverklaring: https://framky.com/nl-NL/privacybeleid
+          U ontvangt deze e-mail omdat wij uw zakelijke contactgegevens hebben gevonden die openbaar zijn gepubliceerd op uw studio-website. Meer informatie over hoe wij persoonsgegevens verwerken vindt u in onze privacyverklaring: https://framky.com/nl-nl/privacybeleid
 
           Als u geen verdere berichten van ons wilt ontvangen, antwoord dan met “STOP”.
 
@@ -472,6 +472,8 @@ module Outreach::KnowledgeSeeds
           - Kies in de openingsalinea eerst fotografie die goed past bij een wandgalerie thuis: bruiloft, gezin, kinderen, newborn, zwangerschap, portret, boudoir, koppels. Vermijd vastgoed/interieur, product, bedrijf, documentfoto's, video en virtuele tours als er ook zulke persoonlijke sessies beschikbaar zijn.
           - Als de snippet weinig zegt, gebruik dan een veilige algemene opening over het type shoot in plaats van een geforceerd persoonlijk detail.
           - Gebruik in de opening niet steeds de formule "maar veel bestanden blijven na de shoot vooral op een scherm staan". Dat klinkt negatief en te sjabloonmatig. Maak liever een positieve brug naar het product: "verdienen een plek aan de muur", "passen goed bij een tastbare plek in huis", "willen ouders/koppels vaak dagelijks terugzien".
+          - Gebruik ook niet steeds varianten als "niet alleen een digitale map". Dat mag incidenteel, maar niet als standaardzin.
+          - Noem concrete plekken of objecten zoals "schouw", "haard", "schouwwand" of specifieke interieurelementen alleen als ze expliciet in de snippet staan. Kies anders voor "thuis", "in huis" of "aan de muur".
           - Houd de opening natuurlijk en concreet. Goede vormen:
             - "In uw newborn-, zwangerschaps- en gezinsfotografie draait het om kleine, intieme momenten die voor ouders veel waarde houden. Dat zijn precies de beelden die vaak een vaste plek in huis verdienen."
             - "Uw paardenfotografie draait om kracht, rust en de band tussen mens en dier. Juist zulke beelden lenen zich goed voor een plek aan de muur, niet alleen voor een digitale galerij."
@@ -568,7 +570,7 @@ module Outreach::KnowledgeSeeds
           Founder, Framky
 
           ---
-          Vous recevez cet e-mail parce que nous avons trouvé vos coordonnées professionnelles publiquement disponibles sur le site de votre studio. Vous trouverez plus d'informations sur la manière dont nous traitons les données personnelles dans notre politique de confidentialité : https://framky.com/fr-FR/politique-confidentialite
+          Vous recevez cet e-mail parce que nous avons trouvé vos coordonnées professionnelles publiquement disponibles sur le site de votre studio. Vous trouverez plus d'informations sur la manière dont nous traitons les données personnelles dans notre politique de confidentialité : https://framky.com/fr-fr/politique-confidentialite
 
           Si vous ne souhaitez plus recevoir de messages de notre part, répondez « STOP ».
 
