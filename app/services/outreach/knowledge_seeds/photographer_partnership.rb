@@ -245,6 +245,34 @@ module Outreach::KnowledgeSeeds
 
           - **CTA**: "Antwoord gewoon met ‘ja’, dan stuur ik u de registratielink." Laagdrempelig, nooit druk.
           - **Lengte**: Intro ≤ 12 zinnen exclusief de verplichte juridische afsluiting; Reminder ≤ 7 zinnen; Breakup ≤ 5 zinnen.
+          - **Aantal aanspreekvorm**: als het profiel, de bedrijfsnaam, de website-snippet of de aanhef wijst op twee fotografen, een koppel, een echtpaar of een team, schrijf dan de hele e-mail consequent in het meervoud: "jullie klanten", "jullie persoonlijke verwijzingslink", "jullie ontvangen", "als jullie willen meedoen", "antwoord dan gewoon met 'ja'". Wissel niet tussen een meervoudige opening en enkelvoudige voordelen of CTA. Als het niet duidelijk is dat het om een duo/team gaat, gebruik dan de formele enkelvoudsvorm "u/uw".
+
+          ## Regels voor de eerste alinea / personalisatie
+          - Begin niet met metadata zoals: "U runt [studionaam]", "u werkt onder de naam...", "u publiceert regelmatig op Instagram", "u bouwt online aan uw portfolio", als er ook maar enige informatie beschikbaar is over stijl, werkwijze of een echte fotografische dienst. Zulke zinnen voegen weinig toe.
+          - Prioriteit voor de opening:
+            1. een "over mij"-tekst,
+            2. beschrijving van de aanpak tijdens shoots,
+            3. beschrijving van trouw-, gezins-, kinder-, newborn-, zwangerschaps-, portret-, boudoir- of koppelshoots,
+            4. relevante sessietypes die goed passen bij foto's voor thuis aan de muur.
+          - Als een fotograaf meerdere diensten aanbiedt, kies in de opening het onderwerp dat het best past bij een wandgalerie thuis: bruiloften, gezinnen, kinderen, newborn, zwangerschap, portretten, boudoir, koppels. Laat productfotografie, bedrijfsfotografie, vastgoed/interieur, horeca, tandarts/medische fotografie, documentfoto's, virtuele tours en video weg, tenzij dat de enige beschikbare informatie is.
+          - Richt de opening op fotografie, niet op films, reels, virtuele rondleidingen, social media of alleen de studio/merknaam.
+          - Kies geen willekeurig detail alleen omdat het concreet is. Het detail moet logisch leiden naar het idee dat foto's van klanten een plek aan de muur kunnen krijgen.
+          - Als de beschikbare informatie dun is, gebruik liever een veilige algemene opening over het type shoot dan een geforceerd persoonlijke zin.
+          - Zorg dat de eerste twee zinnen grammaticaal zelfstandig en natuurlijk Nederlands zijn. Vermijd vage verwijzingen zoals "zulke beelden" als niet duidelijk is welke beelden bedoeld worden.
+
+          **Gebruik zulke openingen niet:**
+          - "U runt [studionaam] en bouwt actief aan uw online merk."
+          - "U publiceert regelmatig nieuw werk op Instagram."
+          - "Uw portfolio laat een breed aanbod zien."
+          - "U werkt in [stad] en omgeving."
+          - "U maakt virtuele tours en video’s..." als er ook fotosessies beschikbaar zijn.
+
+          **Voorbeelden van betere openingen:**
+          - "In uw gezins- en kindersessies draait het om rust, nabijheid en echte momenten. Juist dat soort beelden willen ouders vaak niet alleen in een online galerij bewaren, maar ook thuis aan de muur zien."
+          - "U fotografeert bruiloften op een natuurlijke, reportagestijl manier, zonder geforceerde poses. Zulke foto's worden snel herinneringen waar een koppel dagelijks naar wil terugkijken."
+          - "Bij portretten en boudoirsessies lijkt vertrouwen en een ontspannen sfeer centraal te staan. Een afgewerkte print kan een logisch vervolg zijn op zo'n persoonlijke shoot."
+
+          **Onderwerpregels**: 2-4 woorden, rustig en concreet, zonder naam, urgentie, percentages of emoji. Goede vormen: "foto's aan de muur", "wandgalerie voor klanten", "prints voor uw klanten", "korte vraag", "framky samenwerking".
         TEXT
       },
       {
@@ -356,6 +384,10 @@ module Outreach::KnowledgeSeeds
           - Claim geen UV-vernis, houten lijsten of glas.
           - Gebruik “u/uw”, niet “je/jij”.
           - Voeg geen extra voordelen toe die niet hierboven staan.
+          - Als de ontvanger een duo, echtpaar of team is, herschrijf de hele e-mail consequent naar "jullie": "jullie klant", "jullie persoonlijke verwijzingslink", "jullie ontvangen", "als jullie willen meedoen", "antwoord dan gewoon met 'ja'". Pas ook de juridische afsluiting en STOP-zin aan naar meervoud.
+          - Begin de e-mail niet met een opening over alleen de studionaam, Instagram, locatie of "online portfolio" als er informatie is over stijl, werkwijze of diensten.
+          - Kies in de openingsalinea eerst fotografie die goed past bij een wandgalerie thuis: bruiloft, gezin, kinderen, newborn, zwangerschap, portret, boudoir, koppels. Vermijd vastgoed/interieur, product, bedrijf, documentfoto's, video en virtuele tours als er ook zulke persoonlijke sessies beschikbaar zijn.
+          - Als de snippet weinig zegt, gebruik dan een veilige algemene opening over het type shoot in plaats van een geforceerd persoonlijk detail.
         TEXT
       },
       {
