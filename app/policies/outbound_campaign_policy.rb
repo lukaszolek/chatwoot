@@ -35,6 +35,14 @@ class OutboundCampaignPolicy < ApplicationPolicy
     @account_user.administrator?
   end
 
+  def retry_generation?
+    update?
+  end
+
+  def mark_not_relevant?
+    update?
+  end
+
   def counts?
     index?
   end

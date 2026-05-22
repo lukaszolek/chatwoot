@@ -211,6 +211,57 @@ const copyEmail = async () => {
       >
         ⚠️ Directory niedostępne — pola PII nie zostały załadowane.
       </div>
+      <div
+        class="grid grid-cols-[88px,minmax(0,1fr)] gap-x-3 gap-y-1.5 mt-2 max-w-3xl"
+      >
+        <div class="text-[11px] uppercase tracking-wide text-n-slate-10">
+          Email
+        </div>
+        <div class="flex items-center gap-2 min-w-0">
+          <InlineEditableField
+            type="email"
+            display-class="text-sm text-n-slate-12"
+            placeholder="Dodaj email"
+            :model-value="localProfile.email"
+            :save-fn="value => saveField('email', value)"
+            @error="onError"
+          />
+          <button
+            v-if="localProfile.email"
+            type="button"
+            class="text-xs text-n-brand hover:underline shrink-0"
+            :title="
+              emailCopied ? 'Skopiowano!' : `Kopiuj: ${localProfile.email}`
+            "
+            @click="copyEmail"
+          >
+            {{ emailCopied ? 'Skopiowano' : 'Kopiuj' }}
+          </button>
+        </div>
+
+        <div class="text-[11px] uppercase tracking-wide text-n-slate-10">
+          Website
+        </div>
+        <div class="flex items-center gap-2 min-w-0">
+          <InlineEditableField
+            type="text"
+            display-class="text-sm text-n-slate-12"
+            placeholder="Dodaj stronę"
+            :model-value="localProfile.website"
+            :save-fn="value => saveField('website', value)"
+            @error="onError"
+          />
+          <a
+            v-if="websiteHref"
+            :href="websiteHref"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-xs text-n-brand hover:underline shrink-0"
+          >
+            Otwórz ↗
+          </a>
+        </div>
+      </div>
     </div>
 
     <div class="flex items-center gap-1 shrink-0">

@@ -1,5 +1,6 @@
 class Outreach::CampaignHealth
   RECENT_ERRORS_LIMIT = 5
+  GENERATION_ERRORS_LIST_LIMIT = 100
 
   def initialize(campaign)
     @campaign = campaign
@@ -11,7 +12,8 @@ class Outreach::CampaignHealth
       generation_error_count: generation_errors.count,
       llm_credits_error_count: llm_credits_errors.count,
       stale_processing_count: stale_processing.count,
-      recent_generation_errors: recent_generation_errors
+      recent_generation_errors: recent_generation_errors,
+      generation_error_items: generation_error_items
     }
   end
 
@@ -47,10 +49,18 @@ class Outreach::CampaignHealth
   end
 
   def recent_generation_errors
+    generation_error_payloads(limit: RECENT_ERRORS_LIMIT)
+  end
+
+  def generation_error_items
+    generation_error_payloads(limit: GENERATION_ERRORS_LIST_LIMIT)
+  end
+
+  def generation_error_payloads(limit:)
     participants = generation_errors
                    .includes(:participatable)
                    .order(Arel.sql("metadata->>'last_error_at' DESC NULLS LAST"), updated_at: :desc)
-                   .limit(RECENT_ERRORS_LIMIT)
+                   .limit(limit)
                    .to_a
     preload_profile_sources!(participants)
 
@@ -68,7 +78,11 @@ class Outreach::CampaignHealth
     profile = participant.participatable
     {
       participant_id: participant.id,
+      profile_id: profile&.id,
       profile_name: profile_name(profile),
+      email: profile&.try(:email),
+      country_code: profile&.try(:country_code),
+      locale: profile&.try(:preferred_language),
       stage: participant.current_stage_key,
       next_action_at: participant.next_action_at&.to_i,
       last_error: participant.metadata['last_error'],

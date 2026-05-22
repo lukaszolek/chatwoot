@@ -28,10 +28,51 @@ class Api::V1::Accounts::Outreach::CampaignsController < Api::V1::Accounts::Base
     render :show
   end
 
+  def retry_generation
+    participant.update!(
+      paused: false,
+      next_action_at: Time.current,
+      metadata: participant.metadata.to_h.except(
+        'last_error',
+        'last_error_at',
+        'processing_started_at'
+      ).merge('generation_retry_requested_at' => Time.current.iso8601)
+    )
+    render json: { ok: true }, status: :ok
+  end
+
+  def mark_not_relevant
+    ActiveRecord::Base.transaction do
+      participant.update!(
+        paused: true,
+        next_action_at: nil,
+        metadata: participant.metadata.to_h.except(
+          'last_error',
+          'last_error_at',
+          'processing_started_at'
+        ).merge(
+          'paused_reason' => 'operator_marked_not_relevant',
+          'not_relevant_at' => Time.current.iso8601,
+          'not_relevant_by_user_id' => Current.user&.id
+        )
+      )
+      profile.transition_to!(:declined) if profile.is_a?(PhotographerPartnerProfile) && !profile.declined?
+    end
+    render json: { ok: true }, status: :ok
+  end
+
   private
 
   def campaign
     @campaign ||= Current.account.outbound_campaigns.find(params[:id])
+  end
+
+  def participant
+    @participant ||= @campaign.participants.find(params[:participant_id])
+  end
+
+  def profile
+    @profile ||= participant.participatable
   end
 
   def campaign_params

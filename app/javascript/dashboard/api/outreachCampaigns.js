@@ -22,6 +22,18 @@ class OutreachCampaignsAPI extends ApiClient {
     return axios.post(`${this.url}/${id}/archive`);
   }
 
+  retryGeneration(campaignId, participantId) {
+    return axios.post(
+      `${this.url}/${campaignId}/participants/${participantId}/retry_generation`
+    );
+  }
+
+  markNotRelevant(campaignId, participantId) {
+    return axios.post(
+      `${this.url}/${campaignId}/participants/${participantId}/mark_not_relevant`
+    );
+  }
+
   conversationContext(conversationDisplayId) {
     const accountId = this.accountIdFromRoute;
     return axios.get(
