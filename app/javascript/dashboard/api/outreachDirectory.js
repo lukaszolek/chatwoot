@@ -21,6 +21,10 @@ class OutreachDirectoryAPI extends ApiClient {
     return axios.post(`${this.url}/import`, { directory_ids: directoryIds });
   }
 
+  update(directoryId, attributes = {}) {
+    return axios.patch(`${this.url}/${directoryId}`, attributes);
+  }
+
   importFiltered(filters = {}, limit = 30) {
     return axios.post(`${this.url}/import_filtered`, {
       ...filters,

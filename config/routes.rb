@@ -129,6 +129,8 @@ Rails.application.routes.draw do
                 post :pause
                 post :resume
                 post :archive
+                post 'participants/:participant_id/retry_generation', to: 'campaigns#retry_generation'
+                post 'participants/:participant_id/mark_not_relevant', to: 'campaigns#mark_not_relevant'
               end
               resources :knowledge_documents, only: [:index, :create, :update, :destroy]
               resources :learnings, only: [:index, :update, :destroy]
@@ -147,6 +149,7 @@ Rails.application.routes.draw do
             get 'stats/daily_new', to: 'stats#daily_new'
             get 'stats/funnel', to: 'stats#funnel'
             get 'directory/search', to: 'directory#search'
+            patch 'directory/:id', to: 'directory#update'
             post 'directory/import', to: 'directory#import'
             post 'directory/import_filtered', to: 'directory#import_filtered'
             get 'inbox/counts', to: 'inbox#counts'
@@ -172,6 +175,7 @@ Rails.application.routes.draw do
                   post :retry
                   post :approve_outreach_draft
                   post :regenerate_outreach_draft
+                  post :compare_outreach_draft_models
                   post :reject_outreach_draft
                   post :delete_outreach_draft
                   patch :edit_outreach_draft

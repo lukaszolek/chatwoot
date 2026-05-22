@@ -52,6 +52,7 @@ const RATING_OPTIONS = [
 ];
 const BULK_LIMIT_OPTIONS = [10, 25, 50, 100, 200, 300, 400];
 const BULK_APPROVE_LIMIT_OPTIONS = [10, 25, 50, 100, 200];
+const EDITABLE_LOCALES = ['pl', 'en', 'de', 'nl', 'fr'];
 
 const fetchFacets = async () => {
   try {
@@ -251,6 +252,28 @@ const startCampaign = async row => {
     await runSearch();
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
+  } finally {
+    busyRowKey.value = null;
+  }
+};
+
+const updateDirectoryLocale = async (row, event) => {
+  const preferredLanguage = event.target.value;
+  busyRowKey.value = row.key;
+  error.value = null;
+  try {
+    const { data } = await OutreachDirectoryAPI.update(row.directory.id, {
+      preferred_language: preferredLanguage,
+    });
+    row.directory.preferred_language = data.preferred_language;
+    row.preferred_language = data.preferred_language;
+    const index = directoryResults.value.findIndex(
+      item => item.id === row.directory.id
+    );
+    if (index >= 0) directoryResults.value[index] = data;
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+    event.target.value = row.preferred_language || '';
   } finally {
     busyRowKey.value = null;
   }
@@ -1019,7 +1042,26 @@ watch(
             {{ row.country_code || '—' }}
           </td>
           <td class="px-3 py-2 text-n-slate-11">
-            {{ row.preferred_language || '—' }}
+            <select
+              v-if="row.type === 'directory'"
+              class="h-7 min-w-16 rounded border border-n-weak bg-n-background px-2 text-xs text-n-slate-12 disabled:opacity-50"
+              :value="row.preferred_language || ''"
+              :disabled="busyRowKey === row.key"
+              @click.stop
+              @change.stop="updateDirectoryLocale(row, $event)"
+            >
+              <option value="">—</option>
+              <option
+                v-for="locale in EDITABLE_LOCALES"
+                :key="locale"
+                :value="locale"
+              >
+                {{ locale }}
+              </option>
+            </select>
+            <template v-else>
+              {{ row.preferred_language || '—' }}
+            </template>
           </td>
           <td class="px-3 py-2 text-n-slate-11 whitespace-nowrap">
             <template v-if="row.google_rating">

@@ -17,6 +17,7 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
 
   PER_PAGE = 30
   MAX_BULK_IMPORT = 400
+  SUPPORTED_LOCALES = %w[pl en de nl fr].freeze
 
   def search
     scope = apply_search_filters(base_scope)
@@ -53,6 +54,19 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
       account: Current.account, directory_ids: ids
     ).perform
     render json: { result: result.to_h.merge(requested: limit, selected: ids.size) }, status: :ok
+  end
+
+  def update
+    photographer = base_scope.find(params[:id])
+    locale = params[:preferred_language].to_s.downcase.presence
+    return render json: { error: 'Unsupported locale' }, status: :unprocessable_entity unless SUPPORTED_LOCALES.include?(locale)
+
+    photographer.update!(
+      preferred_language: locale,
+      native_language: locale
+    )
+
+    render json: directory_row_payload(photographer), status: :ok
   end
 
   private
@@ -106,6 +120,25 @@ class Api::V1::Accounts::Outreach::DirectoryController < Api::V1::Accounts::Base
 
   def offset
     ((params[:page] || 1).to_i - 1) * PER_PAGE
+  end
+
+  def directory_row_payload(row)
+    {
+      id: row.id,
+      email: row.email,
+      business_name: row.business_name,
+      owner_name: row.owner_name,
+      website: row.website,
+      country_code: row.country_code&.upcase,
+      preferred_language: row.preferred_language,
+      instagram_handle: row.instagram_handle,
+      marketing_consent: row.marketing_consent,
+      email_validation_status: row.email_validation_status,
+      google_rating: row.google_rating,
+      google_review_count: row.google_review_count,
+      already_enrolled: Current.account.photographer_partner_profiles.exists?(external_id: row.id.to_s),
+      in_directory_campaign: PhotographerDirectory::CampaignStatus.active_enrolment.exists?(photographer_id: row.id)
+    }
   end
 
   def check_authorization
