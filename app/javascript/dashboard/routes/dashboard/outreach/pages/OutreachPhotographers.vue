@@ -21,6 +21,7 @@ const bulkImporting = ref(false);
 const bulkLimit = ref(50);
 const bulkApproving = ref(false);
 const bulkApproveLimit = ref(10);
+const bulkApproveSlot = ref('intro');
 const bulkApproveSummary = ref(null);
 const campaignHealth = ref(null);
 const activeCampaignId = ref(null);
@@ -52,6 +53,11 @@ const RATING_OPTIONS = [
 ];
 const BULK_LIMIT_OPTIONS = [10, 25, 50, 100, 200, 300, 400];
 const BULK_APPROVE_LIMIT_OPTIONS = [10, 25, 50, 100, 200];
+const BULK_APPROVE_SLOT_OPTIONS = [
+  { value: 'intro', label: 'Intro' },
+  { value: 'reminder', label: 'Follow-up' },
+  { value: 'breakup', label: 'Breakup' },
+];
 const EDITABLE_LOCALES = ['pl', 'en', 'de', 'nl', 'fr'];
 
 const fetchFacets = async () => {
@@ -311,8 +317,12 @@ const startFilteredCampaign = async () => {
 };
 
 const approvePendingDrafts = async () => {
+  const slotLabel =
+    BULK_APPROVE_SLOT_OPTIONS.find(
+      option => option.value === bulkApproveSlot.value
+    )?.label || bulkApproveSlot.value;
   const confirmed = window.confirm(
-    `Approve and enqueue the first ${bulkApproveLimit.value} pending outreach drafts?`
+    `Approve and enqueue the first ${bulkApproveLimit.value} pending ${slotLabel} outreach drafts?`
   );
   if (!confirmed) return;
 
@@ -322,6 +332,7 @@ const approvePendingDrafts = async () => {
   try {
     const { data } = await OutreachDraftsAPI.approvePending({
       limit: bulkApproveLimit.value,
+      templateSlot: bulkApproveSlot.value,
     });
     bulkApproveSummary.value = data.result;
     await runSearch();
@@ -591,6 +602,19 @@ watch(
     >
       <span> Bulk send </span>
       <select
+        v-model="bulkApproveSlot"
+        class="!w-28 !mb-0 h-8 text-xs bg-white border rounded border-n-weak"
+        :disabled="bulkApproving"
+      >
+        <option
+          v-for="option in BULK_APPROVE_SLOT_OPTIONS"
+          :key="option.value"
+          :value="option.value"
+        >
+          {{ option.label }}
+        </option>
+      </select>
+      <select
         v-model.number="bulkApproveLimit"
         class="!w-24 !mb-0 h-8 text-xs bg-white border rounded border-n-weak"
         :disabled="bulkApproving"
@@ -612,7 +636,7 @@ watch(
         {{
           bulkApproving
             ? 'Approving drafts…'
-            : `Approve first ${bulkApproveLimit} pending drafts`
+            : `Approve first ${bulkApproveLimit} ${bulkApproveSlot} drafts`
         }}
       </button>
     </div>
@@ -763,7 +787,7 @@ watch(
       class="p-3 mb-3 text-xs rounded bg-n-amber-3 text-n-amber-11"
     >
       {{
-        `Approved ${bulkApproveSummary.approved} pending drafts (selected ${bulkApproveSummary.selected}, failed ${bulkApproveSummary.failed})`
+        `Approved ${bulkApproveSummary.approved} pending ${bulkApproveSummary.template_slot || bulkApproveSlot} drafts (selected ${bulkApproveSummary.selected}, failed ${bulkApproveSummary.failed})`
       }}
     </div>
 
