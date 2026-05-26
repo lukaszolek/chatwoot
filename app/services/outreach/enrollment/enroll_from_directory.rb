@@ -63,20 +63,22 @@ class Outreach::Enrollment::EnrollFromDirectory
 
       participant = CampaignParticipant.find_by(outbound_campaign: campaign, participatable: profile)
       if participant
-        handle_existing(participant, result)
+        handle_existing(participant, source, result)
       elsif duplicate_email_participant?(campaign, profile)
         result.skipped_duplicate_email += 1
       else
         create_participant!(campaign, profile)
+        remember_campaign_email!(source.email)
         result.enrolled += 1
       end
     end
   end
 
-  def handle_existing(participant, result)
+  def handle_existing(participant, source, result)
     if participant.paused?
       participant.update!(paused: false, next_action_at: Time.current,
                           current_stage_key: 'intro', stage_entered_at: Time.current)
+      remember_campaign_email!(source.email)
       result.re_enrolled += 1
     else
       result.already_enrolled += 1
@@ -97,7 +99,7 @@ class Outreach::Enrollment::EnrollFromDirectory
 
     return true if duplicate_contact_participant?(campaign, profile, contact)
 
-    duplicate_profile_email_participant?(campaign, profile, email)
+    duplicate_profile_email_participant?(campaign, email)
   end
 
   def duplicate_contact_participant?(campaign, profile, contact)
@@ -111,22 +113,42 @@ class Outreach::Enrollment::EnrollFromDirectory
             .exists?(ppp: { contact_id: contact.id })
   end
 
-  def duplicate_profile_email_participant?(campaign, profile, email)
-    return false if email.blank?
+  def duplicate_profile_email_participant?(campaign, email)
+    normalized_email = normalize_email(email)
+    return false if normalized_email.blank?
 
-    profiles = PhotographerPartnerProfile
-               .where(account: account, id: campaign.participants
-                                                 .where(participatable_type: 'PhotographerPartnerProfile')
-                                                 .where.not(paused: true)
-                                                 .where.not(participatable_id: profile.id)
-                                                 .select(:participatable_id))
-               .to_a
-    PhotographerPartnerProfile.preload_sources!(profiles)
-    profiles.any? { |other_profile| same_profile_email?(other_profile, email) }
+    campaign_email_index(campaign).include?(normalized_email)
   end
 
-  def same_profile_email?(other_profile, email)
-    email.present? && other_profile&.email.to_s.downcase.strip == email
+  def campaign_email_index(campaign)
+    @campaign_email_index ||= build_campaign_email_index(campaign)
+  end
+
+  def build_campaign_email_index(campaign)
+    external_ids = PhotographerPartnerProfile
+                   .where(account: account, id: campaign.participants
+                                             .where(participatable_type: 'PhotographerPartnerProfile')
+                                             .where.not(paused: true)
+                                             .select(:participatable_id))
+                   .pluck(:external_id)
+                   .compact
+
+    PhotographerDirectory::Photographer
+      .where(id: external_ids)
+      .pluck(:email)
+      .filter_map { |email| normalize_email(email).presence }
+      .to_set
+  end
+
+  def remember_campaign_email!(email)
+    normalized_email = normalize_email(email)
+    return if normalized_email.blank?
+
+    @campaign_email_index&.add(normalized_email)
+  end
+
+  def normalize_email(email)
+    email.to_s.downcase.strip
   end
 
   def upsert_profile(source)
