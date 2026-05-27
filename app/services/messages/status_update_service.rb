@@ -10,7 +10,9 @@ class Messages::StatusUpdateService
   def perform
     return false unless valid_status_transition?
 
-    update_message_status
+    updated = update_message_status
+    handle_outreach_delivery_failure
+    updated
   end
 
   private
@@ -30,5 +32,11 @@ class Messages::StatusUpdateService
     return false if message.read? && status == 'delivered'
 
     true
+  end
+
+  def handle_outreach_delivery_failure
+    return unless status == 'failed'
+
+    Outreach::DeliveryFailureHandler.new(message: message, external_error: external_error).call
   end
 end

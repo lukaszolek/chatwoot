@@ -48,6 +48,11 @@ class Outreach::ConversationLabels
       sync!(conversation, add: [:error], remove: [], status: :open)
     end
 
+    def mark_delivery_failed!(conversation, sent_successfully:)
+      remove = sent_successfully ? [] : [:sent]
+      sync!(conversation, add: [:error], remove: remove, status: :open)
+    end
+
     def clear_error!(conversation)
       sync!(conversation, add: [], remove: [:error])
     end
