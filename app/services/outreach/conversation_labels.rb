@@ -29,7 +29,12 @@ class Outreach::ConversationLabels
     end
 
     def mark_replied!(conversation)
-      sync!(conversation, add: [:replied], remove: %i[draft sent auto_reply bounced opt_out], status: :open)
+      sync!(
+        conversation,
+        add: [:replied],
+        remove: %i[draft sent auto_reply bounced opt_out error],
+        status: :open
+      )
     end
 
     def mark_auto_reply!(conversation, status: :pending)
