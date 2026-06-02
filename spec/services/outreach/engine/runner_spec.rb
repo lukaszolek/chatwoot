@@ -77,6 +77,32 @@ RSpec.describe Outreach::Engine::Runner do
       expect(participant.current_stage_key).to eq('intro') # rolled back
     end
 
+    it 'stores provider response details when the executor raises an HTTP-backed error' do
+      profile = create(:photographer_partner_profile, account: account)
+      participant = create(:campaign_participant,
+                           outbound_campaign: campaign, account: account,
+                           participatable: profile,
+                           current_stage_key: 'intro',
+                           next_action_at: 1.minute.ago)
+      response = instance_double(
+        Faraday::Response,
+        status: 400,
+        body: { error: { message: 'upstream details' } }.to_json,
+        headers: { 'x-request-id' => 'req_123', 'authorization' => 'secret' }
+      )
+      error = RubyLLM::BadRequestError.new(response, 'Provider returned error')
+      executor = instance_double(Outreach::Engine::Executors::SendTemplate)
+      allow(executor).to receive(:call).and_raise(error)
+      allow(Outreach::Engine::Executors::SendTemplate).to receive(:new).and_return(executor)
+
+      described_class.new(campaign).tick
+
+      details = participant.reload.metadata['last_error_details']
+      expect(details).to include('class' => 'RubyLLM::BadRequestError', 'http_status' => 400)
+      expect(details['response_body']).to include('upstream details')
+      expect(details['response_headers']).to eq('x-request-id' => 'req_123')
+    end
+
     it 'backs off and logs when the participant is on an unknown stage key' do
       profile = create(:photographer_partner_profile, account: account)
       participant = create(:campaign_participant,
@@ -90,6 +116,43 @@ RSpec.describe Outreach::Engine::Runner do
 
       expect(participant.metadata['last_error']).to include('missing_stage:ghost_stage')
       expect(participant.next_action_at).to be_within(5.seconds).of(10.minutes.from_now)
+    end
+
+    it 'prioritizes reply_router participants over older due follow-up stages' do
+      campaign.update!(config: campaign.config.merge('tick_batch_size' => 1))
+      create(
+        :campaign_pipeline_stage,
+        outbound_campaign: campaign,
+        key: 'reply_router',
+        on_enter_action: :classify_reply,
+        position: 6
+      )
+      create(
+        :campaign_pipeline_stage,
+        outbound_campaign: campaign,
+        key: 'reminder_send',
+        on_enter_action: :send_template,
+        template_slot: 'reminder',
+        position: 3
+      )
+      profile_reply = create(:photographer_partner_profile, account: account)
+      profile_reminder = create(:photographer_partner_profile, account: account)
+      reply_participant = create(:campaign_participant,
+                                 outbound_campaign: campaign, account: account,
+                                 participatable: profile_reply,
+                                 current_stage_key: 'reply_router',
+                                 next_action_at: 1.minute.ago)
+      reminder_participant = create(:campaign_participant,
+                                    outbound_campaign: campaign, account: account,
+                                    participatable: profile_reminder,
+                                    current_stage_key: 'reminder_send',
+                                    next_action_at: 1.hour.ago)
+
+      described_class.new(campaign).tick
+
+      expect(reply_participant.reload.next_action_at).to be_nil
+      expect(reply_participant.metadata['processing_started_at']).to be_present
+      expect(reminder_participant.reload.next_action_at).to be_present
     end
   end
 

@@ -10,6 +10,9 @@ class Outreach::Engine::Runner
   DEFAULT_BATCH_SIZE = 200
   BACKOFF = 10.minutes
   DEFAULT_STALE_PROCESSING_AFTER = 30.minutes
+  STAGE_PRIORITY = {
+    'reply_router' => 0
+  }.freeze
 
   ACTION_TO_EXECUTOR = {
     'send_template' => Outreach::Engine::Executors::SendTemplate,
@@ -47,7 +50,7 @@ class Outreach::Engine::Runner
     )
     return error_state(participant).pause_invalid_email!(error: e) if invalid_email_error?(e)
 
-    back_off!(participant, reason: error_reason(e))
+    back_off!(participant, reason: error_reason(e), error: e)
   end
 
   private
@@ -67,11 +70,21 @@ class Outreach::Engine::Runner
     @campaign.participants
              .due_for_tick
              .includes(:participatable)
+             .order(Arel.sql(stage_priority_order_sql), :next_action_at, :id)
              .limit(batch_size)
   end
 
   def batch_size
     (@campaign.config || {})['tick_batch_size'].to_i.positive? ? @campaign.config['tick_batch_size'].to_i : DEFAULT_BATCH_SIZE
+  end
+
+  def stage_priority_order_sql
+    cases = STAGE_PRIORITY.map do |stage_key, priority|
+      sanitized_stage = ActiveRecord::Base.connection.quote(stage_key)
+      "WHEN campaign_participants.current_stage_key = #{sanitized_stage} THEN #{priority}"
+    end
+
+    "CASE #{cases.join(' ')} ELSE 100 END"
   end
 
   def claim_and_enqueue(participant)
@@ -187,8 +200,8 @@ class Outreach::Engine::Runner
     Outreach::Engine::ParticipantErrorState.invalid_email_error?(error)
   end
 
-  def back_off!(participant, reason:)
-    error_state(participant).back_off!(reason: reason, delay: BACKOFF)
+  def back_off!(participant, reason:, error: nil)
+    error_state(participant).back_off!(reason: reason, delay: BACKOFF, error: error)
   end
 
   def error_state(participant)
