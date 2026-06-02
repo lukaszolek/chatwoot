@@ -369,7 +369,7 @@ class Message < ApplicationRecord
 
     if pending_outreach_draft?
       Outreach::ConversationLabels.mark_draft!(conversation)
-    elsif sent_outreach_message?
+    elsif sent_outreach_message? || outgoing_agent_reply_on_outreach_conversation?
       Outreach::ConversationLabels.mark_sent!(conversation)
     elsif incoming_outreach_reply?
       sync_incoming_outreach_label
@@ -428,6 +428,10 @@ class Message < ApplicationRecord
 
   def incoming_outreach_reply?
     incoming? && !private? && outreach_conversation?
+  end
+
+  def outgoing_agent_reply_on_outreach_conversation?
+    outgoing? && !private? && outreach_conversation? && !outreach_message?
   end
 
   def update_contact_activity

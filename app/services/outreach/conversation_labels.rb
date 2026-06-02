@@ -25,7 +25,7 @@ class Outreach::ConversationLabels
     end
 
     def mark_sent!(conversation)
-      sync!(conversation, add: [:sent], remove: %i[draft error], status: :pending)
+      sync!(conversation, add: [:sent], remove: %i[draft error replied auto_reply], status: :pending)
     end
 
     def mark_replied!(conversation)
