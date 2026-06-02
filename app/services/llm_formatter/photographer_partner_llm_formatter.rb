@@ -58,7 +58,10 @@ class LlmFormatter::PhotographerPartnerLlmFormatter
                  .order(created_at: :desc)
                  .limit(MAX_HISTORY_MESSAGES)
                  .reverse
-                 .map { |m| "#{m.incoming? ? 'IN' : 'OUT'}: #{m.content.to_s.truncate(MAX_MESSAGE_CHARS)}" }
+                 .map do |message|
+      content = message.incoming? ? formatted_incoming_content(message) : message.content.to_s
+      "#{message.incoming? ? 'IN' : 'OUT'}: #{content.truncate(MAX_MESSAGE_CHARS)}"
+    end
   end
 
   def last_outreach_message_summary
@@ -74,7 +77,10 @@ class LlmFormatter::PhotographerPartnerLlmFormatter
   def last_incoming_message
     return nil unless @conversation
 
-    @conversation.messages.where(message_type: :incoming, private: false).order(created_at: :desc).first&.content
+    message = @conversation.messages.where(message_type: :incoming, private: false).order(created_at: :desc).first
+    return nil unless message
+
+    formatted_incoming_content(message)
   end
 
   def resolve_locale
@@ -86,5 +92,44 @@ class LlmFormatter::PhotographerPartnerLlmFormatter
 
   def fetch_website_snippet
     Outreach::Llm::WebsiteSnippet.for(profile_model)
+  end
+
+  def formatted_incoming_content(message)
+    explicit_reply_text(message).presence || strip_quoted_history(message.content)
+  end
+
+  def explicit_reply_text(message)
+    email = message.content_attributes&.fetch('email', nil) || message.content_attributes&.fetch(:email, nil)
+    return unless email.is_a?(Hash)
+
+    text_reply = nested_dig(email, 'text_content', 'reply')
+    return strip_quoted_history(text_reply) if text_reply.present?
+
+    html_reply = nested_dig(email, 'html_content', 'reply')
+    return strip_quoted_history(html_to_text(html_reply)) if html_reply.present?
+
+    nil
+  end
+
+  def strip_quoted_history(value)
+    value.to_s
+         .split(/\n-{2,}\s*Original Message\s*-{2,}/i, 2).first
+         .split(/\nOn .+wrote:\s*/i, 2).first
+         .split(/\nOp .+schreef.*:\s*/i, 2).first
+         .split(/\nW dniu .+napisa.*:\s*/i, 2).first
+         .split(/\nVan:|\nFrom:|\nOd:/i, 2).first
+         .strip
+  end
+
+  def nested_dig(hash, *keys)
+    keys.reduce(hash) do |value, key|
+      break unless value.is_a?(Hash)
+
+      value[key] || value[key.to_sym]
+    end
+  end
+
+  def html_to_text(html)
+    ActionView::Base.full_sanitizer.sanitize(html.to_s)
   end
 end

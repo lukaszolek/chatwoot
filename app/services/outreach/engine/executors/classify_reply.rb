@@ -20,12 +20,10 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
   ESCALATED_STAGE_KEY = 'escalated'.freeze
   SIGNUP_INTENT = 'interested_signup'.freeze
   MIN_DRAFT_CONFIDENCE = 0.5
-  DECLINE_PROPAGATION_CONFIDENCE = 0.85
-
   def call
     outcome = classifier_outcome
     decision = record_decision(outcome)
-    propagate_decline_if_applicable(outcome)
+    handle_decline_if_applicable(outcome)
     update_partnership_status_from_intent!(outcome)
     route_to!(outcome, decision)
   end
@@ -297,28 +295,19 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
     Rails.logger.warn("[outreach.classify_reply] status bump failed: #{e.class}: #{e.message}")
   end
 
-  def propagate_decline_if_applicable(outcome)
+  def handle_decline_if_applicable(outcome)
     return unless outcome[:intent_class] == 'declined'
-    return if outcome[:confidence].to_f < DECLINE_PROPAGATION_CONFIDENCE
-
-    profile = participant.participatable
-    return unless profile.is_a?(PhotographerPartnerProfile)
 
     ActiveRecord::Base.transaction do
-      profile.transition_to!(:do_not_contact) unless profile.do_not_contact?
-      profile.update!(marketing_consent_state: :declined)
       participant.update!(
         current_stage_key: branch_rule_for('declined')&.dig('target') || 'terminal',
         stage_entered_at: Time.current,
         paused: true,
         next_action_at: nil,
-        metadata: (participant.metadata || {}).merge('paused_reason' => 'explicit_decline')
+        metadata: (participant.metadata || {}).merge('paused_reason' => 'declined_reply')
       )
-      Outreach::ConversationLabels.mark_opt_out!(participant.conversation) if participant.conversation
+      Outreach::ConversationLabels.mark_replied!(participant.conversation) if participant.conversation
     end
-
-    Outreach::PhotographerDirectory::PropagateConsentJob
-      .perform_later(profile.id, 'opt_out', reason: 'explicit_decline')
   end
 
   def participant_locale

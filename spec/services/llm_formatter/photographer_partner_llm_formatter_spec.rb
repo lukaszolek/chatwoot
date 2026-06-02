@@ -38,6 +38,17 @@ RSpec.describe LlmFormatter::PhotographerPartnerLlmFormatter do
     expect(out[:locale]).to eq('pl')
   end
 
+  it 'strips quoted history from the latest inbound reply' do
+    create(:message, conversation: conversation, account: account, inbox: inbox,
+                     message_type: :incoming,
+                     content: "Dzień dobry, potencjalnie mógłbym być zainteresowany współpracą\n\nW dniu 21 maja Łukasz napisał:\nJestem poza biurem")
+
+    out = described_class.new(participant).format
+
+    expect(out[:reply_text]).to eq('Dzień dobry, potencjalnie mógłbym być zainteresowany współpracą')
+    expect(out[:conversation_history].last).to eq('IN: Dzień dobry, potencjalnie mógłbym być zainteresowany współpracą')
+  end
+
   it 'returns empty history when no conversation is linked' do
     participant.update!(conversation: nil)
 

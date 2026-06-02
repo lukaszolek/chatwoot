@@ -111,22 +111,23 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
     end
 
     context 'with declined intent at >= 0.85 confidence (C7.3)' do
-      it 'marks the conversation opt-out, pauses outreach, and propagates consent' do
+      it 'parks the participant in terminal without forcing opt-out or consent decline' do # rubocop:disable RSpec/MultipleExpectations
         participant.update!(conversation: conversation)
         stub_classifier(intent_class: 'declined', confidence: 0.9, model: 'stub-1')
 
         expect do
           described_class.new(participant: participant, stage: router_stage).call
-        end.to have_enqueued_job(Outreach::PhotographerDirectory::PropagateConsentJob)
-          .with(profile.id, 'opt_out', reason: 'explicit_decline')
+        end.not_to have_enqueued_job(Outreach::PhotographerDirectory::PropagateConsentJob)
 
         expect(participant.reload).to be_paused
         expect(participant.current_stage_key).to eq('terminal')
-        expect(profile.reload).to be_do_not_contact
-        expect(profile).to be_consent_declined
-        expect(conversation.reload).to be_resolved
-        expect(conversation.label_list).to include('outreach_opt_out')
-      end
+        expect(participant.metadata['paused_reason']).to eq('declined_reply')
+        expect(profile.reload).not_to be_do_not_contact
+        expect(profile.marketing_consent_state).not_to eq('declined')
+        expect(conversation.reload).to be_open
+        expect(conversation.label_list).to include('outreach_replied')
+        expect(conversation.label_list).not_to include('outreach_opt_out')
+      end # rubocop:enable RSpec/MultipleExpectations
 
       it 'does NOT enqueue propagation for declined below threshold' do
         stub_classifier(intent_class: 'declined', confidence: 0.6, model: 'stub-1')
