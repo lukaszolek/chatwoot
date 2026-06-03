@@ -154,6 +154,41 @@ RSpec.describe Outreach::Engine::Runner do
       expect(reply_participant.metadata['processing_started_at']).to be_present
       expect(reminder_participant.reload.next_action_at).to be_present
     end
+
+    it 'reclaims stale claimed reply participants that already have a conversation' do
+      travel_to Time.zone.parse('2026-06-03 12:00:00 UTC') do
+        create(
+          :campaign_pipeline_stage,
+          outbound_campaign: campaign,
+          key: 'reply_router',
+          on_enter_action: :classify_reply,
+          position: 6
+        )
+        profile = create(:photographer_partner_profile, account: account)
+        conversation = create(:conversation, account: account, inbox: inbox)
+        participant = create(
+          :campaign_participant,
+          outbound_campaign: campaign,
+          account: account,
+          participatable: profile,
+          conversation: conversation,
+          current_stage_key: 'reply_router',
+          next_action_at: nil,
+          metadata: {
+            'processing_started_at' => 1.hour.ago.iso8601,
+            'processing_reason' => 'outreach_runner_claim'
+          }
+        )
+
+        count = described_class.new(campaign).tick
+
+        expect(count).to eq(1)
+        participant.reload
+        expect(participant.metadata['processing_reclaimed_at']).to be_present
+        expect(participant.metadata['processing_started_at']).to be_present
+        expect(participant.next_action_at).to be_nil
+      end
+    end
   end
 
   describe 'batch size' do

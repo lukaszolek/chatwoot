@@ -42,10 +42,9 @@ class Outreach::CampaignHealth
   end
 
   def stale_processing
-    @stale_processing ||= missing_drafts
-                          .where(paused: false)
-                          .where(next_action_at: nil)
-                          .where("metadata ? 'processing_started_at'")
+    @stale_processing ||= campaign.participants
+                                  .where(paused: false, next_action_at: nil)
+                                  .where("metadata ? 'processing_started_at'")
   end
 
   def recent_generation_errors

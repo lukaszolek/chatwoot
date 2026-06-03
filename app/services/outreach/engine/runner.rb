@@ -128,7 +128,7 @@ class Outreach::Engine::Runner
 
   def stale_processing_participants
     @campaign.participants
-             .where(paused: false, next_action_at: nil, conversation_id: nil)
+             .where(paused: false, next_action_at: nil)
              .where("metadata ? 'processing_started_at'")
              .where("(metadata->>'processing_started_at')::timestamptz < ?", stale_processing_cutoff)
              .limit(batch_size)
@@ -155,7 +155,6 @@ class Outreach::Engine::Runner
   def stale_processing?(participant)
     return false if participant.paused?
     return false if participant.next_action_at.present?
-    return false if participant.conversation_id.present?
 
     started_at = participant.metadata&.fetch('processing_started_at', nil)
     return false if started_at.blank?
