@@ -72,14 +72,34 @@ RSpec.describe Outreach::ReplyListener do
       expect(participant.reload.current_stage_key).to eq('reminder_wait')
     end
 
-    it 'is a no-op for paused participants' do
-      participant.update!(paused: true)
+    it 'is a no-op for terminal paused participants' do
+      participant.update!(paused: true, metadata: { 'paused_reason' => 'opt_out' })
       message = create(:message, conversation: conversation, account: account, inbox: inbox,
                                  message_type: :incoming, content: 'Too late')
       original_stage = participant.current_stage_key
 
       fire_event(message)
       expect(participant.reload.current_stage_key).to eq(original_stage)
+    end
+
+    it 'resumes participants paused only because follow-ups are disabled for their locale' do
+      participant.update!(
+        paused: true,
+        next_action_at: nil,
+        metadata: { 'paused_reason' => 'followup_disabled_for_locale:nl' }
+      )
+      message = create(:message, conversation: conversation, account: account, inbox: inbox,
+                                 message_type: :incoming, content: 'Yes, please send more details')
+
+      freeze_time do
+        fire_event(message)
+        participant.reload
+
+        expect(participant).not_to be_paused
+        expect(participant.current_stage_key).to eq('reply_router')
+        expect(participant.next_action_at).to eq(Time.current)
+        expect(participant.last_inbound_at).to eq(Time.current)
+      end
     end
 
     it 'pauses campaign and marks profile do_not_contact for STOP opt-out' do

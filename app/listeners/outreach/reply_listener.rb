@@ -12,6 +12,10 @@
 # re-animate them from a late reply.
 class Outreach::ReplyListener < BaseListener
   REPLY_ROUTER_STAGE_KEY = 'reply_router'.freeze
+  RESUMABLE_PAUSED_REASON_PREFIXES = %w[
+    followup_disabled_for_locale:
+    manual_freeze_followup_automation
+  ].freeze
 
   def message_created(event)
     message = extract_message_and_account(event)[0]
@@ -22,10 +26,18 @@ class Outreach::ReplyListener < BaseListener
 
     participant = CampaignParticipant.find_by(id: participant_id)
     return unless participant
-    return if participant.paused?
     return handle_non_reply!(participant, message) unless real_reply?(message)
 
+    route_reply!(participant, message)
+  end
+
+  private
+
+  def route_reply!(participant, message)
+    return if participant.paused? && !resumable_paused_participant?(participant)
+
     participant.update!(
+      paused: false,
       current_stage_key: REPLY_ROUTER_STAGE_KEY,
       stage_entered_at: Time.current,
       next_action_at: Time.current,
@@ -39,8 +51,6 @@ class Outreach::ReplyListener < BaseListener
       "routed=reply_router message=#{message.id}"
     )
   end
-
-  private
 
   def real_reply?(message)
     Outreach::InboundMessageKind.call(message) == :reply
@@ -75,6 +85,11 @@ class Outreach::ReplyListener < BaseListener
       if profile.is_a?(PhotographerPartnerProfile)
   rescue StandardError => e
     Rails.logger.warn("[outreach.reply_listener] opt_out failed: #{e.class}: #{e.message}")
+  end
+
+  def resumable_paused_participant?(participant)
+    reason = participant.metadata.to_h['paused_reason'].to_s
+    RESUMABLE_PAUSED_REASON_PREFIXES.any? { |prefix| reason.start_with?(prefix) }
   end
 
   # Rough/non-semantic bump just because they replied at all. The
