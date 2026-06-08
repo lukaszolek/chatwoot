@@ -552,15 +552,15 @@ module Outreach::KnowledgeSeeds
 
           Le tirage reçu par le client est un tirage fine-art sur papier photo : douze encres pigmentaires, 99 % de couverture de l'espace couleur PANTONE®, encadré par nos soins sans verre afin que les couleurs gardent leur profondeur. Nous voulons un tirage à la hauteur de la valeur de votre travail.
 
-          Nous aimerions vous inviter au programme partenaire Framky :
+          Nous aimerions vous inviter à rejoindre le programme partenaire Framky :
 
-          - Votre client commande une galerie murale dans notre boutique via votre lien de parrainage personnel.
+          - Vos clients peuvent commander une galerie murale dans notre boutique via votre lien de parrainage personnel.
           - Vous recevez 20 % de commission sur chaque commande.
           - Vous recevez aussi 2 % de commission sur le chiffre d'affaires des photographes que vous recommandez à Framky.
-          - Une galerie murale moyenne de 200 euros net génère 40 euros de commission.
+          - Une galerie murale d'une valeur moyenne de 200 euros HT génère 40 euros de commission.
           - Nous prenons entièrement en charge la production, l'encadrement, l'expédition et le service client.
 
-          L'inscription prend environ deux minutes. Après l'inscription, vous recevez votre lien de parrainage personnel, l'accès au panneau de paiement et une remise sur les commandes pour votre propre studio.
+          L'inscription prend environ deux minutes. Après l'inscription, vous recevez votre lien de parrainage personnel, l'accès à votre espace partenaire et une remise sur les commandes pour votre propre studio.
 
           Si vous souhaitez rejoindre le programme, répondez simplement « oui » et je vous enverrai le lien d'inscription.
 
