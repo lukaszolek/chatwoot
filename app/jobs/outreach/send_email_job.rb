@@ -52,7 +52,7 @@ class Outreach::SendEmailJob < ApplicationJob
 
     # update_columns skips validations/callbacks — last_outbound_at is an
     # audit field that must not re-run side effects on message create.
-    advance_participant_after_send!(participant)
+    advance_participant_after_send!(participant, template_slot: template_slot, locale: locale)
 
     Rails.logger.info(
       "[outreach.send_email] participant=#{participant.id} conversation=#{conversation.id} " \
@@ -123,15 +123,43 @@ class Outreach::SendEmailJob < ApplicationJob
   end
   # rubocop:enable Metrics/ParameterLists
 
-  def advance_participant_after_send!(participant)
+  def advance_participant_after_send!(participant, template_slot:, locale:)
     stage = participant.outbound_campaign.pipeline_stages.find_by(key: participant.current_stage_key)
     next_key = stage&.next_stage_key.presence || 'terminal'
+
+    if halt_disabled_followup_after_intro?(participant, next_key: next_key, template_slot: template_slot, locale: locale)
+      participant.update!(
+        paused: true,
+        next_action_at: nil,
+        last_outbound_at: Time.current,
+        metadata: participant.metadata.to_h.merge('paused_reason' => "followup_disabled_for_locale:#{locale.to_s.downcase}")
+      )
+      return
+    end
+
     participant.update!(
       current_stage_key: next_key,
       stage_entered_at: Time.current,
       next_action_at: Time.current,
       last_outbound_at: Time.current
     )
+  end
+
+  def halt_disabled_followup_after_intro?(participant, next_key:, template_slot:, locale:)
+    template_slot.to_s == 'intro' &&
+      next_key.to_s == 'reminder_wait' &&
+      !followup_enabled_for_locale?(participant.outbound_campaign, locale)
+  end
+
+  def followup_enabled_for_locale?(campaign, locale)
+    enabled_followup_locales(campaign).include?(locale.to_s.downcase)
+  end
+
+  def enabled_followup_locales(campaign)
+    configured = (campaign.config || {})['followup_enabled_locales']
+    enabled = configured.presence ||
+              Outreach::Engine::Executors::SendTemplate::DEFAULT_FOLLOWUP_ENABLED_LOCALES[campaign.program_key]
+    Array(enabled).map { |configured_locale| configured_locale.to_s.downcase }
   end
 
   # The chatwoot reply mailer renders message.content through CommonMark

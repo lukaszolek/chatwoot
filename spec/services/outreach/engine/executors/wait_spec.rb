@@ -4,12 +4,25 @@ require 'rails_helper'
 
 RSpec.describe Outreach::Engine::Executors::Wait do
   let(:account) { create(:account) }
-  let(:campaign) { create(:outbound_campaign, account: account) }
+  let(:campaign) do
+    create(:outbound_campaign,
+           account: account,
+           program_key: 'photographer_partnership')
+  end
+  let(:profile) do
+    PhotographerPartnerProfile.create!(
+      account: account,
+      external_id: "profile-#{SecureRandom.hex(4)}",
+      partnership_status: :imported
+    )
+  end
   let(:participant) do
     create(:campaign_participant,
            outbound_campaign: campaign,
            account: account,
-           current_stage_key: 'reminder_wait')
+           participatable: profile,
+           current_stage_key: 'reminder_wait',
+           metadata: { 'locale' => 'pl' })
   end
 
   describe '#call' do
@@ -49,6 +62,23 @@ RSpec.describe Outreach::Engine::Executors::Wait do
         participant.reload
 
         expect(participant.current_stage_key).to eq('reminder_send')
+      end
+
+      context 'when the next follow-up locale is disabled' do
+        it 'pauses instead of advancing into reminder_send' do
+          participant.update!(
+            stage_entered_at: 121.hours.ago,
+            metadata: { 'locale' => 'nl' }
+          )
+
+          described_class.new(participant: participant, stage: stage).call
+          participant.reload
+
+          expect(participant.current_stage_key).to eq('reminder_wait')
+          expect(participant.paused).to be(true)
+          expect(participant.next_action_at).to be_nil
+          expect(participant.metadata['paused_reason']).to eq('followup_disabled_for_locale:nl')
+        end
       end
     end
 

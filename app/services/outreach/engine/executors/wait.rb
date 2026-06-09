@@ -23,6 +23,47 @@ class Outreach::Engine::Executors::Wait < Outreach::Engine::Executors::Base
       return
     end
 
+    return if halt_for_disabled_followup_locale?
+
     transition_to!(stage.next_stage_key)
+  end
+
+  private
+
+  def halt_for_disabled_followup_locale?
+    return false unless next_stage_followup_send?
+    return false if enabled_followup_locales.include?(participant_locale)
+
+    participant.update!(
+      paused: true,
+      next_action_at: nil,
+      metadata: participant.metadata.to_h.merge('paused_reason' => "followup_disabled_for_locale:#{participant_locale}")
+    )
+    true
+  end
+
+  def next_stage_followup_send?
+    %w[reminder breakup].include?(next_stage&.template_slot.to_s)
+  end
+
+  def next_stage
+    @next_stage ||= campaign.pipeline_stages.find_by(key: stage.next_stage_key)
+  end
+
+  def enabled_followup_locales
+    configured = (campaign.config || {})['followup_enabled_locales']
+    enabled = configured.presence ||
+              Outreach::Engine::Executors::SendTemplate::DEFAULT_FOLLOWUP_ENABLED_LOCALES[campaign.program_key]
+    Array(enabled).map { |locale| locale.to_s.downcase }
+  end
+
+  def participant_locale
+    @participant_locale ||= begin
+      locale = (participant.metadata || {})['locale'].presence ||
+               participant.participatable.try(:preferred_language).presence ||
+               (campaign.config || {})['default_locale'].presence ||
+               'en'
+      locale.to_s.downcase
+    end
   end
 end
