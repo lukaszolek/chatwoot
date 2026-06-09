@@ -8,10 +8,10 @@ class Conversations::MailboxSyncService
 
   def perform
     channels = gmail_channels
-    return { resolved: 0, reopened: 0, checked: 0, error: 'No Gmail channels found' } if channels.empty?
+    return { resolved: 0, archived: 0, checked: 0, error: 'No Gmail channels found' } if channels.empty?
 
     inbox_message_ids = fetch_inbox_message_ids(channels)
-    return { resolved: 0, reopened: 0, checked: 0, error: 'Could not connect to mailbox' } if inbox_message_ids.nil?
+    return { resolved: 0, archived: 0, checked: 0, error: 'Could not connect to mailbox' } if inbox_message_ids.nil?
 
     sync_conversation_statuses(inbox_message_ids)
   end
@@ -42,7 +42,7 @@ class Conversations::MailboxSyncService
   end
 
   def fetch_channel_inbox_message_ids(channel)
-    imap = build_imap_client(channel)
+    imap = Conversations::GmailImap.build_client(channel)
     return nil unless imap
 
     imap.select('INBOX')
@@ -51,7 +51,7 @@ class Conversations::MailboxSyncService
 
     collect_message_ids(imap, seq_nums)
   ensure
-    safe_logout(imap)
+    Conversations::GmailImap.safe_logout(imap)
   end
 
   def collect_message_ids(imap, seq_nums)
@@ -69,49 +69,60 @@ class Conversations::MailboxSyncService
     ids
   end
 
-  def build_imap_client(channel)
-    if channel.provider == 'google' && channel.provider_config.is_a?(Hash) && channel.provider_config['access_token'].present?
-      access_token = Google::RefreshOauthTokenService.new(channel: channel).access_token
-      imap = Net::IMAP.new('imap.gmail.com', port: 993, ssl: true)
-      imap.authenticate('XOAUTH2', channel.imap_login.presence || channel.email, access_token)
-    elsif channel.imap_password.present?
-      imap = Net::IMAP.new(channel.imap_address, port: channel.imap_port, ssl: true)
-      imap.authenticate('PLAIN', channel.imap_login, channel.imap_password)
-    else
-      return nil
-    end
-    imap
-  end
-
-  def safe_logout(imap)
-    return unless imap
-
-    imap.logout
-    imap.disconnect
-  rescue StandardError
-    nil
-  end
-
   def sync_conversation_statuses(inbox_message_ids)
-    checked = 0
-    resolved = 0
-    reopened = 0
+    stats = { resolved: 0, archived: 0, checked: 0 }
+    archive_targets = Hash.new { |hash, key| hash[key] = [] }
 
     candidate_conversations.find_each(batch_size: BATCH_SIZE) do |conversation|
-      checked += 1
-      source_ids = conversation.messages.where.not(source_id: nil).pluck(:source_id)
-      thread_in_inbox = source_ids.any? { |sid| inbox_message_ids.include?(sid) }
-
-      if (conversation.open? || conversation.pending?) && !thread_in_inbox
-        conversation.update!(status: :resolved)
-        resolved += 1
-      elsif conversation.resolved? && thread_in_inbox
-        conversation.update!(status: :open)
-        reopened += 1
-      end
+      stats[:checked] += 1
+      action = reconcile_conversation(conversation, inbox_message_ids, archive_targets)
+      stats[action] += 1 if action
     end
 
-    { resolved: resolved, reopened: reopened, checked: checked }
+    enqueue_archive(archive_targets)
+    stats
+  end
+
+  def reconcile_conversation(conversation, inbox_message_ids, archive_targets)
+    source_ids = conversation.messages.where.not(source_id: nil).pluck(:source_id)
+    in_inbox_ids = source_ids.select { |sid| inbox_message_ids.include?(sid) }
+
+    if needs_resolve?(conversation, in_inbox_ids)
+      conversation.update!(status: :resolved)
+      :resolved
+    elsif needs_archive?(conversation, in_inbox_ids)
+      enqueue_for_archive(conversation, in_inbox_ids, archive_targets)
+    end
+  end
+
+  def needs_resolve?(conversation, in_inbox_ids)
+    (conversation.open? || conversation.pending?) && in_inbox_ids.empty?
+  end
+
+  def needs_archive?(conversation, in_inbox_ids)
+    conversation.resolved? && in_inbox_ids.any?
+  end
+
+  def enqueue_for_archive(conversation, in_inbox_ids, archive_targets)
+    channel = channel_for(conversation)
+    return unless channel
+
+    archive_targets[channel].concat(in_inbox_ids)
+    :archived
+  end
+
+  def channel_for(conversation)
+    channel_by_inbox_id[conversation.inbox_id]
+  end
+
+  def channel_by_inbox_id
+    @channel_by_inbox_id ||= gmail_channels.index_by { |channel| channel.inbox.id }
+  end
+
+  def enqueue_archive(archive_targets)
+    archive_targets.each do |channel, message_ids|
+      Conversations::GmailArchiveJob.perform_later(channel, message_ids.uniq)
+    end
   end
 
   def candidate_conversations

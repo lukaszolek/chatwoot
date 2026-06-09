@@ -52,7 +52,7 @@ RSpec.describe Conversations::MailboxSyncService do
 
       result = service.perform
 
-      expect(result[:reopened]).to eq(0)
+      expect(result[:archived]).to eq(0)
       expect(auto_reply_conversation.reload).to be_resolved
     end
   end
