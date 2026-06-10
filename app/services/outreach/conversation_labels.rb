@@ -20,6 +20,16 @@ class Outreach::ConversationLabels
   }.freeze
 
   class << self
+    # Mirrors the outreach exclusions used in Conversations::MailboxSyncService#candidate_conversations
+    # so Gmail archive/sync never touches outreach campaign threads.
+    def outreach_conversation?(conversation)
+      attrs = conversation.additional_attributes || {}
+      return true if attrs['outbound_campaign_program_key'].present?
+      return true if attrs['campaign_participant_id'].present?
+
+      Array(conversation.label_list).map(&:to_s).intersect?(LABELS.values)
+    end
+
     def mark_draft!(conversation)
       sync!(conversation, add: [:draft], remove: [:error], status: :open)
     end

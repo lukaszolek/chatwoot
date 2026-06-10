@@ -188,7 +188,10 @@ const toggleConversationLayout = () => {
         class="text-xxs text-n-slate-11 whitespace-nowrap"
       >
         {{
-          $t('CHAT_LIST.SYNC_MAILBOX_DONE', { resolved: syncResult.resolved })
+          $t('CHAT_LIST.SYNC_MAILBOX_DONE', {
+            resolved: syncResult.resolved,
+            archived: syncResult.archived,
+          })
         }}
       </span>
       <NextButton
