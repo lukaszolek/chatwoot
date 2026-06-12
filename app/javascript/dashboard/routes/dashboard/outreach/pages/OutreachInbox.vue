@@ -4,13 +4,16 @@ import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import ChatList from 'dashboard/components/ChatList.vue';
 import ConversationBox from 'dashboard/components/widgets/conversation/ConversationBox.vue';
+import ConversationSidebar from 'dashboard/components/widgets/conversation/ConversationSidebar.vue';
 import SidepanelSwitch from 'dashboard/components-next/Conversation/SidepanelSwitch.vue';
 import OutreachCampaignsAPI from 'dashboard/api/outreachCampaigns';
 import { useAlert } from 'dashboard/composables';
+import { useUISettings } from 'dashboard/composables/useUISettings';
 
 const store = useStore();
 const route = useRoute();
 const router = useRouter();
+const { uiSettings } = useUISettings();
 
 const loading = ref(false);
 const error = ref('');
@@ -91,6 +94,9 @@ const activeQueue = computed(
 const currentChat = computed(() => store.getters.getSelectedChat || {});
 const hasSelectedConversation = computed(
   () => !!selectedConversationId.value && !!currentChat.value?.id
+);
+const isContactPanelOpen = computed(
+  () => !!currentChat.value?.id && !!uiSettings.value?.is_contact_sidebar_open
 );
 
 const fetchCounts = async ({ showLoading = false } = {}) => {
@@ -307,13 +313,19 @@ onBeforeUnmount(() => {
               Otwórz pełny widok
             </button>
           </div>
-          <ConversationBox
-            class="flex-1 [&.conversation-details-wrap]:!border-0"
-            :inbox-id="inboxId"
-            :is-on-expanded-layout="false"
-          >
-            <SidepanelSwitch v-if="currentChat.id" />
-          </ConversationBox>
+          <div class="flex flex-1 min-h-0">
+            <ConversationBox
+              class="flex-1 [&.conversation-details-wrap]:!border-0"
+              :inbox-id="inboxId"
+              :is-on-expanded-layout="false"
+            >
+              <SidepanelSwitch v-if="currentChat.id" />
+            </ConversationBox>
+            <ConversationSidebar
+              v-if="isContactPanelOpen"
+              :current-chat="currentChat"
+            />
+          </div>
         </div>
       </div>
     </div>
