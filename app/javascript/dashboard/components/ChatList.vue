@@ -77,9 +77,10 @@ const props = defineProps({
   showConversationList: { default: true, type: Boolean },
   isOnExpandedLayout: { default: false, type: Boolean },
   hideDefaultBulkActions: { default: false, type: Boolean },
+  openConversationsInPlace: { default: false, type: Boolean },
 });
 
-const emit = defineEmits(['conversationLoad']);
+const emit = defineEmits(['conversationLoad', 'openConversation']);
 const { uiSettings } = useUISettings();
 const { t } = useI18n();
 const router = useRouter();
@@ -1002,8 +1003,10 @@ watch(conversationFilters, (newVal, oldVal) => {
           :conversation-type="conversationType"
           :show-assignee="showAssigneeInConversationCard"
           :data-index="index"
+          :open-in-place="openConversationsInPlace"
           @select-conversation="selectConversation"
           @de-select-conversation="deSelectConversation"
+          @open-conversation="emit('openConversation', $event)"
         />
       </Virtualizer>
       <div v-if="chatListLoading" class="flex justify-center my-4">

@@ -28,6 +28,7 @@ const props = defineProps({
   compact: { type: Boolean, default: false },
   enableContextMenu: { type: Boolean, default: false },
   allowedContextMenuOptions: { type: Array, default: () => [] },
+  openInPlace: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -43,6 +44,7 @@ const emit = defineEmits([
   'deleteConversation',
   'selectConversation',
   'deSelectConversation',
+  'openConversation',
 ]);
 
 const router = useRouter();
@@ -167,6 +169,11 @@ const onCardClick = e => {
 
   // Skip if already active
   if (isActiveChat.value) return;
+
+  if (props.openInPlace && window.matchMedia('(min-width: 1024px)').matches) {
+    emit('openConversation', props.chat);
+    return;
+  }
 
   router.push({ path });
 };

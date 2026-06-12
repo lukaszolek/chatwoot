@@ -44,7 +44,12 @@ export default {
       type: Boolean,
       default: false,
     },
+    openInPlace: {
+      type: Boolean,
+      default: false,
+    },
   },
+  emits: ['openConversation'],
 };
 </script>
 
@@ -57,6 +62,7 @@ export default {
     :conversation-type="conversationType"
     :selected="isConversationSelected(source.id)"
     :show-assignee="showAssignee"
+    :open-in-place="openInPlace"
     enable-context-menu
     @select-conversation="selectConversation"
     @de-select-conversation="deSelectConversation"
@@ -70,5 +76,6 @@ export default {
     @mark-as-read="markAsRead"
     @assign-priority="assignPriority"
     @delete-conversation="deleteConversation"
+    @open-conversation="$emit('openConversation', $event)"
   />
 </template>

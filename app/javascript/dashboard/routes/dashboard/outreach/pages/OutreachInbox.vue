@@ -3,6 +3,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStore } from 'vuex';
 import ChatList from 'dashboard/components/ChatList.vue';
+import ConversationBox from 'dashboard/components/widgets/conversation/ConversationBox.vue';
+import SidepanelSwitch from 'dashboard/components-next/Conversation/SidepanelSwitch.vue';
 import OutreachCampaignsAPI from 'dashboard/api/outreachCampaigns';
 import { useAlert } from 'dashboard/composables';
 
@@ -17,6 +19,7 @@ const queueCounts = ref({});
 const refreshToken = ref(0);
 const refreshingList = ref(false);
 const runningAction = ref('');
+const selectedConversationId = ref(0);
 let countsRefreshTimer = null;
 
 const COUNTS_REFRESH_INTERVAL_MS = 30000;
@@ -85,6 +88,10 @@ const activeQueueKey = computed(() => route.query.queue || 'action_needed');
 const activeQueue = computed(
   () => QUEUES.find(queue => queue.key === activeQueueKey.value) || QUEUES[0]
 );
+const currentChat = computed(() => store.getters.getSelectedChat || {});
+const hasSelectedConversation = computed(
+  () => !!selectedConversationId.value && !!currentChat.value?.id
+);
 
 const fetchCounts = async ({ showLoading = false } = {}) => {
   if (showLoading) loading.value = true;
@@ -138,6 +145,26 @@ const selectQueue = queue => {
   });
 };
 
+const openConversation = async conversation => {
+  if (!conversation?.id) return;
+
+  selectedConversationId.value = conversation.id;
+  await store.dispatch('setActiveChat', { data: conversation });
+};
+
+const openFullConversation = () => {
+  if (!selectedConversationId.value) return;
+
+  router.push({
+    name: 'conversation_through_inbox',
+    params: {
+      accountId: route.params.accountId,
+      inbox_id: inboxId.value,
+      conversation_id: selectedConversationId.value,
+    },
+  });
+};
+
 watch(
   inboxId,
   value => {
@@ -145,6 +172,10 @@ watch(
   },
   { immediate: true }
 );
+watch(activeQueueKey, () => {
+  selectedConversationId.value = 0;
+  store.dispatch('clearSelectedState');
+});
 
 onMounted(() => {
   fetchCounts({ showLoading: true });
@@ -156,6 +187,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (countsRefreshTimer) window.clearInterval(countsRefreshTimer);
+  store.dispatch('clearSelectedState');
 });
 </script>
 
@@ -219,7 +251,9 @@ onBeforeUnmount(() => {
         :label="activeQueue.labelName"
         :initial-status="activeQueue.status"
         hide-default-bulk-actions
+        open-conversations-in-place
         @conversation-load="() => {}"
+        @open-conversation="openConversation"
       >
         <template #default="{ selectedConversations, resetSelection }">
           <div
@@ -243,17 +277,43 @@ onBeforeUnmount(() => {
         </template>
       </ChatList>
 
-      <div
-        class="items-center justify-center flex-1 hidden min-w-0 border-l lg:flex border-n-weak bg-n-surface-1"
-      >
-        <div class="max-w-md px-8 text-center">
-          <h2 class="text-lg font-semibold text-n-slate-12">
-            {{ activeQueue.label }}
-          </h2>
-          <p class="mt-2 text-sm text-n-slate-11">
-            {{ activeQueue.description }}. Wybierz rozmowę z listy, aby otworzyć
-            ją w standardowym widoku Chatwoot.
-          </p>
+      <div class="flex-1 hidden min-w-0 border-l lg:flex border-n-weak">
+        <div
+          v-if="!hasSelectedConversation"
+          class="flex items-center justify-center flex-1 bg-n-surface-1"
+        >
+          <div class="max-w-md px-8 text-center">
+            <h2 class="text-lg font-semibold text-n-slate-12">
+              {{ activeQueue.label }}
+            </h2>
+            <p class="mt-2 text-sm text-n-slate-11">
+              {{ activeQueue.description }}. Wybierz rozmowę z listy, aby
+              przejrzeć ją tutaj.
+            </p>
+          </div>
+        </div>
+        <div
+          v-if="hasSelectedConversation"
+          class="flex flex-col flex-1 min-w-0"
+        >
+          <div
+            class="flex items-center justify-end gap-2 px-4 py-2 border-b border-n-weak bg-n-surface-1"
+          >
+            <button
+              type="button"
+              class="px-3 py-1.5 text-xs font-medium transition border rounded-md border-n-weak text-n-slate-11 hover:text-n-slate-12"
+              @click="openFullConversation"
+            >
+              Otwórz pełny widok
+            </button>
+          </div>
+          <ConversationBox
+            class="flex-1 [&.conversation-details-wrap]:!border-0"
+            :inbox-id="inboxId"
+            :is-on-expanded-layout="false"
+          >
+            <SidepanelSwitch v-if="currentChat.id" />
+          </ConversationBox>
         </div>
       </div>
     </div>
