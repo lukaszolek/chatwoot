@@ -29,15 +29,7 @@ class Api::V1::Accounts::Outreach::CampaignsController < Api::V1::Accounts::Base
   end
 
   def retry_generation
-    participant.update!(
-      paused: false,
-      next_action_at: Time.current,
-      metadata: participant.metadata.to_h.except(
-        'last_error',
-        'last_error_at',
-        'processing_started_at'
-      ).merge('generation_retry_requested_at' => Time.current.iso8601)
-    )
+    Outreach::Engine::GenerationRetry.new(participant).call
     render json: { ok: true }, status: :ok
   end
 

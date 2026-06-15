@@ -8,12 +8,14 @@ class Api::V1::Accounts::Outreach::PhotographerPartnerProfilesController < Api::
     scope = apply_filters(Current.account.photographer_partner_profiles.order(created_at: :desc))
     @total = scope.count
     @profiles = scope.limit(PER_PAGE).offset(((params[:page] || 1).to_i - 1) * PER_PAGE).to_a
+    preload_partnership_participants!(@profiles)
     # Single IN-query to the secondary DB so the jbuilder doesn't hit
     # directory once per row when rendering PII.
     PhotographerPartnerProfile.preload_sources!(@profiles)
   end
 
   def show
+    preload_partnership_participants!([@profile])
     PhotographerPartnerProfile.preload_sources!([@profile])
   end
 
@@ -49,28 +51,8 @@ class Api::V1::Accounts::Outreach::PhotographerPartnerProfilesController < Api::
 
     PhotographerPartnerProfile.preload_sources!([@profile])
     render :show
-  rescue Outreach::PhotographerDirectory::ProfileWriter::ValidationError => e
-    render json: { error: 'validation_error', message: e.message }, status: :unprocessable_entity
-  rescue Outreach::PhotographerDirectory::ProfileWriter::UniqueConflict => e
-    render json: {
-      error: 'directory_unique_conflict',
-      message: e.message,
-      hint: 'Wartość już używa inny fotograf w directory — wybierz inną.'
-    }, status: :unprocessable_entity
-  rescue Outreach::PhotographerDirectory::ProfileWriter::ForeignKeyMissing => e
-    render json: {
-      error: 'directory_foreign_key_missing',
-      message: e.message,
-      hint: 'Domena/encja musi najpierw zostać utworzona w photographer-directory.'
-    }, status: :unprocessable_entity
-  rescue Outreach::PhotographerDirectory::ProfileWriter::GrantsMissing => e
-    render json: {
-      error: 'directory_grants_missing',
-      message: e.message,
-      hint: 'Run db/photographer_directory_grants/2026-04-25-pii-update-grants.sql against the photographer_directory DB.'
-    }, status: :unprocessable_entity
-  rescue Outreach::PhotographerDirectory::ProfileWriter::PhotographerNotFound => e
-    render json: { error: 'directory_row_missing', message: e.message }, status: :not_found
+  rescue Outreach::PhotographerDirectory::ProfileWriter::WriterError => e
+    render_profile_writer_error(e)
   end
 
   def enroll
@@ -193,6 +175,40 @@ class Api::V1::Accounts::Outreach::PhotographerPartnerProfilesController < Api::
       :email, :business_name, :owner_name, :website, :country_code,
       :instagram_handle, :phone, :native_language, :preferred_language
     ).to_h
+  end
+
+  def preload_partnership_participants!(profiles)
+    @partnership_participants_by_profile_id = {}
+    return if profiles.blank?
+
+    campaign = Current.account.outbound_campaigns.find_by(program_key: 'photographer_partnership')
+    return if campaign.blank?
+
+    participants = campaign.participants.where(participatable: profiles)
+    @partnership_participants_by_profile_id = participants.index_by(&:participatable_id)
+  end
+
+  def render_profile_writer_error(error)
+    response = profile_writer_error_response(error)
+    render json: response.except(:status), status: response[:status]
+  end
+
+  def profile_writer_error_response(error)
+    case error
+    when Outreach::PhotographerDirectory::ProfileWriter::ValidationError
+      { error: 'validation_error', message: error.message, status: :unprocessable_entity }
+    when Outreach::PhotographerDirectory::ProfileWriter::UniqueConflict
+      { error: 'directory_unique_conflict', message: error.message, status: :unprocessable_entity,
+        hint: 'Wartość już używa inny fotograf w directory — wybierz inną.' }
+    when Outreach::PhotographerDirectory::ProfileWriter::ForeignKeyMissing
+      { error: 'directory_foreign_key_missing', message: error.message, status: :unprocessable_entity,
+        hint: 'Domena/encja musi najpierw zostać utworzona w photographer-directory.' }
+    when Outreach::PhotographerDirectory::ProfileWriter::GrantsMissing
+      { error: 'directory_grants_missing', message: error.message, status: :unprocessable_entity,
+        hint: 'Run db/photographer_directory_grants/2026-04-25-pii-update-grants.sql against the photographer_directory DB.' }
+    when Outreach::PhotographerDirectory::ProfileWriter::PhotographerNotFound
+      { error: 'directory_row_missing', message: error.message, status: :not_found }
+    end
   end
 
   def check_authorization

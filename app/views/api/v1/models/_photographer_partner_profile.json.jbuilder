@@ -35,3 +35,11 @@ json.order_stats_refreshed_at resource.order_stats_refreshed_at&.to_i
 json.pipeline_stage resource.pipeline_stage
 json.created_at resource.created_at.to_i
 json.updated_at resource.updated_at.to_i
+
+participant = @partnership_participants_by_profile_id&.[](resource.id)
+if participant
+  json.campaign_participant_id participant.id
+  json.campaign_stage participant.current_stage_key
+  json.campaign_paused participant.paused
+  json.campaign_next_action_at participant.next_action_at&.to_i
+end

@@ -59,6 +59,13 @@ const BULK_APPROVE_SLOT_OPTIONS = [
   { value: 'breakup', label: 'Breakup' },
 ];
 const EDITABLE_LOCALES = ['pl', 'en', 'de', 'nl', 'fr'];
+const DRAFT_GENERATION_STAGES = [
+  'intro',
+  'reminder_send',
+  'breakup_send',
+  'escalated',
+];
+const TERMINAL_PROFILE_STATUSES = ['do_not_contact', 'signed_up', 'completed'];
 
 const fetchFacets = async () => {
   try {
@@ -160,6 +167,9 @@ const rows = computed(() => {
       preferred_language: p.preferred_language,
       google_rating: p.google_rating,
       google_review_count: p.google_review_count,
+      campaign_participant_id: p.campaign_participant_id,
+      campaign_stage: p.campaign_stage,
+      campaign_paused: p.campaign_paused,
     });
     if (p.external_id) seenExternalIds.add(String(p.external_id));
   });
@@ -221,6 +231,16 @@ const visibleGenerationErrorItems = computed(() =>
 const hasDirectoryPagination = computed(
   () => directoryTotal.value > directoryPerPage.value
 );
+const bulkApproveSummaryMessage = computed(() => {
+  const summary = bulkApproveSummary.value;
+  if (!summary) return '';
+
+  const staleSkipped = summary.stale_skipped || 0;
+  const skippedText = staleSkipped ? `, stale skipped ${staleSkipped}` : '';
+  const slot = summary.template_slot || bulkApproveSlot.value;
+
+  return `Approved ${summary.approved} pending ${slot} drafts (selected ${summary.selected}${skippedText}, failed ${summary.failed})`;
+});
 
 const resetDirectoryPage = () => {
   directoryPage.value = 1;
@@ -255,6 +275,44 @@ const startCampaign = async row => {
   try {
     const { data } = await OutreachDirectoryAPI.import([row.directory.id]);
     importSummary.value = data.result;
+    await runSearch();
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    busyRowKey.value = null;
+  }
+};
+
+const canRetryDraftGeneration = row => {
+  if (row.type !== 'profile') return false;
+  if (!activeCampaignId.value || !row.campaign_participant_id) return false;
+  if (TERMINAL_PROFILE_STATUSES.includes(row.profile.partnership_status)) {
+    return false;
+  }
+
+  return DRAFT_GENERATION_STAGES.includes(row.campaign_stage);
+};
+
+const retryDraftGeneration = async row => {
+  if (!canRetryDraftGeneration(row)) return;
+
+  const confirmed = window.confirm(
+    `Generate a new outreach draft for ${row.business_name || row.email}?`
+  );
+  if (!confirmed) return;
+
+  busyRowKey.value = row.key;
+  importSummary.value = null;
+  healthActionSummary.value = null;
+  error.value = null;
+  try {
+    await OutreachCampaignsAPI.retryGeneration(
+      activeCampaignId.value,
+      row.campaign_participant_id
+    );
+    healthActionSummary.value = `Draft generation queued for ${
+      row.business_name || row.email
+    }.`;
     await runSearch();
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
@@ -786,9 +844,7 @@ watch(
       v-if="bulkApproveSummary"
       class="p-3 mb-3 text-xs rounded bg-n-amber-3 text-n-amber-11"
     >
-      {{
-        `Approved ${bulkApproveSummary.approved} pending ${bulkApproveSummary.template_slot || bulkApproveSlot} drafts (selected ${bulkApproveSummary.selected}, failed ${bulkApproveSummary.failed})`
-      }}
+      {{ bulkApproveSummaryMessage }}
     </div>
 
     <div
@@ -1118,18 +1174,29 @@ watch(
             <template v-else>—</template>
           </td>
           <td class="px-3 py-2 text-right">
-            <button
-              v-if="
-                row.type === 'profile' &&
-                row.profile.partnership_status !== 'do_not_contact'
-              "
-              type="button"
-              class="text-xs font-medium text-n-ruby-11 hover:underline disabled:opacity-50"
-              :disabled="busyRowKey === row.key"
-              @click.stop="optOut(row.profile)"
+            <div
+              v-if="row.type === 'profile'"
+              class="flex items-center justify-end gap-3"
             >
-              Opt out
-            </button>
+              <button
+                v-if="canRetryDraftGeneration(row)"
+                type="button"
+                class="text-xs font-medium text-n-brand hover:underline disabled:opacity-50"
+                :disabled="busyRowKey === row.key"
+                @click.stop="retryDraftGeneration(row)"
+              >
+                {{ busyRowKey === row.key ? 'Queueing…' : 'Generate draft' }}
+              </button>
+              <button
+                v-if="row.profile.partnership_status !== 'do_not_contact'"
+                type="button"
+                class="text-xs font-medium text-n-ruby-11 hover:underline disabled:opacity-50"
+                :disabled="busyRowKey === row.key"
+                @click.stop="optOut(row.profile)"
+              >
+                Opt out
+              </button>
+            </div>
             <button
               v-else-if="row.type === 'directory'"
               type="button"
