@@ -293,6 +293,12 @@ const canRetryDraftGeneration = row => {
   return DRAFT_GENERATION_STAGES.includes(row.campaign_stage);
 };
 
+const canMarkProfileNotRelevant = row => {
+  if (row.type !== 'profile') return false;
+  if (!activeCampaignId.value || !row.campaign_participant_id) return false;
+  return row.profile.partnership_status !== 'do_not_contact';
+};
+
 const retryDraftGeneration = async row => {
   if (!canRetryDraftGeneration(row)) return;
 
@@ -313,6 +319,32 @@ const retryDraftGeneration = async row => {
     healthActionSummary.value = `Draft generation queued for ${
       row.business_name || row.email
     }.`;
+    await runSearch();
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    busyRowKey.value = null;
+  }
+};
+
+const markProfileNotRelevant = async row => {
+  if (!canMarkProfileNotRelevant(row)) return;
+
+  const confirmed = window.confirm(
+    `Mark ${row.business_name || row.email} as not relevant and stop outreach?`
+  );
+  if (!confirmed) return;
+
+  busyRowKey.value = row.key;
+  importSummary.value = null;
+  healthActionSummary.value = null;
+  error.value = null;
+  try {
+    await OutreachCampaignsAPI.markNotRelevant(
+      activeCampaignId.value,
+      row.campaign_participant_id
+    );
+    healthActionSummary.value = `Marked ${row.business_name || row.email} as not relevant.`;
     await runSearch();
   } catch (e) {
     error.value = e.response?.data?.error || e.message;
@@ -1186,6 +1218,15 @@ watch(
                 @click.stop="retryDraftGeneration(row)"
               >
                 {{ busyRowKey === row.key ? 'Queueing…' : 'Generate draft' }}
+              </button>
+              <button
+                v-if="canMarkProfileNotRelevant(row)"
+                type="button"
+                class="text-xs font-medium text-n-amber-11 hover:underline disabled:opacity-50"
+                :disabled="busyRowKey === row.key"
+                @click.stop="markProfileNotRelevant(row)"
+              >
+                Not relevant
               </button>
               <button
                 v-if="row.profile.partnership_status !== 'do_not_contact'"
