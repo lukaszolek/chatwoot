@@ -26,6 +26,8 @@ const props = defineProps({
   },
   // Extra classes applied to the read-only button (heading sizing etc.).
   displayClass: { type: String, default: '' },
+  readOnlyTitle: { type: String, default: 'Kliknij, aby edytować' },
+  selectClass: { type: String, default: '' },
   // async (value) => updatedProfile  — caller does the API call
   saveFn: { type: Function, required: true },
 });
@@ -152,7 +154,7 @@ const onKeydown = e => {
     <template v-if="!editing">
       <button
         type="button"
-        class="reset-base text-left cursor-text"
+        class="reset-base text-left cursor-pointer"
         :class="[
           variant === 'tag'
             ? 'inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-n-slate-3 text-n-slate-11 border border-n-weak hover:border-n-slate-7 leading-none uppercase tracking-wide'
@@ -167,7 +169,7 @@ const onKeydown = e => {
           },
           displayClass,
         ]"
-        :title="saving ? 'zapisuję…' : errored ? 'błąd zapisu' : null"
+        :title="saving ? 'zapisuję…' : errored ? 'błąd zapisu' : readOnlyTitle"
         :disabled="disabled"
         @click="startEdit"
       >
@@ -194,8 +196,12 @@ const onKeydown = e => {
         v-model="draft"
         class="reset-base px-2 text-sm bg-white border rounded"
         :class="[
-          variant === 'tag' ? 'h-6 text-[11px]' : 'w-full h-8',
+          variant === 'tag'
+            ? 'h-7 min-w-[5.5rem] max-w-[10rem] pr-7 text-[11px] leading-none'
+            : 'w-full h-8',
           errored ? 'border-n-ruby-9' : 'border-n-weak',
+          uppercase ? 'uppercase' : '',
+          selectClass,
         ]"
         @change="onSelectChange"
         @blur="cancelEdit"

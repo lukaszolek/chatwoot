@@ -29,6 +29,18 @@ const STATUS_OPTIONS = [
   'completed',
 ];
 
+const STATUS_LABELS = {
+  imported: 'Imported',
+  qualified: 'Qualified',
+  contacted: 'Contacted',
+  replied: 'Replied',
+  interested: 'Interested',
+  signed_up: 'Signed up',
+  declined: 'Declined',
+  do_not_contact: 'Do not contact',
+  completed: 'Completed',
+};
+
 const profileLocale = p =>
   p?.native_language ||
   p?.directory_preferred_language ||
@@ -167,23 +179,25 @@ const copyEmail = async () => {
         />
         <InlineEditableField
           variant="tag"
-          type="text"
+          type="select"
           :model-value="localProfile.country_code"
+          :options="countryOptions"
           :save-fn="value => saveField('country_code', value)"
-          :maxlength="2"
-          datalist-id="photographer-countries"
+          select-class="min-w-[4.5rem]"
           placeholder="–"
           uppercase
+          read-only-title="Kliknij, aby zmienić kraj"
           @error="onError"
         />
         <InlineEditableField
           variant="tag"
-          type="text"
+          type="select"
           :model-value="localProfile.locale"
+          :options="localeOptions"
           :save-fn="value => saveField('locale', value)"
-          :maxlength="5"
-          datalist-id="photographer-locales"
+          select-class="min-w-[4.75rem]"
           placeholder="–"
+          read-only-title="Kliknij, aby zmienić język"
           @error="onError"
         />
         <InlineEditableField
@@ -191,10 +205,16 @@ const copyEmail = async () => {
           type="select"
           :model-value="localProfile.partnership_status"
           :options="STATUS_OPTIONS"
+          :option-labels="STATUS_LABELS"
           :save-fn="value => saveField('partnership_status', value)"
+          select-class="min-w-[8rem]"
           placeholder="status"
+          read-only-title="Kliknij, aby zmienić status"
           @error="onError"
         />
+      </div>
+      <div class="text-[11px] text-n-slate-10 mt-1">
+        Kliknij pole kraju, języka lub statusu, aby wybrać nową wartość.
       </div>
       <InlineEditableField
         variant="heading"
@@ -355,12 +375,5 @@ const copyEmail = async () => {
         <span class="i-lucide-external-link size-4" />
       </a>
     </div>
-
-    <datalist id="photographer-countries">
-      <option v-for="c in countryOptions" :key="c" :value="c" />
-    </datalist>
-    <datalist id="photographer-locales">
-      <option v-for="l in localeOptions" :key="l" :value="l" />
-    </datalist>
   </section>
 </template>
