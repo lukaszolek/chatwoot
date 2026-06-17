@@ -50,6 +50,7 @@ const ACTION_LABELS = {
   resolve: 'Resolve',
   mark_auto_reply: 'Auto-reply',
   mark_bounced: 'Bounced',
+  mark_not_relevant: 'Not relevant',
   mark_opt_out: 'Opt-out / STOP',
 };
 
@@ -179,6 +180,25 @@ const runConversationAction = async operation => {
       props.conversationId,
       operation
     );
+    await fetchContext();
+  } catch (e) {
+    error.value =
+      e.response?.data?.message || e.response?.data?.error || e.message;
+  } finally {
+    runningAction.value = '';
+  }
+};
+
+const runParticipantAction = async operation => {
+  const campaignId = context.value?.campaign?.id;
+  const participantId = context.value?.participant?.id;
+  if (!campaignId || !participantId || runningAction.value) return;
+  runningAction.value = operation;
+  error.value = null;
+  try {
+    if (operation === 'mark_not_relevant') {
+      await OutreachCampaignsAPI.markNotRelevant(campaignId, participantId);
+    }
     await fetchContext();
   } catch (e) {
     error.value =
@@ -340,47 +360,70 @@ const runConversationAction = async operation => {
       <div class="text-xs uppercase tracking-wide text-n-slate-10 mb-2">
         Outreach actions
       </div>
-      <div class="grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          class="h-8 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
-          :disabled="!!runningAction"
-          @click="runConversationAction('needs_reply')"
-        >
-          {{ actionLabel('needs_reply') }}
-        </button>
-        <button
-          type="button"
-          class="h-8 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
-          :disabled="!!runningAction"
-          @click="runConversationAction('resolve')"
-        >
-          {{ actionLabel('resolve') }}
-        </button>
-        <button
-          type="button"
-          class="h-8 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
-          :disabled="!!runningAction"
-          @click="runConversationAction('mark_auto_reply')"
-        >
-          {{ actionLabel('mark_auto_reply') }}
-        </button>
-        <button
-          type="button"
-          class="h-8 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
-          :disabled="!!runningAction"
-          @click="runConversationAction('mark_bounced')"
-        >
-          {{ actionLabel('mark_bounced') }}
-        </button>
-        <button
-          type="button"
-          class="col-span-2 h-8 px-2 text-xs font-medium rounded border border-n-ruby-5 text-n-ruby-11 hover:bg-n-ruby-2 disabled:opacity-50"
-          :disabled="!!runningAction"
-          @click="runConversationAction('mark_opt_out')"
-        >
-          {{ actionLabel('mark_opt_out') }}
-        </button>
+      <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-1.5">
+          <div class="text-[10px] uppercase tracking-wide text-n-slate-10">
+            Workflow
+          </div>
+          <div class="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              class="h-7 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
+              :disabled="!!runningAction"
+              @click="runConversationAction('needs_reply')"
+            >
+              {{ actionLabel('needs_reply') }}
+            </button>
+            <button
+              type="button"
+              class="h-7 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
+              :disabled="!!runningAction"
+              @click="runConversationAction('resolve')"
+            >
+              {{ actionLabel('resolve') }}
+            </button>
+            <button
+              type="button"
+              class="col-span-2 h-7 px-2 text-xs font-medium rounded border border-n-weak text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
+              :disabled="!!runningAction"
+              @click="runConversationAction('mark_auto_reply')"
+            >
+              {{ actionLabel('mark_auto_reply') }}
+            </button>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <div class="text-[10px] uppercase tracking-wide text-n-slate-10">
+            Delivery / exclusion
+          </div>
+          <div class="grid grid-cols-1 gap-1.5">
+            <button
+              type="button"
+              class="h-7 px-2 text-xs font-medium rounded border border-n-slate-5 text-n-slate-12 hover:bg-n-slate-2 disabled:opacity-50"
+              :disabled="!!runningAction"
+              @click="runConversationAction('mark_bounced')"
+            >
+              {{ actionLabel('mark_bounced') }}
+            </button>
+            <button
+              type="button"
+              class="h-7 px-2 text-xs font-medium rounded border border-n-amber-5 text-n-amber-11 hover:bg-n-amber-2 disabled:opacity-50"
+              :disabled="!!runningAction"
+              @click="runParticipantAction('mark_not_relevant')"
+            >
+              {{ actionLabel('mark_not_relevant') }}
+            </button>
+            <button
+              type="button"
+              class="h-7 px-2 text-xs font-medium rounded border border-n-ruby-5 text-n-ruby-11 hover:bg-n-ruby-2 disabled:opacity-50"
+              :disabled="!!runningAction"
+              @click="runConversationAction('mark_opt_out')"
+            >
+              {{ actionLabel('mark_opt_out') }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
