@@ -45,6 +45,7 @@ class Outreach::ConversationActionService
 
   def mark_opt_out!
     ActiveRecord::Base.transaction do
+      discard_pending_outreach_drafts!('operator_mark_opt_out')
       profile.transition_to!(:do_not_contact) if profile.is_a?(PhotographerPartnerProfile) && !profile.do_not_contact?
       profile.update!(marketing_consent_state: :declined) if profile.is_a?(PhotographerPartnerProfile)
       pause_participant!('operator_mark_opt_out')
@@ -95,5 +96,13 @@ class Outreach::ConversationActionService
     return unless REPLIED_BUMP_FROM.include?(profile.partnership_status.to_s)
 
     profile.transition_to!(:replied)
+  end
+
+  def discard_pending_outreach_drafts!(reason)
+    Outreach::Drafts::DiscardPendingConversationDraftsService.new(
+      conversation: conversation,
+      user: user,
+      reason: reason
+    ).call
   end
 end

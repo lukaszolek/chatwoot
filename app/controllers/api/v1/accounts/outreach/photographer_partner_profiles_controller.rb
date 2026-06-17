@@ -119,6 +119,7 @@ class Api::V1::Accounts::Outreach::PhotographerPartnerProfilesController < Api::
   def opt_out
     reason = params[:reason].presence || 'operator_manual'
     ActiveRecord::Base.transaction do
+      discard_pending_outreach_drafts!(reason: "profile_opt_out:#{reason}")
       @profile.transition_to!(:do_not_contact) unless @profile.do_not_contact?
       CampaignParticipant.where(participatable: @profile, paused: false).update_all( # rubocop:disable Rails/SkipsModelValidations
         paused: true, updated_at: Time.current
@@ -186,6 +187,21 @@ class Api::V1::Accounts::Outreach::PhotographerPartnerProfilesController < Api::
 
     participants = campaign.participants.where(participatable: profiles)
     @partnership_participants_by_profile_id = participants.index_by(&:participatable_id)
+  end
+
+  def discard_pending_outreach_drafts!(reason:)
+    @profile
+      .campaign_participants
+      .includes(:conversation)
+      .find_each do |participant|
+        next unless participant.conversation
+
+        Outreach::Drafts::DiscardPendingConversationDraftsService.new(
+          conversation: participant.conversation,
+          user: Current.user,
+          reason: reason
+        ).call
+      end
   end
 
   def render_profile_writer_error(error)

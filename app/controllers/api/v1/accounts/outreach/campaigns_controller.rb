@@ -35,19 +35,11 @@ class Api::V1::Accounts::Outreach::CampaignsController < Api::V1::Accounts::Base
 
   def mark_not_relevant
     ActiveRecord::Base.transaction do
-      participant.update!(
-        paused: true,
-        next_action_at: nil,
-        metadata: participant.metadata.to_h.except(
-          'last_error',
-          'last_error_at',
-          'processing_started_at'
-        ).merge(
-          'paused_reason' => 'operator_marked_not_relevant',
-          'not_relevant_at' => Time.current.iso8601,
-          'not_relevant_by_user_id' => Current.user&.id
-        )
+      discard_pending_outreach_drafts!(
+        participant.conversation,
+        reason: 'operator_mark_not_relevant'
       )
+      mark_participant_not_relevant!
       profile.transition_to!(:declined) if profile.is_a?(PhotographerPartnerProfile) && !profile.declined?
     end
     render json: { ok: true }, status: :ok
@@ -73,5 +65,31 @@ class Api::V1::Accounts::Outreach::CampaignsController < Api::V1::Accounts::Base
 
   def check_authorization
     authorize(OutboundCampaign)
+  end
+
+  def discard_pending_outreach_drafts!(conversation, reason:)
+    return unless conversation
+
+    Outreach::Drafts::DiscardPendingConversationDraftsService.new(
+      conversation: conversation,
+      user: Current.user,
+      reason: reason
+    ).call
+  end
+
+  def mark_participant_not_relevant!
+    participant.update!(
+      paused: true,
+      next_action_at: nil,
+      metadata: participant.metadata.to_h.except(
+        'last_error',
+        'last_error_at',
+        'processing_started_at'
+      ).merge(
+        'paused_reason' => 'operator_marked_not_relevant',
+        'not_relevant_at' => Time.current.iso8601,
+        'not_relevant_by_user_id' => Current.user&.id
+      )
+    )
   end
 end
