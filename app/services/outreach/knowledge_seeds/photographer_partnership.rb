@@ -382,7 +382,7 @@ module Outreach::KnowledgeSeeds
           - Średnia galeria ścienna za 200 euro netto daje 40 euro prowizji.
           - Produkcję, oprawę, wysyłkę i obsługę klienta bierzemy w całości na siebie.
 
-          Rejestracja zajmuje około dwóch minut. Po rejestracji otrzymasz osobisty link polecający, dostęp do panelu rozliczeń oraz rabat na zamówienia do własnego studia.
+          Rejestracja zajmuje około dwóch minut. Po rejestracji otrzymasz osobisty link polecający, dostęp do panelu rozliczeń oraz voucher 25 EUR na pierwsze zamówienie testowe do własnego studia, żeby samodzielnie sprawdzić jakość naszych wydruków i ram.
 
           Jeśli chcesz dołączyć, odpisz po prostu „TAK” — wtedy wyślę Ci link do rejestracji.
 
@@ -439,7 +439,7 @@ module Outreach::KnowledgeSeeds
           - Een gemiddelde wandgalerie van 200 euro netto levert 40 euro commissie op.
           - Productie, inlijsten, verzending en klantenservice verzorgen wij volledig.
 
-          Aanmelden duurt ongeveer twee minuten. Na registratie ontvangt u uw persoonlijke verwijzingslink, toegang tot het uitbetalingsportaal en een korting op bestellingen voor uw eigen studio.
+          Aanmelden duurt ongeveer twee minuten. Na registratie ontvangt u uw persoonlijke verwijzingslink, toegang tot het uitbetalingsportaal en een voucher van 25 EUR voor een eerste testbestelling voor uw eigen studio, zodat u zelf de kwaliteit van onze prints en lijsten kunt beoordelen.
 
           Wilt u meedoen? Antwoord dan gewoon met “ja”, dan stuur ik u de registratielink.
 
@@ -504,7 +504,7 @@ module Outreach::KnowledgeSeeds
           - An average wall gallery worth 200 euro net gives you 40 euro commission.
           - We handle production, framing, shipping, and customer service in full.
 
-          Registration takes about two minutes. After registering, you receive your personal referral link, access to the payout panel, and a discount on orders for your own studio.
+          Registration takes about two minutes. After registering, you receive your personal referral link, access to the payout panel, and a 25 EUR voucher for a first test order for your own studio so you can check the quality of our prints and frames yourself.
 
           If you would like to join, just reply "yes" and I will send you the registration link.
 
@@ -560,7 +560,7 @@ module Outreach::KnowledgeSeeds
           - Une galerie murale d'une valeur moyenne de 200 euros HT génère 40 euros de commission.
           - Nous prenons entièrement en charge la production, l'encadrement, l'expédition et le service client.
 
-          L'inscription prend environ deux minutes. Après l'inscription, vous recevez votre lien de parrainage personnel, l'accès à votre espace partenaire et une remise sur les commandes pour votre propre studio.
+          L'inscription prend environ deux minutes. Après l'inscription, vous recevez votre lien de parrainage personnel, l'accès à votre espace partenaire et un bon de 25 EUR pour passer une première commande test pour votre studio et vérifier par vous-même la qualité de nos tirages et de nos cadres.
 
           Si vous souhaitez rejoindre le programme, répondez simplement « oui » et je vous enverrai le lien d'inscription.
 
@@ -625,7 +625,7 @@ module Outreach::KnowledgeSeeds
           - **Co dostaję, gdy polecę innego fotografa?** Gdy znajomy fotograf zarejestruje się z Twojego polecenia i zacznie polecać Framky swoim klientom, **dostajesz 2% od każdego zamówienia jego klientów — bezterminowo**, dopóki jesteście oboje aktywnymi partnerami. To pasywny strumień przychodu — jeden mail do koleżanki z branży może procentować latami.
           - **Czy łańcuch poleceń jest głębszy niż 2 poziomy?** Nie, regulamin przewiduje dokładnie jeden poziom polecenia partner→partner. Twój polecony fotograf nie może już polecić kolejnego "z Twojego drzewa" tak, żebyś dostał z tego prowizję.
           - **Jak działa rozliczenie?** Comiesięczne rozliczenia na fakturę lub umowę. Wypłata do 10. dnia każdego miesiąca za prowizje z miesiąca poprzedniego, gdy saldo ≥ 50 EUR.
-          - **Co dostaję na start?** Voucher 20 EUR na przetestowanie produktu, indywidualny **link polecający** + materiały marketingowe w Panelu Partnera.
+          - **Co dostaję na start?** Voucher 25 EUR na przetestowanie produktu, indywidualny **link polecający** + materiały marketingowe w Panelu Partnera.
           - **Jak długo trwa weryfikacja?** Do 5 dni roboczych po wypełnieniu formularza.
 
           Link do rejestracji (PL): `https://framky.com/pl-pl/program-partnerski/rejestracja`
@@ -642,7 +642,7 @@ module Outreach::KnowledgeSeeds
 
           Co warto trzymać miękko:
 
-          1. **Voucher 20 EUR**: na stronie obiecane jako "voucher na przetestowanie". Szczegóły operacyjne (kiedy aktywuje się, kiedy wygasa) — w Panelu Partnera. W mailu można wspomnieć fakt, ale szczegóły kierować do Panelu.
+          1. **Voucher 25 EUR**: na stronie obiecane jako "voucher na przetestowanie". Szczegóły operacyjne (kiedy aktywuje się, kiedy wygasa) — w Panelu Partnera. W mailu można wspomnieć fakt, ale szczegóły kierować do Panelu.
 
           2. **Wymóg 18+**: na stronie nieeksponowany; w regulaminie tak. Pominąć w pierwszym mailu, podać przy konkretnym pytaniu.
 
