@@ -1,3 +1,4 @@
+# rubocop:disable Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 # Composes a reply to a photographer's inbound message. Has access to
 # the agent toolbox for record reads/writes (consent, partnership status,
 # notes) and Framky-backend lookups (registration, commission, invoice).
@@ -25,21 +26,16 @@ class Outreach::Llm::MessageComposer::Reply < Outreach::Llm::MessageComposer::Ba
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     user_prompt = build_user_prompt
     system_prompt = build_system_prompt
-
-    result = client.ask_with_tools!(
-      model: client.compose_model,
-      system: system_prompt,
-      user: user_prompt,
-      tools: @toolbox.tools,
-      temperature: 0.3
-    )
-
+    result = compose_with_output_validation(system_prompt: system_prompt, user_prompt: user_prompt)
     return build_escalation(result, started) if escalation_requested?(result)
 
     build_reply_success(result, user_prompt, started)
   rescue Outreach::Llm::Client::LlmError => e
-    Rails.logger.warn("[outreach.composer.reply] llm_error=#{e.class}: #{e.message.truncate(200)}")
-    { escalate: true, reason: "llm_error:#{e.class}: #{e.message.truncate(120)}" }
+    Rails.logger.warn("[outreach.composer.reply] llm_error=#{e.class}: #{e.message.to_s.truncate(200)}")
+    { escalate: true, reason: "llm_error:#{e.class}: #{e.message.to_s.truncate(120)}" }
+  rescue InvalidOutput => e
+    Rails.logger.warn("[outreach.composer.reply] invalid_output=#{e.message.to_s.truncate(200)}")
+    { escalate: true, reason: "invalid_output:#{e.message.to_s.truncate(120)}" }
   end
 
   private
@@ -111,6 +107,7 @@ class Outreach::Llm::MessageComposer::Reply < Outreach::Llm::MessageComposer::Ba
     # subject — diverging means the recipient sees a brand-new
     # conversation, even with matching In-Reply-To headers.
     subject = infer_subject_from_thread
+    validate_generated_output!(subject: subject, body: body)
 
     {
       subject: subject,
@@ -122,6 +119,7 @@ class Outreach::Llm::MessageComposer::Reply < Outreach::Llm::MessageComposer::Ba
       output: parsed,
       tool_calls: result[:tool_calls],
       token_usage: result[:token_usage] || {},
+      provider_metadata: result[:provider_metadata] || {},
       latency_ms: result[:latency_ms] || latency_ms_since(started),
       fallback: false
     }
@@ -131,8 +129,35 @@ class Outreach::Llm::MessageComposer::Reply < Outreach::Llm::MessageComposer::Ba
     last_outgoing = conversation&.messages&.where(message_type: :outgoing, private: false)
                                 &.order(created_at: :desc)&.first
     prev_subject = last_outgoing&.outreach_draft_subject || last_outgoing&.content_attributes&.dig('email', 'subject')
-    return "Re: Framky" if prev_subject.blank?
+    return 'Re: Framky' if prev_subject.blank?
 
     prev_subject.start_with?('Re:') ? prev_subject : "Re: #{prev_subject}"
   end
+
+  def compose_with_output_validation(system_prompt:, user_prompt:)
+    attempts = 0
+
+    begin
+      attempts += 1
+      result = client.ask_with_tools!(
+        model: client.compose_model,
+        system: system_prompt,
+        user: user_prompt,
+        tools: @toolbox.tools,
+        temperature: 0.3
+      )
+      return result if escalation_requested?(result)
+
+      parsed = result[:parsed] || {}
+      body = parsed['body'].presence || result[:raw_content].to_s.strip
+      validate_generated_output!(subject: infer_subject_from_thread, body: body)
+      result
+    rescue InvalidOutput => e
+      raise if attempts > INVALID_OUTPUT_RETRY_LIMIT
+
+      Rails.logger.warn("[outreach.composer.reply] invalid_output_retry attempt=#{attempts} error=#{e.message.to_s.truncate(200)}")
+      retry
+    end
+  end
 end
+# rubocop:enable Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity

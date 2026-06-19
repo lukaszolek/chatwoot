@@ -18,9 +18,13 @@
 # Or (fallback) — same shape with fallback: true and a neutral
 # locale-appropriate body.
 class Outreach::Llm::MessageComposer::Base
+  class InvalidOutput < StandardError; end
+
   SLOT = nil
   PROMPT_VERSION = 'outreach.compose.v1'.freeze
   RECENT_LEARNINGS_LIMIT = 20
+  INVALID_PLACEHOLDER_REGEX = /(\{\{[^}]+\}\}|\{%\s*.*?%\})/m
+  INVALID_OUTPUT_RETRY_LIMIT = 1
 
   def initialize(participant:, locale: nil, conversation: nil, operator_hint: nil, model: nil)
     @participant = participant
@@ -34,18 +38,14 @@ class Outreach::Llm::MessageComposer::Base
     started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     user_prompt = build_user_prompt
     system_prompt = build_system_prompt
-
-    result = client.ask_json!(
-      model: client.compose_model,
-      system: system_prompt,
-      user: user_prompt,
-      temperature: temperature
-    )
-    parsed = result.fetch(:parsed)
+    result, parsed = compose_with_output_validation(system_prompt: system_prompt, user_prompt: user_prompt)
     build_success(parsed, result, user_prompt, started)
   rescue Outreach::Llm::Client::LlmError => e
-    Rails.logger.warn("[outreach.composer.#{slot}] llm_error=#{e.class}: #{e.message.truncate(200)}")
-    build_fallback(reason: "llm_error:#{e.class}", started: started)
+    Rails.logger.warn("[outreach.composer.#{slot}] llm_error=#{e.class}: #{e.message.to_s.truncate(200)}")
+    build_fallback(reason: "llm_error:#{e.class}", started: started, error_message: e.message)
+  rescue InvalidOutput => e
+    Rails.logger.warn("[outreach.composer.#{slot}] invalid_output=#{e.message.to_s.truncate(200)}")
+    build_fallback(reason: 'invalid_output:unresolved_placeholders', started: started, error_message: e.message)
   end
 
   private
@@ -215,7 +215,46 @@ class Outreach::Llm::MessageComposer::Base
     }
   end
 
-  def build_fallback(reason:, started:)
+  def compose_with_output_validation(system_prompt:, user_prompt:)
+    attempts = 0
+
+    begin
+      attempts += 1
+      result = client.ask_json!(
+        model: compose_model,
+        system: system_prompt,
+        user: user_prompt,
+        temperature: temperature
+      )
+      parsed = normalize_output_hash(result.fetch(:parsed))
+      validate_generated_output!(subject: parsed['subject'], body: parsed['body'])
+      [result, parsed]
+    rescue InvalidOutput => e
+      raise if attempts > INVALID_OUTPUT_RETRY_LIMIT
+
+      Rails.logger.warn("[outreach.composer.#{slot}] invalid_output_retry attempt=#{attempts} error=#{e.message.to_s.truncate(200)}")
+      retry
+    end
+  end
+
+  def normalize_output_hash(parsed)
+    {
+      'subject' => parsed['subject'].to_s.strip,
+      'body' => parsed['body'].to_s.strip
+    }
+  end
+
+  def validate_generated_output!(subject:, body:)
+    return unless unresolved_placeholders?(subject) || unresolved_placeholders?(body)
+
+    raise InvalidOutput, 'generated output contains unresolved template placeholders'
+  end
+
+  def unresolved_placeholders?(text)
+    text.to_s.match?(INVALID_PLACEHOLDER_REGEX)
+  end
+
+  def build_fallback(reason:, started:, error_message: nil)
     {
       subject: fallback_subject,
       body: fallback_body,
