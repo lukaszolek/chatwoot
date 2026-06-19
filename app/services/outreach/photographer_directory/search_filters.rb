@@ -12,7 +12,7 @@ module Outreach::PhotographerDirectory::SearchFilters
 
   def apply(scope, params)
     scope = filter_text_query(scope, params[:q])
-    scope = scope.where(country_code: params[:country_code].to_s.downcase) if params[:country_code].present?
+    scope = filter_country_code(scope, params[:country_code])
     scope = scope.where(preferred_language: params[:locale]) if params[:locale].present?
     scope = scope.where('google_rating >= ?', params[:min_rating].to_f) if params[:min_rating].present?
     filter_by_category(scope, params[:category])
@@ -36,5 +36,11 @@ module Outreach::PhotographerDirectory::SearchFilters
       'WHERE s.photographer_id = photographer_photographers.id AND s.category = ?)',
       category.to_s
     )
+  end
+
+  def filter_country_code(scope, country_code)
+    return scope if country_code.blank?
+
+    scope.where('LOWER(country_code) = ?', country_code.to_s.downcase)
   end
 end
