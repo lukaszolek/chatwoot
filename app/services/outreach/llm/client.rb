@@ -36,10 +36,8 @@ class Outreach::Llm::Client
     {
       parsed: parse_json!(response.content),
       raw_content: response.content,
-      token_usage: {
-        'prompt_tokens' => response.input_tokens,
-        'completion_tokens' => response.output_tokens
-      },
+      token_usage: token_usage(response),
+      provider_metadata: provider_metadata(response),
       latency_ms: latency_ms
     }
   end
@@ -133,7 +131,7 @@ class Outreach::Llm::Client
 
   def configure_chat(chat, temperature:, system:)
     chat.with_temperature(temperature)
-    chat.with_params(max_tokens: max_tokens)
+    chat.with_params(max_tokens: max_tokens, response_format: { type: 'json_object' })
     chat.with_instructions(system)
   end
 
@@ -149,19 +147,72 @@ class Outreach::Llm::Client
       parsed: try_parse_json(response.content),
       raw_content: response.content,
       tool_calls: captured_calls,
-      token_usage: {
-        'prompt_tokens' => response.input_tokens,
-        'completion_tokens' => response.output_tokens
-      },
+      token_usage: token_usage(response),
+      provider_metadata: provider_metadata(response),
       latency_ms: latency_ms
     }
   end
 
+  def token_usage(response)
+    raw_usage = raw_body(response).is_a?(Hash) ? raw_body(response)['usage'] : nil
+    prompt_details = raw_usage.is_a?(Hash) ? raw_usage['prompt_tokens_details'] : nil
+
+    {
+      'prompt_tokens' => response.input_tokens,
+      'completion_tokens' => response.output_tokens,
+      'total_tokens' => raw_usage&.dig('total_tokens'),
+      'cached_tokens' => response.cached_tokens || prompt_details&.dig('cached_tokens'),
+      'cache_write_tokens' => prompt_details&.dig('cache_write_tokens'),
+      'cache_creation_tokens' => response.cache_creation_tokens
+    }.compact
+  end
+
+  def provider_metadata(response)
+    headers = raw_headers(response)
+    body = raw_body(response)
+    generation_id = header_value(headers, 'x-generation-id') || body&.dig('id')
+    {
+      'provider' => openrouter? ? 'openrouter' : 'openai',
+      'base_url' => api_base,
+      'response_id' => body&.dig('id'),
+      'generation_id' => generation_id,
+      'model' => response.model_id,
+      'raw_usage' => body&.dig('usage')
+    }.compact
+  end
+
+  def raw_headers(response)
+    raw = response.respond_to?(:raw) ? response.raw : nil
+    raw.respond_to?(:headers) ? raw.headers : {}
+  end
+
+  def raw_body(response)
+    raw = response.respond_to?(:raw) ? response.raw : nil
+    raw.respond_to?(:body) ? raw.body : nil
+  end
+
+  def header_value(headers, key)
+    return nil unless headers.respond_to?(:[])
+
+    headers[key] || headers[key.upcase] || headers[key.split('-').map(&:capitalize).join('-')]
+  end
+
   def parse_json!(content)
-    stripped = content.to_s.strip.sub(/\A```(?:json)?\s*/, '').sub(/```\s*\z/, '')
+    stripped = extract_json(content)
     JSON.parse(stripped)
   rescue JSON::ParserError => e
-    raise InvalidJson, "LLM returned non-JSON response (#{e.message}): #{content.truncate(200)}"
+    raise InvalidJson, "LLM returned non-JSON response (#{e.message}): #{content.to_s.truncate(200)}"
+  end
+
+  def extract_json(content)
+    stripped = content.to_s.strip.sub(/\A```(?:json)?\s*/, '').sub(/```\s*\z/, '').strip
+    return stripped if stripped.start_with?('{') && stripped.end_with?('}')
+
+    start_index = stripped.index('{')
+    end_index = stripped.rindex('}')
+    return stripped unless start_index && end_index && end_index > start_index
+
+    stripped[start_index..end_index]
   end
 
   # Soft variant for ask_with_tools — when the model responds with prose

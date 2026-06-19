@@ -49,6 +49,18 @@ const regenerationStatus = computed(
 const regenerationError = computed(
   () => props.additionalAttributes?.regenerationError || ''
 );
+const modelComparison = computed(
+  () => props.additionalAttributes?.modelComparison || {}
+);
+const modelComparisonStatus = computed(
+  () => modelComparison.value?.status || ''
+);
+const modelComparisonResults = computed(
+  () => modelComparison.value?.results || []
+);
+const isComparingModels = computed(() =>
+  ['queued', 'processing'].includes(modelComparisonStatus.value)
+);
 const isRegenerating = computed(() =>
   ['queued', 'processing'].includes(regenerationStatus.value)
 );
@@ -193,10 +205,27 @@ const regenerate = async () => {
   }
 };
 
+const compareModels = async () => {
+  busy.value = 'compare-models';
+  error.value = null;
+  try {
+    await axios.post(`${baseUrl.value}/compare_outreach_draft_models`);
+    startRegenerationPolling();
+    emit('updated');
+  } catch (e) {
+    error.value = e.response?.data?.error || e.message;
+  } finally {
+    busy.value = null;
+  }
+};
+
 watch(
   regenerationStatus,
   newStatus => {
-    if (['queued', 'processing'].includes(newStatus)) {
+    if (
+      ['queued', 'processing'].includes(newStatus) ||
+      isComparingModels.value
+    ) {
       startRegenerationPolling();
     } else {
       stopRegenerationPolling();
@@ -204,6 +233,14 @@ watch(
   },
   { immediate: true }
 );
+
+watch(modelComparisonStatus, newStatus => {
+  if (['queued', 'processing'].includes(newStatus)) {
+    startRegenerationPolling();
+  } else if (!isRegenerating.value) {
+    stopRegenerationPolling();
+  }
+});
 
 onBeforeUnmount(stopRegenerationPolling);
 
@@ -255,6 +292,39 @@ const formatToolParams = params => {
     .map(([k, v]) => `${k}: ${typeof v === 'string' ? JSON.stringify(v) : v}`)
     .join(', ');
 };
+
+const formatCost = cost => {
+  if (cost === null || cost === undefined) return '—';
+  return `$${Number(cost).toFixed(5)}`;
+};
+
+const formatTokens = tokenUsage => {
+  const promptTokens = tokenUsage?.promptTokens ?? tokenUsage?.prompt_tokens;
+  const completionTokens =
+    tokenUsage?.completionTokens ?? tokenUsage?.completion_tokens;
+  return `${promptTokens || 0} / ${completionTokens || 0}`;
+};
+
+const cachedTokens = result => {
+  const tokenUsage = result.tokenUsage || result.token_usage || {};
+  const generationUsage =
+    result.generationUsage || result.generation_usage || {};
+  return (
+    tokenUsage.cachedTokens ??
+    tokenUsage.cached_tokens ??
+    generationUsage.cachedTokens ??
+    generationUsage.cached_tokens
+  );
+};
+
+const actualCost = result =>
+  result.actualCostUsd ??
+  result.actual_cost_usd ??
+  result.generationUsage?.actualCostUsd ??
+  result.generation_usage?.actual_cost_usd;
+
+const estimatedCost = result =>
+  result.estimatedCostUsd ?? result.estimated_cost_usd;
 
 const reject = async () => {
   const reason = window.prompt('Powód odrzucenia (eskalacja do operatora):');
@@ -334,6 +404,19 @@ const discard = async () => {
         class="p-2 mb-2 text-xs rounded bg-n-ruby-3 text-n-ruby-11"
       >
         Regeneracja nie powiodła się: {{ regenerationError }}
+      </div>
+      <div
+        v-if="isComparingModels"
+        class="p-2 mb-2 text-xs rounded bg-n-slate-3 text-n-slate-11"
+      >
+        Porównuję modele LLM w tle. Wyniki pojawią się tutaj po zakończeniu.
+      </div>
+      <div
+        v-if="modelComparisonStatus === 'failed'"
+        class="p-2 mb-2 text-xs rounded bg-n-ruby-3 text-n-ruby-11"
+      >
+        Porównanie modeli nie powiodło się:
+        {{ modelComparison?.error || 'nieznany błąd' }}
       </div>
 
       <div
@@ -484,6 +567,21 @@ const discard = async () => {
           v-if="!editingBody"
           type="button"
           class="px-3 py-2 text-xs font-medium border rounded border-n-weak text-n-slate-12 hover:bg-n-slate-2"
+          :disabled="
+            busy === 'compare-models' || isRegenerating || isComparingModels
+          "
+          @click="compareModels"
+        >
+          {{
+            busy === 'compare-models' || isComparingModels
+              ? 'Porównuję…'
+              : 'Porównaj modele'
+          }}
+        </button>
+        <button
+          v-if="!editingBody"
+          type="button"
+          class="px-3 py-2 text-xs font-medium border rounded border-n-weak text-n-slate-12 hover:bg-n-slate-2"
           :disabled="isRegenerating"
           @click="beginEdit"
         >
@@ -544,6 +642,73 @@ const discard = async () => {
               <path d="M14 11v6" />
             </svg>
           </button>
+        </div>
+      </div>
+
+      <div
+        v-if="modelComparisonResults.length"
+        class="mt-4 space-y-3 border-t border-n-weak pt-3"
+      >
+        <div
+          class="text-[11px] uppercase tracking-wide font-semibold text-n-slate-11"
+        >
+          Porównanie modeli
+        </div>
+        <div
+          v-for="result in modelComparisonResults"
+          :key="result.model"
+          class="rounded border border-n-weak bg-n-slate-1 p-3"
+        >
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <strong class="text-n-slate-12">{{ result.model }}</strong>
+            <span
+              class="rounded px-2 py-0.5"
+              :class="
+                result.ok
+                  ? 'bg-n-teal-3 text-n-teal-11'
+                  : 'bg-n-ruby-3 text-n-ruby-11'
+              "
+            >
+              {{ result.ok ? 'ok' : 'error' }}
+            </span>
+            <span class="text-n-slate-11">
+              tokens prompt/completion:
+              {{ formatTokens(result.tokenUsage || result.token_usage) }}
+            </span>
+            <span class="text-n-slate-11">
+              koszt realny: {{ formatCost(actualCost(result)) }}
+            </span>
+            <span class="text-n-slate-11">
+              koszt szac.: {{ formatCost(estimatedCost(result)) }}
+            </span>
+            <span
+              v-if="
+                cachedTokens(result) !== null &&
+                cachedTokens(result) !== undefined
+              "
+              class="text-n-slate-11"
+            >
+              cached: {{ cachedTokens(result) }}
+            </span>
+            <span
+              v-if="result.latencyMs || result.latency_ms"
+              class="text-n-slate-11"
+            >
+              {{ result.latencyMs || result.latency_ms }}ms
+            </span>
+          </div>
+          <div v-if="result.ok" class="mt-2">
+            <div class="text-xs font-medium text-n-slate-12">
+              {{ result.subject }}
+            </div>
+            <pre
+              class="mt-2 max-h-80 overflow-auto whitespace-pre-wrap rounded bg-white p-2 text-xs leading-5 text-n-slate-12"
+              >{{ result.body }}</pre
+            >
+          </div>
+          <div v-else class="mt-2 text-xs text-n-ruby-11">
+            {{ result.error }}
+          </div>
         </div>
       </div>
 

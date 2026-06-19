@@ -80,6 +80,18 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     render_regenerate_unexpected_error(e)
   end
 
+  def compare_outreach_draft_models
+    mark_outreach_model_comparison_queued!(message)
+    Outreach::CompareDraftModelsJob.perform_later(
+      draft_message_id: message.id,
+      models: comparison_models,
+      operator_prompt: params[:operator_prompt].presence
+    )
+    render json: { ok: true, queued: true, draft_message_id: message.id }, status: :accepted
+  rescue Outreach::Drafts::CompareModelsService::Error, Outreach::Drafts::RegenerateService::Error => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   def reject_outreach_draft
     Outreach::Drafts::RejectService.new(
       draft_message: message,
@@ -167,6 +179,31 @@ class Api::V1::Accounts::Conversations::MessagesController < Api::V1::Accounts::
     additional['regeneration_error'] = nil
     additional['regeneration_updated_at'] = Time.current.iso8601
     draft_message.update!(additional_attributes: additional)
+  end
+
+  def mark_outreach_model_comparison_queued!(draft_message)
+    raise Outreach::Drafts::RegenerateService::Error, 'not an outreach draft' unless draft_message.outreach_draft?
+    raise Outreach::Drafts::RegenerateService::Error, "draft already #{draft_message.outreach_draft_status}" \
+      unless draft_message.outreach_draft_status == 'pending'
+
+    additional = draft_message.additional_attributes.to_h.deep_dup
+    comparison = additional['model_comparison'].to_h
+    raise Outreach::Drafts::RegenerateService::Error, 'model comparison already in progress' \
+      if %w[queued processing].include?(comparison['status'])
+
+    additional['model_comparison'] = {
+      'status' => 'queued',
+      'queued_at' => Time.current.iso8601,
+      'models' => comparison_models
+    }
+    draft_message.update!(additional_attributes: additional)
+  end
+
+  def comparison_models
+    requested = params[:models]
+    models = requested.is_a?(Array) ? requested : []
+    models.map(&:to_s).map(&:strip).reject(&:blank?).presence ||
+      Outreach::Drafts::CompareModelsService.default_models
   end
 
   # API inbox check

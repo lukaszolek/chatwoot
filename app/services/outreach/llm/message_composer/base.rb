@@ -22,11 +22,12 @@ class Outreach::Llm::MessageComposer::Base
   PROMPT_VERSION = 'outreach.compose.v1'.freeze
   RECENT_LEARNINGS_LIMIT = 20
 
-  def initialize(participant:, locale: nil, conversation: nil, operator_hint: nil)
+  def initialize(participant:, locale: nil, conversation: nil, operator_hint: nil, model: nil)
     @participant = participant
     @conversation = conversation || participant.conversation
     @locale = locale
     @operator_hint = operator_hint
+    @model_override = model
   end
 
   def call
@@ -49,7 +50,7 @@ class Outreach::Llm::MessageComposer::Base
 
   private
 
-  attr_reader :participant, :conversation, :operator_hint
+  attr_reader :participant, :conversation, :operator_hint, :model_override
 
   def slot
     self.class::SLOT
@@ -61,6 +62,10 @@ class Outreach::Llm::MessageComposer::Base
 
   def client
     @client ||= Outreach::Llm::Client.new
+  end
+
+  def compose_model
+    model_override.presence || client.compose_model
   end
 
   def campaign
@@ -199,11 +204,12 @@ class Outreach::Llm::MessageComposer::Base
       subject: parsed['subject'].to_s.strip,
       body: parsed['body'].to_s.strip,
       locale: resolved_locale,
-      model: client.compose_model,
+      model: compose_model,
       prompt_version: self.class::PROMPT_VERSION,
       input_digest: Digest::SHA256.hexdigest(user_prompt),
       output: parsed,
       token_usage: result[:token_usage] || {},
+      provider_metadata: result[:provider_metadata] || {},
       latency_ms: result[:latency_ms] || latency_ms_since(started),
       fallback: false
     }
@@ -214,11 +220,12 @@ class Outreach::Llm::MessageComposer::Base
       subject: fallback_subject,
       body: fallback_body,
       locale: resolved_locale,
-      model: client.compose_model,
+      model: compose_model,
       prompt_version: self.class::PROMPT_VERSION,
       input_digest: nil,
-      output: { 'fallback' => reason },
+      output: { 'fallback' => reason, 'error_message' => error_message }.compact,
       token_usage: {},
+      provider_metadata: {},
       latency_ms: latency_ms_since(started),
       fallback: true
     }
