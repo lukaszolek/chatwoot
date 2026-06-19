@@ -7,6 +7,7 @@ class Outreach::Llm::MessageComposer::Reminder < Outreach::Llm::MessageComposer:
 
   private
 
+  # rubocop:disable Metrics/MethodLength
   def slot_instruction
     <<~TEXT.strip
       SLOT INSTRUCTION — REMINDER (7 days after first touch, no reply yet):
@@ -24,9 +25,22 @@ class Outreach::Llm::MessageComposer::Reminder < Outreach::Llm::MessageComposer:
         - Do not reintroduce Łukasz/Framky with the full first-touch
           paragraph. Do not repeat the full product paragraph about
           fine-art paper, pigment inks, PANTONE coverage, or framing.
+        - Subject line should be even safer than intro: 2-4 words,
+          lowercase, concrete, and operational. Prefer reminder subjects
+          that clearly signal a follow-up on prints/galleries, for example:
+            - "galerie ścienne dla klientów"
+            - "przypomnienie o wydrukach"
+            - "prints voor uw klanten"
+            - "galeries murales"
+          You MAY mention a concrete service category only if it is clearly
+          anchored in the profile and still describes the offer, e.g.
+          "wydruki dla klientów". Do not use poetic or abstract subjects.
+          If unsure, choose the clearer generic option instead of a
+          creative one.
         - Include only one low-friction CTA.
         - Single-word reply CTA ("yes" / "not now" / "ping me later").
         - Length: ≤ 7 sentences.
     TEXT
   end
+  # rubocop:enable Metrics/MethodLength
 end

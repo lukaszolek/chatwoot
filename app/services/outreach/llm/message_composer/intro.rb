@@ -49,8 +49,23 @@ class Outreach::Llm::MessageComposer::Intro < Outreach::Llm::MessageComposer::Ba
 
       PRIORITY 4 — Subject line: 2-4 words, lowercase, boring/internal
         (from KNOWLEDGE → copywriting). No first name, no urgency, no
-        percentages, no emoji. Example shapes: "galerie na ścianę", "kursy
-        i wydruki", "szybka propozycja".
+        percentages, no emoji.
+        The subject must explain the offer category first, not the
+        photographer's artistic style. Prefer safe, concrete commercial
+        shapes such as:
+          - "galerie ścienne dla klientów"
+          - "prints voor uw klanten"
+          - "galeries murales"
+          - "wall galleries for clients"
+        You MAY lightly personalise the subject only when the category is
+        explicit and directly relevant to the offer (for example portraits,
+        weddings, families, vastgoed/real estate). Good pattern:
+          - "<category> + prints / galleries / wall art"
+        Avoid metaphorical, poetic, or vague subjects such as
+        "moments on the wall", "kadry na ścianie", "souvenirs sur vos murs".
+        Never use fragile details from the site unless they are unambiguous
+        in the snippet. If unsure, fall back to the safer generic subject
+        about prints/galleries for clients.
 
       If there is NO intro_seed document, improvise within copywriting rules.
       Length cap: ≤ 150 words (the seed drives length; don't pad, don't
