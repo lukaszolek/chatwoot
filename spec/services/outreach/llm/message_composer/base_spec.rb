@@ -62,4 +62,25 @@ RSpec.describe Outreach::Llm::MessageComposer::Base do
     expect(result[:fallback]).to be(true)
     expect(result[:output]['fallback']).to eq('invalid_output:unresolved_placeholders')
   end
+
+  it 'retries once when the model returns invalid json' do
+    attempts = 0
+    allow(client).to receive(:ask_json!) do
+      attempts += 1
+      raise Outreach::Llm::Client::InvalidJson, 'invalid json' if attempts == 1
+
+      {
+        parsed: { 'subject' => 'galeries murales', 'body' => 'Bonjour Pauline,' },
+        token_usage: {},
+        provider_metadata: {},
+        latency_ms: 12
+      }
+    end
+
+    result = composer.call
+
+    expect(client).to have_received(:ask_json!).twice
+    expect(result[:fallback]).to be(false)
+    expect(result[:body]).to eq('Bonjour Pauline,')
+  end
 end

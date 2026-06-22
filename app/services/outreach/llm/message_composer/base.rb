@@ -25,6 +25,7 @@ class Outreach::Llm::MessageComposer::Base
   RECENT_LEARNINGS_LIMIT = 20
   INVALID_PLACEHOLDER_REGEX = /(\{\{[^}]+\}\}|\{%\s*.*?%\})/m
   INVALID_OUTPUT_RETRY_LIMIT = 1
+  RETRYABLE_LLM_ERRORS = [Outreach::Llm::Client::InvalidJson].freeze
 
   def initialize(participant:, locale: nil, conversation: nil, operator_hint: nil, model: nil)
     @participant = participant
@@ -220,21 +221,29 @@ class Outreach::Llm::MessageComposer::Base
 
     begin
       attempts += 1
-      result = client.ask_json!(
-        model: compose_model,
-        system: system_prompt,
-        user: user_prompt,
-        temperature: temperature
-      )
-      parsed = normalize_output_hash(result.fetch(:parsed))
-      validate_generated_output!(subject: parsed['subject'], body: parsed['body'])
+      result, parsed = compose_once(system_prompt: system_prompt, user_prompt: user_prompt)
       [result, parsed]
-    rescue InvalidOutput => e
+    rescue InvalidOutput, *RETRYABLE_LLM_ERRORS => e
       raise if attempts > INVALID_OUTPUT_RETRY_LIMIT
 
-      Rails.logger.warn("[outreach.composer.#{slot}] invalid_output_retry attempt=#{attempts} error=#{e.message.to_s.truncate(200)}")
+      Rails.logger.warn(
+        "[outreach.composer.#{slot}] retryable_generation_error attempt=#{attempts} " \
+        "error=#{e.class}: #{e.message.to_s.truncate(200)}"
+      )
       retry
     end
+  end
+
+  def compose_once(system_prompt:, user_prompt:)
+    result = client.ask_json!(
+      model: compose_model,
+      system: system_prompt,
+      user: user_prompt,
+      temperature: temperature
+    )
+    parsed = normalize_output_hash(result.fetch(:parsed))
+    validate_generated_output!(subject: parsed['subject'], body: parsed['body'])
+    [result, parsed]
   end
 
   def normalize_output_hash(parsed)
