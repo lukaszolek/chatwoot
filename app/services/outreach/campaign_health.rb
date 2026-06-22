@@ -23,8 +23,13 @@ class Outreach::CampaignHealth
 
   def missing_drafts
     @missing_drafts ||= campaign.participants
+                                .where(paused: false)
                                 .where(conversation_id: nil)
                                 .where(current_stage_key: 'intro')
+                                .where(
+                                  participatable_type: 'PhotographerPartnerProfile',
+                                  participatable_id: PhotographerPartnerProfile.select(:id)
+                                )
   end
 
   def generation_errors
