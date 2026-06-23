@@ -161,6 +161,7 @@ module Outreach::KnowledgeSeeds
           - Jeśli fotograf oferuje kilka obszarów, wybierz w openerze ten najbardziej pasujący do galerii ściennej w domu: śluby, rodziny, dzieci, noworodki, ciąża, portrety, sesje kobiece, pary. Pomijaj fotografię produktową, biznesową, reklamową, wnętrzarską, gastronomiczną, stomatologiczną, dokumentową, wirtualne spacery i film, chyba że to jedyne dostępne informacje.
           - Skupiaj się na fotografii, nie na filmach, rolkach, spacerach wirtualnych, social mediach ani samej marce/studiu.
           - Nie wybieraj przypadkowych, pobocznych szczegółów tylko dlatego, że są konkretne. Konkret ma być trafny sprzedażowo: ma prowadzić do myśli, że zdjęcia klienta mogą trafić na ścianę.
+          - Nie przywołuj w openerze prywatnych klientów po imieniu, nazw konkretnych par, rodzin ani tytułów pojedynczych sesji. Jeśli snippet zawiera taki detal, parafrazuj go do bezpiecznego poziomu kategorii: ślub, rodzina, ciąża, noworodek, portret, para.
           - Jeśli dostępne informacje są ubogie, lepiej użyć bezpiecznego ogólnego openeru o typie sesji niż udawać głęboką personalizację.
           - Unikaj zdań w stylu „Właśnie takie kadry zyskują najwięcej…”, jeśli wcześniej nie ma jasnego, konkretnego podmiotu. Zadbaj, żeby pierwsze dwa zdania były gramatycznie samodzielne i naturalne po polsku.
 
@@ -213,6 +214,7 @@ module Outreach::KnowledgeSeeds
           - If the photographer offers several areas, choose the one that best fits a wall gallery at home: weddings, families, children, newborn, maternity, portraits, boudoir, couples. Skip product, corporate, real estate/interior, food, dental/medical, passport/document photography, virtual tours, and video unless that is the only information available.
           - Focus on photography, not films, reels, virtual tours, social media, or the studio/brand name alone.
           - Do not pick a random side detail just because it is concrete. The detail should logically lead to the idea that clients' photos can live on a wall.
+          - Do not mention private clients by name, named couples or families, or the titles of one-off sessions in the opener. If the snippet contains such details, paraphrase them back to a safe category level: wedding, family, maternity, newborn, portrait, boudoir, couple.
           - If the available information is thin, use a safe general opener about the session type instead of forcing deep personalization.
           - Make the first two sentences grammatically complete and natural in English. Avoid vague references such as "these images" if it is not clear what images you mean.
 
@@ -265,6 +267,7 @@ module Outreach::KnowledgeSeeds
           - Si le photographe propose plusieurs domaines, choisir celui qui correspond le mieux à une galerie murale chez un client : mariage, famille, enfants, nouveau-né, grossesse, portraits, boudoir, couples. Éviter produit, corporate, immobilier/intérieur, gastronomie, médical/dentaire, photos d'identité/documents, visites virtuelles et vidéo, sauf si c'est la seule information disponible.
           - Se concentrer sur la photographie, pas sur les films, reels, visites virtuelles, réseaux sociaux ou seulement le nom du studio.
           - Ne pas choisir un détail secondaire au hasard simplement parce qu'il est concret. Le détail doit mener naturellement à l'idée que les photos des clients peuvent vivre sur un mur.
+          - Ne pas citer dans l'ouverture des clients privés par leur prénom, des couples ou familles nommés, ni le titre d'une séance unique. Si le snippet contient ce type de détail, le reformuler au niveau sûr de la catégorie : mariage, famille, grossesse, nouveau-né, portrait, boudoir, couple.
           - Si les informations sont faibles, utiliser une ouverture générale mais sûre sur le type de séance plutôt qu'une personnalisation forcée.
           - Les deux premières phrases doivent être autonomes et naturelles en français. Éviter les références vagues comme "ces images" si le sujet n'est pas clair.
 
@@ -533,6 +536,7 @@ module Outreach::KnowledgeSeeds
           - If the recipient is a duo, married pair, studio run by two people, or a team, adapt the whole email consistently to plural address. This applies to the opener, bullets, CTA, legal footer, and opt-out.
           - Do not open with only the studio name, Instagram, location, or "online portfolio" if there is information about style, approach, or services.
           - In the opening paragraph, prefer photography that fits a home wall gallery: wedding, family, children, newborn, maternity, portrait, boudoir, couples. Avoid real estate/interior, product, corporate, passport/document, video, and virtual tours if personal sessions are also available.
+          - Do not mention private clients by name, named couples or families, or one-off session titles in the opener. If the snippet contains such details, paraphrase them back to a safe category level such as wedding, family, maternity, newborn, portrait, boudoir, or couples.
           - If the snippet is thin, use a safe general opener about the session type instead of a forced personal detail.
         TEXT
       },
@@ -590,6 +594,7 @@ module Outreach::KnowledgeSeeds
           - Si le destinataire est un duo, un couple marié, un studio géré par deux personnes ou une équipe, adapte tout l'e-mail au pluriel de manière cohérente. Cela concerne l'ouverture, les bullets, le CTA, la mention légale et l'opt-out.
           - Ne commence pas par une phrase sur le seul nom du studio, Instagram, la localisation ou le "portfolio en ligne" s'il existe une information sur le style, l'approche ou les services.
           - Dans le premier paragraphe, choisis d'abord une photographie qui correspond bien à une galerie murale chez le client : mariage, famille, enfants, nouveau-né, grossesse, portrait, boudoir, couples. Évite immobilier/intérieur, produit, corporate, documents, vidéo et visites virtuelles si des séances personnelles sont aussi disponibles.
+          - Ne cite pas dans l'ouverture des clients privés par leur prénom, des couples ou familles nommés, ni le titre d'une séance unique. Si le snippet contient ce type de détail, reformule-le au niveau sûr de la catégorie : mariage, famille, grossesse, nouveau-né, portrait, boudoir ou couple.
           - Si le snippet est pauvre, utilise une ouverture générale sûre sur le type de séance plutôt qu'un détail personnel forcé.
         TEXT
       },

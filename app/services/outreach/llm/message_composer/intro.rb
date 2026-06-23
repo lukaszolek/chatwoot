@@ -28,6 +28,11 @@ class Outreach::Llm::MessageComposer::Intro < Outreach::Llm::MessageComposer::Ba
             trait, niche, a phrase lifted from the site). If the snippet is
             thin, lean on profile cues (business name, IG handle, city)
             WITHOUT claiming you read the site.
+            Never mention private clients by name, named couples, family
+            members, or one-off session titles in the opener, even if such
+            text appears in the snippet. Paraphrase those details back to the
+            safe category level instead (wedding, family, maternity, newborn,
+            portrait, boudoir, couple, etc.).
           * The salutation name to match {{first_name}}, gender-agreement
             forms (Polish byłbyś/byłabyś etc.) to match gender from first name.
           * Recipient number agreement is mandatory. If the profile, business
