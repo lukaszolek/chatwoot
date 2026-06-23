@@ -48,4 +48,42 @@ RSpec.describe Outreach::Llm::WebsiteSnippet do
       expect(snippet_selector.send(:best_page_from_pairs, pairs)).to eq(generic_about)
     end
   end
+
+  describe '#build_excerpt' do
+    it 'removes document-photo lines when the same page contains stronger family signals' do
+      markdown = <<~TEXT
+        Séances famille, grossesse et mariage en lumière naturelle.
+        Photos d'identité conformes ANTS, e-photo et documents officiels.
+      TEXT
+
+      excerpt = snippet_selector.send(:build_excerpt, markdown)
+
+      expect(excerpt).to include('Séances famille, grossesse et mariage')
+      expect(excerpt).not_to include("Photos d'identité")
+    end
+
+    it 'removes framed-print sales lines when the same page contains personal session signals' do
+      markdown = <<~TEXT
+        Portraits et séances famille pleines de douceur et d'émotion.
+        Tirages encadrés disponibles en option dans la boutique du studio.
+      TEXT
+
+      excerpt = snippet_selector.send(:build_excerpt, markdown)
+
+      expect(excerpt).to include('Portraits et séances famille')
+      expect(excerpt).not_to include('Tirages encadrés')
+    end
+
+    it 'keeps low-fit lines when no better category exists on the page' do
+      markdown = <<~TEXT
+        Photos d'identité conformes ANTS et documents officiels.
+        Passeports, visas et photos administratives au studio.
+      TEXT
+
+      excerpt = snippet_selector.send(:build_excerpt, markdown)
+
+      expect(excerpt).to include("Photos d'identité")
+      expect(excerpt).to include('Passeports')
+    end
+  end
 end
