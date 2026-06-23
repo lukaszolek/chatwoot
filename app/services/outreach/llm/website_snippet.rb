@@ -14,7 +14,29 @@
 # setup-chatwoot-outreach-role.ts).
 class Outreach::Llm::WebsiteSnippet
   PAGE_TYPE_PRIORITY = %w[about portfolio gallery homepage service other].freeze
+  PERSONAL_PAGE_TYPE_PRIORITY = %w[homepage about service portfolio gallery other].freeze
   MAX_CHARS = 1800
+  HIGH_INTENT_PATTERNS = [
+    /wedding|weddings|marriage|mariage|mariages|trouw|bruiloft|hochzeit|hochzeiten/i,
+    /family|families|famille|familles|gezin|gezins|familie|familieshoots/i,
+    /newborn|nouveau[\s-]?né|nouveau[\s-]?nés|babyshoot|b[ée]b[ée]/i,
+    /maternity|grossesse|zwangerschap|pregnancy/i,
+    /children|kids|kinderen|enfants/i,
+    /couple|couples|koppel|koppels/i,
+    /boudoir/i
+  ].freeze
+  MEDIUM_INTENT_PATTERNS = [
+    /portrait|portraits/i
+  ].freeze
+  LOW_FIT_PATTERNS = [
+    /corporate|entreprise|business|bedrijfs|bedrijf|headshot|linkedin/i,
+    /immobilier|real estate|realestate|vastgoed|interieur|interior|architecture/i,
+    /produit|product|packshot|e-?commerce/i,
+    /iris/i,
+    /video|film|visite virtuelle|virtual tour/i,
+    /passport|identity photo|photo d'identité|documentfoto/i,
+    /art print|fine art print|tirage d'art|limited edition|oeuvre|œuvre|kunstwerk/i
+  ].freeze
 
   def self.for(profile)
     new(profile).fetch
@@ -61,7 +83,7 @@ class Outreach::Llm::WebsiteSnippet
     pairs = build_scored_page_pairs(url_rows)
     return nil if pairs.empty?
 
-    pairs.min_by { |page, type| ranking_key(page, type) }&.first
+    best_page_from_pairs(pairs)
   end
 
   def build_scored_page_pairs(url_rows)
@@ -80,9 +102,46 @@ class Outreach::Llm::WebsiteSnippet
     page&.content_markdown.to_s.strip.length.to_i > 80
   end
 
-  def ranking_key(page, classified_type)
-    priority_index = PAGE_TYPE_PRIORITY.index(classified_type) || PAGE_TYPE_PRIORITY.size
-    [priority_index, -page.content_markdown.to_s.length]
+  def best_page_from_pairs(pairs)
+    positive_context = pairs.any? { |page, _| positive_signal_score(page.content_markdown.to_s).positive? }
+    pairs.min_by { |page, type| ranking_key(page, type, positive_context: positive_context) }&.first
+  end
+
+  def ranking_key(page, classified_type, positive_context:)
+    priority = page_type_priority(positive_context)
+    priority_index = priority.index(classified_type) || priority.size
+    [*category_penalty(page.content_markdown.to_s, positive_context: positive_context), priority_index, -page.content_markdown.to_s.length]
+  end
+
+  def page_type_priority(positive_context)
+    positive_context ? PERSONAL_PAGE_TYPE_PRIORITY : PAGE_TYPE_PRIORITY
+  end
+
+  def category_penalty(text, positive_context:)
+    return [0, 0, 0, 0, 0] unless positive_context
+
+    positive_score = positive_signal_score(text)
+    negative_score = negative_signal_score(text)
+    [
+      negative_score.positive? && positive_score.zero? ? 1 : 0,
+      positive_score.zero? ? 1 : 0,
+      negative_score.positive? ? 1 : 0,
+      -positive_score,
+      negative_score
+    ]
+  end
+
+  def positive_signal_score(text)
+    weighted_keyword_score(text, HIGH_INTENT_PATTERNS, weight: 3) +
+      weighted_keyword_score(text, MEDIUM_INTENT_PATTERNS, weight: 1)
+  end
+
+  def negative_signal_score(text)
+    weighted_keyword_score(text, LOW_FIT_PATTERNS, weight: 1)
+  end
+
+  def weighted_keyword_score(text, patterns, weight:)
+    patterns.sum { |pattern| text.match?(pattern) ? weight : 0 }
   end
 
   def load_pages_by_url_id(url_ids)
