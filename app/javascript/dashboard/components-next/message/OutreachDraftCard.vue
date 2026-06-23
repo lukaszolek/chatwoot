@@ -43,6 +43,12 @@ const editHistory = computed(
   () => props.additionalAttributes?.editHistory || []
 );
 const toolCalls = computed(() => props.additionalAttributes?.toolCalls || []);
+const replySenderMismatch = computed(
+  () => props.additionalAttributes?.replySenderMismatch || false
+);
+const replySenderEmail = computed(
+  () => props.additionalAttributes?.replySenderEmail || ''
+);
 const regenerationStatus = computed(
   () => props.additionalAttributes?.regenerationStatus || ''
 );
@@ -417,6 +423,17 @@ const discard = async () => {
       >
         Porównanie modeli nie powiodło się:
         {{ modelComparison?.error || 'nieznany błąd' }}
+      </div>
+      <div
+        v-if="slot === 'reply' && replySenderMismatch"
+        class="p-2 mb-2 text-xs rounded bg-n-amber-3 text-n-amber-11"
+      >
+        <span>
+          Odpowiedź przyszła z innego adresu e-mail niż adres zapisany na
+          profilu fotografa:
+        </span>
+        <strong>{{ replySenderEmail }}</strong
+        >.
       </div>
 
       <div

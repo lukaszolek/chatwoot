@@ -106,7 +106,9 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
   def compose_reply_draft!(outcome)
     sender_email = inbound_sender_email
     return Rails.logger.warn('[outreach.classify_reply] no inbound') unless inbound_message
-    return Rails.logger.warn('[outreach.classify_reply] sender mismatch') if sender_email_mismatch?(sender_email)
+
+    sender_mismatch = sender_email_mismatch?(sender_email)
+    mark_reply_sender_mismatch!(sender_email) if sender_mismatch
 
     composed = compose_reply(sender_email, outcome: outcome)
     if composed[:escalate]
@@ -114,7 +116,7 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
       return
     end
 
-    create_outreach_draft_message!(composed)
+    create_outreach_draft_message!(composed, sender_email_mismatch: sender_mismatch, reply_sender_email: sender_email)
   end
 
   def send_reply_immediately!(outcome)
@@ -150,7 +152,7 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
     ).call
   end
 
-  def create_outreach_draft_message!(composed)
+  def create_outreach_draft_message!(composed, sender_email_mismatch: false, reply_sender_email: nil)
     participant.conversation.messages.create!(
       account: participant.conversation.account,
       inbox: participant.conversation.inbox,
@@ -160,21 +162,31 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
       content: composed[:body],
       content_type: 'text',
       content_attributes: { email: { subject: composed[:subject] } },
-      additional_attributes: {
-        'outreach_draft' => true,
-        'draft_status' => 'pending',
-        'template_slot' => 'reply',
-        'locale' => composed[:locale],
-        'composer_model' => composed[:model],
-        'composer_prompt_version' => composed[:prompt_version],
-        'composer_input_digest' => composed[:input_digest],
-        'iteration_count' => 1,
-        'regeneration_history' => [],
-        'campaign_participant_id' => participant.id,
-        'outbound_campaign_id' => campaign.id,
-        'tool_calls' => composed[:tool_calls] || []
-      }
+      additional_attributes: reply_draft_additional_attributes(
+        composed,
+        sender_email_mismatch: sender_email_mismatch,
+        reply_sender_email: reply_sender_email
+      )
     )
+  end
+
+  def reply_draft_additional_attributes(composed, sender_email_mismatch:, reply_sender_email:)
+    {
+      'outreach_draft' => true,
+      'draft_status' => 'pending',
+      'template_slot' => 'reply',
+      'locale' => composed[:locale],
+      'composer_model' => composed[:model],
+      'composer_prompt_version' => composed[:prompt_version],
+      'composer_input_digest' => composed[:input_digest],
+      'iteration_count' => 1,
+      'regeneration_history' => [],
+      'campaign_participant_id' => participant.id,
+      'outbound_campaign_id' => campaign.id,
+      'tool_calls' => composed[:tool_calls] || [],
+      'reply_sender_mismatch' => sender_email_mismatch,
+      'reply_sender_email' => reply_sender_email
+    }
   end
 
   def reply_operator_hint(outcome)
@@ -225,6 +237,20 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
 
   def sender_email_mismatch?(sender_email)
     sender_email.to_s.downcase != participant.participatable.email.to_s.downcase
+  end
+
+  def mark_reply_sender_mismatch!(sender_email)
+    participant.update!(
+      metadata: (participant.metadata || {}).merge(
+        'reply_sender_mismatch' => true,
+        'reply_sender_email' => sender_email,
+        'reply_sender_mismatch_detected_at' => Time.current.iso8601
+      )
+    )
+    Rails.logger.warn(
+      "[outreach.classify_reply] sender mismatch participant=#{participant.id} " \
+      "profile_email=#{participant.participatable.email} reply_from=#{sender_email}"
+    )
   end
 
   def escalation_reason(outcome)

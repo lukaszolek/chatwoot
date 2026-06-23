@@ -45,6 +45,7 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
                                      key: 'auto_reply_commission',
                                      on_enter_action: :send_template,
                                      template_slot: 'reply_interested_commission', position: 7)
+    allow(profile).to receive(:email).and_return('alain.baroni@ab-photo-france.fr')
   end
 
   def stub_classifier(**outcome)
@@ -66,6 +67,57 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
         decision = CampaignLlmDecision.last
         expect(decision.routed_to).to eq('auto_send')
         expect(decision.confidence).to be_within(0.001).of(0.95)
+      end
+    end
+
+    context 'when a reply comes from a different sender email in the same conversation' do
+      it 'still creates an operator draft reply and stores a mismatch warning' do
+        participant.update!(conversation: conversation)
+        create(
+          :message,
+          account: account,
+          inbox: conversation.inbox,
+          conversation: conversation,
+          sender: create(:contact, account: account, email: 'lain.mars@gmail.com'),
+          message_type: :incoming,
+          private: false,
+          content: 'oui volontiers',
+          content_attributes: { email: { 'from' => ['lain.mars@gmail.com'] } }
+        )
+
+        stub_classifier(
+          intent_class: 'interested_signup',
+          confidence: 0.95,
+          model: 'stub-1',
+          output: { 'reasoning' => 'clear yes' }
+        )
+
+        composed = {
+          subject: 'Re: Framky',
+          body: 'Bonjour Alain, voici le lien.',
+          locale: 'fr',
+          model: 'deepseek/deepseek-v4-flash',
+          prompt_version: 'outreach.compose_reply.v1',
+          input_digest: 'abc',
+          output: {},
+          tool_calls: [],
+          token_usage: {},
+          provider_metadata: {},
+          latency_ms: 10,
+          escalate: false
+        }
+        executor = described_class.new(participant: participant, stage: router_stage)
+        allow(executor).to receive(:compose_reply).and_return(composed)
+
+        executor.call
+
+        draft = conversation.messages.outreach_drafts.order(created_at: :desc).first
+        expect(draft).to be_present
+        expect(draft.additional_attributes['template_slot']).to eq('reply')
+        expect(draft.additional_attributes['reply_sender_mismatch']).to be(true)
+        expect(draft.additional_attributes['reply_sender_email']).to eq('lain.mars@gmail.com')
+        expect(participant.reload.metadata['reply_sender_mismatch']).to be(true)
+        expect(participant.metadata['reply_sender_email']).to eq('lain.mars@gmail.com')
       end
     end
 
