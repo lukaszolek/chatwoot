@@ -61,4 +61,12 @@ RSpec.describe Outreach::Llm::MessageComposer::Reply do
     expect(result[:escalate]).to be(true)
     expect(result[:reason]).to include('invalid_output:')
   end
+
+  it 'explicitly forbids the legal footer in normal in-thread replies' do
+    instruction = composer.send(:slot_instruction)
+
+    expect(instruction).to include('Do NOT append the outreach legal footer')
+    expect(instruction).to include('privacy-policy')
+    expect(instruction).to include('generic STOP opt-out')
+  end
 end

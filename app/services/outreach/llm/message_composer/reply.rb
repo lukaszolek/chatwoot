@@ -62,6 +62,11 @@ class Outreach::Llm::MessageComposer::Reply < Outreach::Llm::MessageComposer::Ba
           unsubscribe) → call update_marketing_consent(state="declined")
           AND set_partnership_status(status="do_not_contact") then write
           a short polite acknowledgement.
+        - This is an in-thread reply, not a cold first-touch email.
+          Do NOT append the outreach legal footer, privacy-policy
+          explanation, company address block, or generic STOP opt-out
+          line unless the operator explicitly asks for it or the reply
+          is itself an unsubscribe acknowledgement.
         - When the photographer's reply is sensitive (legal, refund,
           dispute) or you don't have data to answer → call
           escalate_to_operator with a one-sentence reason and STOP.
