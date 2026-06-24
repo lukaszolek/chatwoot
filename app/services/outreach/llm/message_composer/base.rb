@@ -24,8 +24,22 @@ class Outreach::Llm::MessageComposer::Base
   PROMPT_VERSION = 'outreach.compose.v1'.freeze
   RECENT_LEARNINGS_LIMIT = 20
   INVALID_PLACEHOLDER_REGEX = /(\{\{[^}]+\}\}|\{%\s*.*?%\})/m
+  INVALID_CONTROL_CHARS_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/
   INVALID_OUTPUT_RETRY_LIMIT = 1
   RETRYABLE_LLM_ERRORS = [Outreach::Llm::Client::InvalidJson].freeze
+  INTRO_MIN_BODY_LENGTH = 500
+  INTRO_GARBAGE_MARKERS = [
+    /click to continue/i,
+    /mjolnir/i,
+    /figured out the correct body/i
+  ].freeze
+  INTRO_REQUIRED_FRAGMENTS = {
+    'pl' => ['Mam na imię Łukasz Olek', 'polityce prywatności', 'STOP'],
+    'en' => ['My name is Łukasz Olek', 'privacy policy', 'STOP'],
+    'fr' => ["Je m'appelle Łukasz Olek", 'politique de confidentialité', 'STOP'],
+    'nl' => ['Mijn naam is Łukasz Olek', 'privacyverklaring', 'STOP'],
+    'de' => ['Łukasz Olek', 'STOP']
+  }.freeze
 
   def initialize(participant:, locale: nil, conversation: nil, operator_hint: nil, model: nil)
     @participant = participant
@@ -46,7 +60,7 @@ class Outreach::Llm::MessageComposer::Base
     build_fallback(reason: "llm_error:#{e.class}", started: started, error_message: e.message)
   rescue InvalidOutput => e
     Rails.logger.warn("[outreach.composer.#{slot}] invalid_output=#{e.message.to_s.truncate(200)}")
-    build_fallback(reason: 'invalid_output:unresolved_placeholders', started: started, error_message: e.message)
+    build_fallback(reason: 'invalid_output:generated_text', started: started, error_message: e.message)
   end
 
   private
@@ -254,13 +268,30 @@ class Outreach::Llm::MessageComposer::Base
   end
 
   def validate_generated_output!(subject:, body:)
-    return unless unresolved_placeholders?(subject) || unresolved_placeholders?(body)
+    if unresolved_placeholders?(subject) || unresolved_placeholders?(body)
+      raise InvalidOutput, 'generated output contains unresolved template placeholders'
+    end
 
-    raise InvalidOutput, 'generated output contains unresolved template placeholders'
+    return unless slot == 'intro'
+
+    validate_intro_output!(subject: subject, body: body)
   end
 
   def unresolved_placeholders?(text)
     text.to_s.match?(INVALID_PLACEHOLDER_REGEX)
+  end
+
+  def validate_intro_output!(subject:, body:)
+    all_text = [subject, body].join("\n")
+
+    raise InvalidOutput, 'generated intro output contains control characters' if all_text.match?(INVALID_CONTROL_CHARS_REGEX)
+    raise InvalidOutput, 'generated intro output contains garbage marker text' if INTRO_GARBAGE_MARKERS.any? { |pattern| all_text.match?(pattern) }
+    raise InvalidOutput, 'generated intro output is too short' if body.to_s.length < INTRO_MIN_BODY_LENGTH
+
+    required_fragments = INTRO_REQUIRED_FRAGMENTS.fetch(resolved_locale, INTRO_REQUIRED_FRAGMENTS['en'])
+    return if required_fragments.all? { |fragment| body.include?(fragment) }
+
+    raise InvalidOutput, 'generated intro output is missing required seed fragments'
   end
 
   def build_fallback(reason:, started:, error_message: nil)
