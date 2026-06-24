@@ -5,6 +5,7 @@ class Outreach::LegalFooter
     'nl' => 'Als u geen verdere berichten van ons wilt ontvangen, antwoord dan met "STOP".',
     'de' => 'Wenn Sie keine weiteren Nachrichten von uns erhalten möchten, antworten Sie mit "STOP".',
     'pl' => 'Jeśli nie chcesz otrzymywać od nas kolejnych wiadomości, odpowiedz "STOP".',
+    'fr' => 'Si vous ne souhaitez plus recevoir de messages de notre part, répondez « STOP ».',
     'en' => 'If you do not want to receive further messages from us, reply with "STOP".'
   }.freeze
 

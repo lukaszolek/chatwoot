@@ -66,10 +66,18 @@ class Outreach::Drafts::EditService
   end
 
   def legal_body
-    @legal_body ||= Outreach::LegalFooter.ensure_stop_opt_out(
-      body,
-      locale: draft_message.additional_attributes['locale']
-    )
+    @legal_body ||= if stop_opt_out_required?
+                      Outreach::LegalFooter.ensure_stop_opt_out(
+                        body,
+                        locale: draft_message.additional_attributes['locale']
+                      )
+                    else
+                      body
+                    end
+  end
+
+  def stop_opt_out_required?
+    draft_message.additional_attributes['template_slot'].to_s != 'reply'
   end
 
   def record_learning!(prev_subject, prev_body)
