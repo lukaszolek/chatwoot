@@ -195,8 +195,10 @@ class Outreach::Engine::Executors::ClassifyReply < Outreach::Engine::Executors::
     <<~TEXT.squish
       The photographer appears ready to join or asks for the registration link.
       Use the campaign knowledge document kind=reply_signup for tone and required details.
-      If the inbound message is a simple confirmation, send a short reply with the registration link.
-      If the inbound message includes questions or concerns, answer them briefly first, then include the registration link as the next step when appropriate.
+      Always answer the latest inbound question directly and concretely before doing anything else.
+      If the inbound message is a simple confirmation and the thread does not yet contain the registration link, send a short reply with the registration link.
+      If the inbound message includes questions or concerns, answer them first. Only include the registration link if it is still needed after the answer.
+      If the registration link was already sent earlier in the thread, do not resend the full onboarding explanation or repeat the link unless the photographer explicitly asks for it again or says they cannot find it.
       Do not escalate only because the photographer wants to sign up.
     TEXT
   end

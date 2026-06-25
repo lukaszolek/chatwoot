@@ -68,5 +68,7 @@ RSpec.describe Outreach::Llm::MessageComposer::Reply do
     expect(instruction).to include('Do NOT append the outreach legal footer')
     expect(instruction).to include('privacy-policy')
     expect(instruction).to include('generic STOP opt-out')
+    expect(instruction).to include('Answer the latest inbound question directly')
+    expect(instruction).to include('conversation history already contains the registration')
   end
 end

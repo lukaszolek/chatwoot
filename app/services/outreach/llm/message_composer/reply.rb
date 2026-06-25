@@ -67,6 +67,11 @@ class Outreach::Llm::MessageComposer::Reply < Outreach::Llm::MessageComposer::Ba
           explanation, company address block, or generic STOP opt-out
           line unless the operator explicitly asks for it or the reply
           is itself an unsubscribe acknowledgement.
+        - Answer the latest inbound question directly. Do not ignore it
+          and fall back to a generic signup or onboarding reply.
+        - If the conversation history already contains the registration
+          link, do not resend it unless the photographer explicitly asks
+          for the link again or says they cannot find it.
         - When the photographer's reply is sensitive (legal, refund,
           dispute) or you don't have data to answer → call
           escalate_to_operator with a one-sentence reason and STOP.

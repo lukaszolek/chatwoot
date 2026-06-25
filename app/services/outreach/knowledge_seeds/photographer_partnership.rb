@@ -599,6 +599,74 @@ module Outreach::KnowledgeSeeds
         TEXT
       },
       {
+        kind: 'reply_signup',
+        locale: 'pl',
+        position: 0,
+        title: 'Reply signup — odpowiedzi po zainteresowaniu rejestracją (PL)',
+        content: <<~TEXT
+          Ten dokument dotyczy odpowiedzi na wiadomości od fotografa, który chce dołączyć do programu albo już dostał link do rejestracji i zadaje dodatkowe pytanie.
+
+          Zasady:
+          - Najpierw odpowiedz bezpośrednio na OSTATNIE pytanie fotografa. Nie wracaj automatycznie do pełnego maila onboardingowego.
+          - Jeśli link do rejestracji był już wcześniej wysłany w tym wątku, nie powtarzaj go ani nie streszczaj od nowa całego procesu, chyba że fotograf wyraźnie prosi o link ponownie albo pisze, że go nie może znaleźć.
+          - Jeśli pytanie dotyczy rabatu dla klienta, prowizji, działania linku polecającego, drugiego poziomu poleceń, vouchera lub rozliczeń — odpowiedz konkretnie, korzystając z KNOWLEDGE → program_rules i FAQ.
+          - Po udzieleniu odpowiedzi możesz dodać jedno krótkie zdanie z następnym krokiem, ale tylko jeśli jest naprawdę potrzebny.
+          - Nie doklejaj ponownie całego opisu produktu, długich bulletów programu ani cold-mailowego CTA.
+          - To ma brzmieć jak krótka, pomocna odpowiedź w trwającej rozmowie.
+        TEXT
+      },
+      {
+        kind: 'reply_signup',
+        locale: 'nl',
+        position: 0,
+        title: 'Reply signup - antwoorden na interesse in registratie (NL)',
+        content: <<~TEXT
+          Dit document geldt voor antwoorden aan een fotograaf die wil deelnemen aan het programma of al een registratielink heeft ontvangen en daarna nog een extra vraag stelt.
+
+          Regels:
+          - Beantwoord eerst direct de LAATSTE vraag van de fotograaf. Val niet automatisch terug op de volledige onboardingmail.
+          - Als de registratielink al eerder in deze thread is verstuurd, herhaal die dan niet en stuur ook niet opnieuw de hele uitleg, tenzij de fotograaf expliciet opnieuw om de link vraagt of zegt dat hij/zij die niet meer kan vinden.
+          - Gaat de vraag over klantkorting, commissie, de verwijzingslink, tweede-niveau-verwijzingen, de voucher of uitbetalingen, antwoord dan concreet op basis van KNOWLEDGE → program_rules en FAQ.
+          - Na het antwoord mag je hooguit één korte volgende stap toevoegen, maar alleen als die echt nodig is.
+          - Herhaal niet opnieuw de volledige productuitleg, lange programmabullets of cold-email-CTA.
+          - De reply moet klinken als een korte, behulpzame reactie binnen een lopend gesprek.
+        TEXT
+      },
+      {
+        kind: 'reply_signup',
+        locale: 'en',
+        position: 0,
+        title: 'Reply signup — answers after registration interest (EN)',
+        content: <<~TEXT
+          This document applies to replies sent after the photographer has shown interest in joining the program or has already received the registration link and then asks an additional question.
+
+          Rules:
+          - Answer the photographer's LATEST question first. Do not fall back to the full onboarding email automatically.
+          - If the registration link was already sent earlier in the thread, do not resend it and do not repeat the whole registration explanation unless the photographer explicitly asks for the link again or says they cannot find it.
+          - If the question is about client discount, commission, how the referral link works, second-level referrals, the voucher, or payouts, answer directly using KNOWLEDGE → program_rules and FAQ.
+          - After answering, you may add one short next-step sentence, but only if it is genuinely needed.
+          - Do not re-add the full product pitch, long program bullets, or cold-email CTA.
+          - The reply should read like a short, helpful answer inside an ongoing conversation.
+        TEXT
+      },
+      {
+        kind: 'reply_signup',
+        locale: 'fr',
+        position: 0,
+        title: 'Reply signup — réponses après intérêt pour l’inscription (FR)',
+        content: <<~TEXT
+          Ce document concerne les réponses envoyées à un photographe qui souhaite rejoindre le programme ou qui a déjà reçu le lien d'inscription et pose ensuite une question complémentaire.
+
+          Règles :
+          - Réponds d'abord directement à la DERNIÈRE question du photographe. Ne reviens pas automatiquement au texte complet d'onboarding.
+          - Si le lien d'inscription a déjà été envoyé plus tôt dans le fil, ne le renvoie pas et ne répète pas toute l'explication, sauf si le photographe demande explicitement le lien à nouveau ou dit qu'il ne le retrouve plus.
+          - Si la question porte sur la remise client, la commission, le fonctionnement du lien de parrainage, le deuxième niveau de parrainage, le bon de 25 EUR ou les paiements, réponds concrètement en t'appuyant sur KNOWLEDGE → program_rules et FAQ.
+          - Après la réponse, tu peux ajouter au maximum une courte phrase d'étape suivante, mais seulement si c'est vraiment utile.
+          - Ne remets pas tout le pitch produit, les longs bullets du programme ni le CTA du cold email.
+          - La réponse doit ressembler à une aide courte et concrète dans une conversation déjà en cours.
+        TEXT
+      },
+      {
         kind: 'copywriting',
         locale: 'pl',
         position: 0,
