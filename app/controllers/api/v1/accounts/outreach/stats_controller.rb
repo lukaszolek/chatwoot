@@ -44,7 +44,8 @@ class Api::V1::Accounts::Outreach::StatsController < Api::V1::Accounts::BaseCont
     # whitelist current statuses per stage instead so the funnel matches the
     # pipeline view (e.g. Zarejestrowani == pipeline "signed_up" only).
     stages = [
-      { key: 'sent',       label: 'Wysłane',        statuses: %w[imported qualified contacted replied interested signed_up declined do_not_contact completed] },
+      { key: 'sent',       label: 'Wysłane',
+        statuses: %w[imported qualified contacted replied interested signed_up declined do_not_contact completed] },
       { key: 'contacted',  label: 'Skontaktowani',  statuses: %w[contacted replied interested signed_up declined do_not_contact completed] },
       { key: 'replied',    label: 'Odpowiedzieli',  statuses: %w[replied interested signed_up declined do_not_contact completed] },
       { key: 'interested', label: 'Zainteresowani', statuses: %w[interested signed_up completed] },

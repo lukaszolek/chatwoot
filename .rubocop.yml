@@ -1,3 +1,11 @@
+inherit_from: .rubocop_todo.yml
+
+# Merge (don't override) Exclude lists from .rubocop_todo.yml so per-cop
+# excludes defined both here and in the generated todo all apply.
+inherit_mode:
+  merge:
+    - Exclude
+
 plugins:
   - rubocop-performance
   - rubocop-rails
