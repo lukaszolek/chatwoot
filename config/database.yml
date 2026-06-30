@@ -45,7 +45,12 @@ test:
     password: "<%= ENV.fetch('POSTGRES_PASSWORD', '') %>"
   photographer_directory:
     <<: *pd_default
-    url: <%= ENV.fetch('PHOTOGRAPHER_DIRECTORY_TEST_DATABASE_URL', nil) %>
+    # In CI/FOSS the dedicated secondary is not provisioned. ActiveRecord still
+    # enlists every configured connection for transactional fixtures, so a nil
+    # url makes the whole suite fail trying to reach a local socket. Fall back
+    # to the primary test database (no spec queries the secondary tables —
+    # they all stub/skip), which keeps the connection enlistable.
+    url: <%= ENV['PHOTOGRAPHER_DIRECTORY_TEST_DATABASE_URL'].to_s.strip.empty? ? "postgresql://#{ENV.fetch('POSTGRES_USERNAME', 'postgres')}:#{ENV.fetch('POSTGRES_PASSWORD', '')}@#{ENV.fetch('POSTGRES_HOST', 'localhost')}:#{ENV.fetch('POSTGRES_PORT', '5432')}/#{ENV.fetch('POSTGRES_DATABASE', 'chatwoot_test')}" : ENV['PHOTOGRAPHER_DIRECTORY_TEST_DATABASE_URL'] %>
 
 production:
   primary:
