@@ -189,6 +189,8 @@ end
 # can disable the secondary without crashing boot.
 Rails.application.config.after_initialize do
   PhotographerDirectory::Photographer.lock_non_writable_columns!
-rescue ActiveRecord::ConnectionNotEstablished, ActiveRecord::NoDatabaseError, PG::ConnectionBad
-  Rails.logger.warn('[outreach] photographer_directory secondary DB unreachable at boot — attr_readonly will be applied on first use')
+rescue ActiveRecord::ConnectionNotEstablished, ActiveRecord::NoDatabaseError, ActiveRecord::StatementInvalid, PG::ConnectionBad
+  # Reachable-but-not-migrated (e.g. CI/FOSS, where the secondary points at the
+  # primary db and the photographer_* tables do not exist) raises StatementInvalid.
+  Rails.logger.warn('[outreach] photographer_directory secondary DB unavailable at boot — attr_readonly will be applied on first use')
 end
