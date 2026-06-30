@@ -160,7 +160,7 @@ class PhotographerDirectory::Photographer < PhotographerDirectory::ApplicationRe
   # Backward-compat alias — kept so anything that referenced the old name
   # keeps working until callers migrate.
   class << self
-    alias_method :lock_non_consent_columns!, :lock_non_writable_columns!
+    alias lock_non_consent_columns! lock_non_writable_columns!
   end
 
   scope :queryable_for_outreach, lambda {

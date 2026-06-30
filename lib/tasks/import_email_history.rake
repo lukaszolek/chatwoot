@@ -216,6 +216,7 @@ class EmailHistoryImporter
     )
   end
 
+  # rubocop:disable Metrics/AbcSize
   def create_outgoing_message(mail, processed_mail)
     # For sent emails, the contact is the recipient
     recipient_email = extract_recipient_email(mail)
@@ -240,6 +241,7 @@ class EmailHistoryImporter
       created_at: mail.date&.to_time
     )
   end
+  # rubocop:enable Metrics/AbcSize
 
   def find_or_create_contact(email, name)
     return [nil, nil] if email.blank?
@@ -323,13 +325,14 @@ class EmailHistoryImporter
 
     # Check if any existing message has this in its references (content_attributes is json, not jsonb)
     ref_match = inbox.messages.where("content_attributes->'email'->'references' IS NOT NULL")
-                              .where("content_attributes->'email'->>'references' LIKE ?", "%#{message_id}%").first
+                     .where("content_attributes->'email'->>'references' LIKE ?", "%#{message_id}%").first
     return inbox.conversations.find_by(id: ref_match.conversation_id) if ref_match.present?
 
     nil
   end
 
   # rubocop:disable Metrics/MethodLength
+  # rubocop:disable Metrics/AbcSize
   def create_message(conversation:, processed_mail:, message_type:, sender:, created_at:)
     content = mail_content(processed_mail)
 
@@ -359,6 +362,7 @@ class EmailHistoryImporter
 
     translate_message(message)
   end
+  # rubocop:enable Metrics/AbcSize
 
   def translate_message(message)
     return if message.content.blank?
