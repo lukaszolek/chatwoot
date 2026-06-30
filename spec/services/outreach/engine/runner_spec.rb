@@ -22,8 +22,6 @@ RSpec.describe Outreach::Engine::Runner do
                                      key: 'reminder_wait', on_enter_action: :wait,
                                      auto_advance_after_hours: 120, position: 2)
     intro_stage.update!(next_stage_key: 'reminder_wait')
-    create(:campaign_template, outbound_campaign: campaign, slot: 'intro', locale: 'en',
-                               subject: 'Hi', body: 'Body', active: true)
   end
 
   describe '#tick' do

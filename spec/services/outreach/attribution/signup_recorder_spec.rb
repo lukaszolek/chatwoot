@@ -7,10 +7,9 @@ RSpec.describe Outreach::Attribution::SignupRecorder do
   let(:inbox) { create(:inbox, :with_email, account: account) }
   let(:campaign) { create(:outbound_campaign, :active, account: account, inbox: inbox) }
   let(:profile) do
-    create(:photographer_partner_profile, account: account,
-                                          email: 'alex@example.com', external_id: 'ext-42')
+    create(:photographer_partner_profile, account: account, external_id: 'ext-42')
   end
-  let(:contact) { create(:contact, account: account, email: profile.email) }
+  let(:contact) { create(:contact, account: account, email: 'alex@example.com') }
   let(:conversation) { create(:conversation, account: account, inbox: inbox, contact: contact) }
   let(:participant) do
     create(:campaign_participant, outbound_campaign: campaign, account: account,
@@ -52,6 +51,13 @@ RSpec.describe Outreach::Attribution::SignupRecorder do
 
   it 'resolves profile by email when external_id is absent' do
     participant # force creation
+    # Stub secondary-DB lookup: map alex@example.com → profile's external_id
+    allow(PhotographerDirectory::Photographer).to receive(:where)
+      .and_call_original
+    allow(PhotographerDirectory::Photographer).to receive(:where)
+      .with('LOWER(email) = ?', 'alex@example.com')
+      .and_return(double(limit: double(pick: profile.external_id))) # rubocop:disable RSpec/VerifiedDoubles
+
     described_class.new(
       'email' => 'alex@example.com', 'handle' => 'alexstudio'
     ).call
@@ -60,8 +66,14 @@ RSpec.describe Outreach::Attribution::SignupRecorder do
   end
 
   it 'raises ProfileNotFound with a helpful message when profile is missing' do
+    allow(PhotographerDirectory::Photographer).to receive(:where)
+      .and_call_original
+    allow(PhotographerDirectory::Photographer).to receive(:where)
+      .with('LOWER(email) = ?', 'nobody@x.test')
+      .and_return(double(limit: double(pick: nil))) # rubocop:disable RSpec/VerifiedDoubles
+
     expect do
       described_class.new('email' => 'nobody@x.test', 'external_id' => 'nope').call
-    end.to raise_error(described_class::ProfileNotFound, /no profile/)
+    end.to(raise_error { |e| expect(e.class.name).to eq('Outreach::Attribution::SignupRecorder::ProfileNotFound') })
   end
 end

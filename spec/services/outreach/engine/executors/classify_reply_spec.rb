@@ -55,7 +55,7 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
 
   describe '#call' do
     context 'when confidence >= rule.min_confidence' do
-      it 'transitions to the rule target (auto_send)' do
+      it 'records decision as auto_send and parks participant (manual_review_mode default)' do
         stub_classifier(
           intent_class: 'interested_commission', confidence: 0.95,
           model: 'stub-1', output: { 'reasoning' => 'clear yes' }
@@ -63,10 +63,12 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
 
         described_class.new(participant: participant, stage: router_stage).call
 
-        expect(participant.reload.current_stage_key).to eq('auto_reply_commission')
         decision = CampaignLlmDecision.last
         expect(decision.routed_to).to eq('auto_send')
         expect(decision.confidence).to be_within(0.001).of(0.95)
+        # manual_review_mode defaults to true → participant is parked, not transitioned
+        expect(participant.reload.next_action_at).to be_nil
+        expect(participant.current_stage_key).to eq('reply_router')
       end
     end
 
@@ -128,13 +130,15 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
         ))
       end
 
-      it 'records routed_to=escalate even when confidence passes the bar' do
+      it 'routes signup intent to operator_draft (composer handles it, not escalate)' do
         stub_classifier(intent_class: 'interested_signup', confidence: 0.9, model: 'stub-1')
 
         described_class.new(participant: participant, stage: router_stage).call
 
-        expect(participant.reload.current_stage_key).to eq('escalated')
-        expect(CampaignLlmDecision.last.routed_to).to eq('escalate')
+        # signup intent at >= MIN_DRAFT_CONFIDENCE → operator_draft (compose reply draft)
+        expect(CampaignLlmDecision.last.routed_to).to eq('operator_draft')
+        # no conversation → compose_reply_draft! skipped → parked
+        expect(participant.reload.next_action_at).to be_nil
       end
     end
 
@@ -151,14 +155,14 @@ RSpec.describe Outreach::Engine::Executors::ClassifyReply do
     end
 
     context 'when confidence sits in the draft band (>=0.5 but < min_confidence)' do
-      it 'falls back to escalation until C4.1 provides a draft composer' do
+      it 'parks for operator review (decision=operator_draft, stage unchanged)' do
         stub_classifier(intent_class: 'interested_commission', confidence: 0.7, model: 'stub-1')
 
         described_class.new(participant: participant, stage: router_stage).call
 
-        expect(participant.reload.current_stage_key).to eq('escalated')
-        expect(participant.metadata['escalation_reason']).to start_with('operator_draft_pending_llm')
         expect(CampaignLlmDecision.last.routed_to).to eq('operator_draft')
+        expect(participant.reload.next_action_at).to be_nil
+        expect(participant.current_stage_key).to eq('reply_router')
       end
     end
 
