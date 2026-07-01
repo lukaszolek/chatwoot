@@ -68,7 +68,6 @@ class Outreach::PhotographerDirectory::Importer
       profile.assign_attributes(build_attrs(source, contact))
       profile.partnership_status = :imported if was_new
       flag_reenrollment(profile, was_do_not_contact)
-      profile.last_synced_at = Time.current
       profile.save!
     end
 

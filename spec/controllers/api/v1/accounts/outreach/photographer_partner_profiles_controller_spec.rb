@@ -8,6 +8,9 @@ RSpec.describe 'Api::V1::Accounts::Outreach::PhotographerPartnerProfiles', type:
 
   before do
     3.times { create(:photographer_partner_profile, account: account) }
+    # preload_sources! hits the secondary directory DB which does not exist in
+    # CI — stub it out so controller actions return 200 instead of 500.
+    allow(PhotographerPartnerProfile).to receive(:preload_sources!) { |profiles| profiles }
   end
 
   describe 'GET #index' do

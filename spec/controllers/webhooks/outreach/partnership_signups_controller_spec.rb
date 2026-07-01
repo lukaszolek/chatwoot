@@ -53,6 +53,9 @@ RSpec.describe Webhooks::Outreach::PartnershipSignupsController, type: :request 
   end
 
   it 'returns 404 when the profile cannot be resolved' do
+    # profile_by_email queries the secondary directory DB which is unavailable
+    # in CI — stub it so the recorder raises ProfileNotFound as intended.
+    allow_any_instance_of(Outreach::Attribution::SignupRecorder).to receive(:profile_by_email).and_return(nil) # rubocop:disable RSpec/AnyInstance
     with_modified_env('OUTREACH_PARTNERSHIP_WEBHOOK_SECRET' => secret) do
       post_signup({ email: 'nobody@nowhere.test', external_id: 'missing' })
       expect(response).to have_http_status(:not_found)
