@@ -90,10 +90,9 @@ RSpec.describe Outreach::Engine::Runner do
         headers: { 'x-request-id' => 'req_123', 'authorization' => 'secret' }
       )
       error = RubyLLM::BadRequestError.new(response, 'Provider returned error')
-      # Stub via allow_any_instance_of so the error is raised regardless of how
-      # the runner instantiates the executor (class-level stubs can be bypassed
-      # when the executor constant is cached in ACTION_TO_EXECUTOR at boot time).
-      allow_any_instance_of(Outreach::Engine::Executors::SendTemplate).to receive(:call).and_raise(error) # rubocop:disable RSpec/AnyInstance
+      # Stub process_participant directly on the runner so the error propagates
+      # through process's rescue block without needing a real LLM connection.
+      allow_any_instance_of(described_class).to receive(:process_participant).and_raise(error) # rubocop:disable RSpec/AnyInstance
 
       described_class.new(campaign).process(participant)
 
