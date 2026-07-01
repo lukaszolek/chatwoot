@@ -6,13 +6,17 @@ RSpec.describe Outreach::ConsentAudit do
   let(:account) { create(:account) }
   let(:campaign) { create(:outbound_campaign, :active, account: account) }
 
-  def stub_source(profile, marketing_consent:, unsubscribed: false)
+  def stub_source(_profile, marketing_consent:, unsubscribed: false)
     source = double( # rubocop:disable RSpec/VerifiedDoubles
-      id: profile.external_id,
       marketing_consent: marketing_consent,
-      unsubscribed_from_all_campaigns: unsubscribed
+      unsubscribed_from_all_campaigns: unsubscribed,
+      email_validation_status: 'valid',
+      gdpr_delete_requested_at: nil
     )
-    allow(PhotographerDirectory::Photographer).to receive(:find_by).with(id: profile.external_id).and_return(source)
+    # Stub find_source on the service instance rather than the AR class so that
+    # this spec does not touch the photographer_directory secondary connection
+    # (which maps to the primary in CI and lacks the photographer_photographers table).
+    allow_any_instance_of(described_class).to receive(:find_source).and_return(source) # rubocop:disable RSpec/AnyInstance
   end
 
   it 'heals outbound drift: chatwoot DNC but directory still consenting' do
@@ -54,7 +58,7 @@ RSpec.describe Outreach::ConsentAudit do
   it 'counts errors instead of raising when the directory lookup explodes' do
     profile = create(:photographer_partner_profile, account: account, partnership_status: :do_not_contact)
     create(:campaign_participant, outbound_campaign: campaign, account: account, participatable: profile)
-    allow(PhotographerDirectory::Photographer).to receive(:find_by).and_raise(ActiveRecord::ConnectionNotEstablished)
+    allow_any_instance_of(described_class).to receive(:find_source).and_raise(ActiveRecord::ConnectionNotEstablished) # rubocop:disable RSpec/AnyInstance
 
     summary = described_class.run!
     expect(summary[:heal_outbound]).to eq(0)

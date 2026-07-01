@@ -52,7 +52,8 @@ RSpec.describe Outreach::Engine::Runner do
       count = described_class.new(campaign).tick
 
       expect(count).to eq(1)
-      expect(p_due.reload.current_stage_key).to eq('reminder_wait')
+      expect(p_due.reload.next_action_at).to be_nil
+      expect(p_due.reload.metadata['processing_started_at']).to be_present
     end
 
     it 'backs off the participant by 10 minutes when an executor raises' do
@@ -67,12 +68,12 @@ RSpec.describe Outreach::Engine::Runner do
       allow(executor).to receive(:call).and_raise('boom')
       allow(Outreach::Engine::Executors::SendTemplate).to receive(:new).and_return(executor)
 
-      described_class.new(campaign).tick
+      described_class.new(campaign).process(participant)
       participant.reload
 
       expect(participant.next_action_at).to be_within(5.seconds).of(10.minutes.from_now)
       expect(participant.metadata['last_error']).to include('executor_error')
-      expect(participant.current_stage_key).to eq('intro') # rolled back
+      expect(participant.current_stage_key).to eq('intro')
     end
 
     it 'stores provider response details when the executor raises an HTTP-backed error' do
@@ -93,7 +94,7 @@ RSpec.describe Outreach::Engine::Runner do
       allow(executor).to receive(:call).and_raise(error)
       allow(Outreach::Engine::Executors::SendTemplate).to receive(:new).and_return(executor)
 
-      described_class.new(campaign).tick
+      described_class.new(campaign).process(participant)
 
       details = participant.reload.metadata['last_error_details']
       expect(details).to include('class' => 'RubyLLM::BadRequestError', 'http_status' => 400)
@@ -109,7 +110,7 @@ RSpec.describe Outreach::Engine::Runner do
                            current_stage_key: 'ghost_stage',
                            next_action_at: 1.minute.ago)
 
-      described_class.new(campaign).tick
+      described_class.new(campaign).process(participant)
       participant.reload
 
       expect(participant.metadata['last_error']).to include('missing_stage:ghost_stage')

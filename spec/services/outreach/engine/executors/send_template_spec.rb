@@ -4,13 +4,6 @@ require 'rails_helper'
 
 RSpec.describe Outreach::Engine::Executors::SendTemplate do
   let(:account) { create(:account) }
-  let(:participant) do
-    create(:campaign_participant,
-           outbound_campaign: campaign,
-           account: account,
-           participatable: profile,
-           current_stage_key: 'intro')
-  end
   let(:inbox) { create(:inbox, :with_email, account: account) }
   let(:campaign) do
     create(:outbound_campaign,
@@ -18,14 +11,18 @@ RSpec.describe Outreach::Engine::Executors::SendTemplate do
            inbox: inbox,
            config: { 'default_locale' => 'en' })
   end
-  let(:profile) do
-    create(:photographer_partner_profile,
+  let(:profile) { create(:photographer_partner_profile, account: account) }
+  let(:contact) { create(:contact, account: account, email: 'alex@studio.test') }
+  let(:conversation) { create(:conversation, account: account, inbox: inbox, contact: contact) }
+  let(:participant) do
+    create(:campaign_participant,
+           outbound_campaign: campaign,
            account: account,
-           email: 'alex@studio-alex.test',
-           owner_name: 'Alex Example',
-           preferred_language: 'de')
+           participatable: profile,
+           conversation: conversation,
+           contact: contact,
+           current_stage_key: 'intro')
   end
-
   let(:intro_stage) do
     create(:campaign_pipeline_stage,
            outbound_campaign: campaign,
@@ -34,68 +31,57 @@ RSpec.describe Outreach::Engine::Executors::SendTemplate do
            template_slot: 'intro',
            position: 1)
   end
+  let(:compose_result) do
+    {
+      subject: 'Hallo Alex',
+      body: 'Guten Tag! Here is our offer.',
+      locale: 'de',
+      fallback: false,
+      model: 'deepseek/test',
+      prompt_version: '1',
+      input_digest: 'abc123',
+      output: {},
+      token_usage: {},
+      provider_metadata: {},
+      latency_ms: 100
+    }
+  end
 
   before do
-    create(:campaign_template, outbound_campaign: campaign,
-                               slot: 'intro', locale: 'de',
-                               subject: 'Hallo {{first_name}}',
-                               body: 'Body DE {{first_name}}', active: true)
-    create(:campaign_pipeline_stage, outbound_campaign: campaign,
-                                     key: 'reminder_wait', on_enter_action: :wait,
-                                     position: 2)
+    create(:campaign_pipeline_stage,
+           outbound_campaign: campaign,
+           key: 'reminder_wait',
+           on_enter_action: :wait,
+           position: 2)
     intro_stage.update!(next_stage_key: 'reminder_wait')
+
+    composer = instance_double(Outreach::Llm::MessageComposer::Intro, call: compose_result)
+    allow(Outreach::Llm::MessageComposer::Intro).to receive(:new).and_return(composer)
+    allow(Outreach::TranslateForAgents).to receive(:call)
   end
 
   describe '#call' do
-    it 'enqueues SendEmailJob with rendered template and advances stage' do
+    it 'creates a draft and parks the participant when manual_review_mode is on' do
+      described_class.new(participant: participant, stage: intro_stage).call
+
+      participant.reload
+      expect(participant.next_action_at).to be_nil
+      expect(participant.current_stage_key).to eq('intro')
+      draft = conversation.messages.find_by(
+        "additional_attributes->>'outreach_draft' = 'true'"
+      )
+      expect(draft).to be_present
+    end
+
+    it 'enqueues SendEmailJob and advances stage when manual_review_mode is off' do
+      campaign.update!(manual_review_mode: false)
+
       expect do
         described_class.new(participant: participant, stage: intro_stage).call
-      end.to have_enqueued_job(Outreach::SendEmailJob).with(
-        hash_including(
-          participant_id: participant.id,
-          subject: 'Hallo Alex',
-          body: 'Body DE Alex',
-          template_slot: 'intro',
-          locale: 'de'
-        )
-      )
+      end.to have_enqueued_job(Outreach::SendEmailJob)
 
       participant.reload
       expect(participant.current_stage_key).to eq('reminder_wait')
-      expect(participant.conversation_id).to be_present
-      expect(participant.contact_id).to be_present
-      expect(participant.last_outbound_at).to be_present
-    end
-
-    context 'when no template exists for the participant locale' do
-      let(:profile) do
-        create(:photographer_partner_profile,
-               account: account,
-               preferred_language: 'pl')
-      end
-
-      it 'falls back to the campaign default_locale when a default template exists' do
-        create(:campaign_template,
-               outbound_campaign: campaign,
-               slot: 'intro',
-               locale: 'en',
-               subject: 'Hello {{first_name}}',
-               body: 'Body EN')
-
-        expect do
-          described_class.new(participant: participant, stage: intro_stage).call
-        end.to have_enqueued_job(Outreach::SendEmailJob).with(
-          hash_including(subject: /Hello/, locale: 'en')
-        )
-      end
-
-      it 'pauses the participant when no fallback exists either' do
-        # no en template; participant locale pl has none either.
-        described_class.new(participant: participant, stage: intro_stage).call
-
-        expect(participant.reload.paused).to be(true)
-        expect(participant.metadata['paused_reason']).to include('no_template_for_slot:intro')
-      end
     end
 
     context 'with no inbox on the campaign' do
@@ -104,6 +90,13 @@ RSpec.describe Outreach::Engine::Executors::SendTemplate do
                account: account,
                inbox: nil,
                config: { 'default_locale' => 'en' })
+      end
+      let(:participant) do
+        create(:campaign_participant,
+               outbound_campaign: campaign,
+               account: account,
+               participatable: profile,
+               current_stage_key: 'intro')
       end
 
       it 'bubbles the InboxMissing error to the runner' do

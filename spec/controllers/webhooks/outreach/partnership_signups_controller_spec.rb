@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe Webhooks::Outreach::PartnershipSignupsController, type: :request do
   let(:secret) { 'webhook-secret-test' }
   let(:account) { create(:account) }
-  let!(:profile) { create(:photographer_partner_profile, account: account, email: 'alex@example.com', external_id: 'ext-99') }
+  let!(:profile) { create(:photographer_partner_profile, account: account, external_id: 'ext-99') }
 
   def post_signup(payload_hash, signature: nil)
     raw = payload_hash.to_json
