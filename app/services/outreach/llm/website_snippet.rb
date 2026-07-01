@@ -34,7 +34,7 @@ class Outreach::Llm::WebsiteSnippet
     /produit|product|packshot|e-?commerce/i,
     /iris/i,
     /video|film|visite virtuelle|virtual tour|photo booth|photobooth|borne photo|fotobudk/i,
-    /passport|identity photo|photo d'identité|documentfoto/i,
+    /passport|identity photo|photos? d'identité|documentfoto/i,
     /art print|fine art print|tirage d'art|limited edition|oeuvre|œuvre|kunstwerk/i,
     /tirages?\s+encadr[ée]s?|framed prints?|wall art shop|prints? for sale|tableaux?\s+photo/i
   ].freeze

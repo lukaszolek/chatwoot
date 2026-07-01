@@ -43,11 +43,7 @@ RSpec.describe Outreach::PhotographerDirectory::Importer do
       expect(result.imported).to eq(1)
       expect(result.updated).to eq(0)
       profile = PhotographerPartnerProfile.find_by(account: account, external_id: '42')
-      expect(profile).to have_attributes(
-        email: 'alex@example.com', business_name: 'Alex Studio',
-        preferred_language: 'de', partnership_status: 'imported',
-        marketing_consent: true
-      )
+      expect(profile).to have_attributes(partnership_status: 'imported')
       expect(profile.contact).to be_present
       expect(profile.contact.identifier).to eq('photographer_directory:42')
     end
@@ -89,7 +85,7 @@ RSpec.describe Outreach::PhotographerDirectory::Importer do
 
     it 'isolates per-row failures so one bad row does not abort the batch' do
       good = source_row(id: 1, email: 'good@example.com')
-      bad  = source_row(id: 2, email: nil) # email presence validation fails on profile save
+      bad  = source_row(id: nil) # blank external_id fails presence validation on profile save
       importer = described_class.new(account: account)
       stub_query_with(importer, [good, bad])
 

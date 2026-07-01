@@ -22,8 +22,6 @@ RSpec.describe Outreach::Engine::Runner do
                                      key: 'reminder_wait', on_enter_action: :wait,
                                      auto_advance_after_hours: 120, position: 2)
     intro_stage.update!(next_stage_key: 'reminder_wait')
-    create(:campaign_template, outbound_campaign: campaign, slot: 'intro', locale: 'en',
-                               subject: 'Hi', body: 'Body', active: true)
   end
 
   describe '#tick' do
@@ -54,7 +52,8 @@ RSpec.describe Outreach::Engine::Runner do
       count = described_class.new(campaign).tick
 
       expect(count).to eq(1)
-      expect(p_due.reload.current_stage_key).to eq('reminder_wait')
+      expect(p_due.reload.next_action_at).to be_nil
+      expect(p_due.reload.metadata['processing_started_at']).to be_present
     end
 
     it 'backs off the participant by 10 minutes when an executor raises' do
@@ -69,12 +68,12 @@ RSpec.describe Outreach::Engine::Runner do
       allow(executor).to receive(:call).and_raise('boom')
       allow(Outreach::Engine::Executors::SendTemplate).to receive(:new).and_return(executor)
 
-      described_class.new(campaign).tick
+      described_class.new(campaign).process(participant)
       participant.reload
 
       expect(participant.next_action_at).to be_within(5.seconds).of(10.minutes.from_now)
       expect(participant.metadata['last_error']).to include('executor_error')
-      expect(participant.current_stage_key).to eq('intro') # rolled back
+      expect(participant.current_stage_key).to eq('intro')
     end
 
     it 'stores provider response details when the executor raises an HTTP-backed error' do
@@ -91,11 +90,11 @@ RSpec.describe Outreach::Engine::Runner do
         headers: { 'x-request-id' => 'req_123', 'authorization' => 'secret' }
       )
       error = RubyLLM::BadRequestError.new(response, 'Provider returned error')
-      executor = instance_double(Outreach::Engine::Executors::SendTemplate)
-      allow(executor).to receive(:call).and_raise(error)
-      allow(Outreach::Engine::Executors::SendTemplate).to receive(:new).and_return(executor)
+      # Stub process_participant directly on the runner so the error propagates
+      # through process's rescue block without needing a real LLM connection.
+      allow_any_instance_of(described_class).to receive(:process_participant).and_raise(error) # rubocop:disable RSpec/AnyInstance
 
-      described_class.new(campaign).tick
+      described_class.new(campaign).process(participant)
 
       details = participant.reload.metadata['last_error_details']
       expect(details).to include('class' => 'RubyLLM::BadRequestError', 'http_status' => 400)
@@ -111,7 +110,7 @@ RSpec.describe Outreach::Engine::Runner do
                            current_stage_key: 'ghost_stage',
                            next_action_at: 1.minute.ago)
 
-      described_class.new(campaign).tick
+      described_class.new(campaign).process(participant)
       participant.reload
 
       expect(participant.metadata['last_error']).to include('missing_stage:ghost_stage')

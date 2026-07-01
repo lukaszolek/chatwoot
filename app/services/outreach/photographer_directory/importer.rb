@@ -68,7 +68,6 @@ class Outreach::PhotographerDirectory::Importer
       profile.assign_attributes(build_attrs(source, contact))
       profile.partnership_status = :imported if was_new
       flag_reenrollment(profile, was_do_not_contact)
-      profile.last_synced_at = Time.current
       profile.save!
     end
 
@@ -95,25 +94,11 @@ class Outreach::PhotographerDirectory::Importer
     )
   end
 
-  def build_attrs(source, contact)
-    # Never touch partnership_status here — process_one sets it only for
-    # new records. This preserves downstream transitions (signed_up,
-    # declined, etc.) across re-imports. `flag_reenrollment` handles the
-    # one edge case where we intentionally reset (§9.10).
-    {
-      email: source.email,
-      business_name: source.business_name,
-      owner_name: source.owner_name,
-      website: source.website,
-      country_code: source.country_code,
-      phone: source.phone,
-      instagram_handle: source.instagram_handle,
-      preferred_language: source.preferred_language,
-      marketing_consent: source.marketing_consent,
-      gdpr_delete_requested_at: source.gdpr_delete_requested_at,
-      source_status: source.status,
-      contact_id: contact.id
-    }
+  def build_attrs(_source, contact)
+    # Only contact_id is persisted here. All other fields (email,
+    # business_name, etc.) live on PhotographerDirectory::Photographer and
+    # are read via delegation — no copies stored on PhotographerPartnerProfile.
+    { contact_id: contact.id }
   end
 
   def flag_reenrollment(profile, was_do_not_contact)

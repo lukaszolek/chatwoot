@@ -12,15 +12,7 @@ RSpec.describe PhotographerPartnerProfile do
     subject { build(:photographer_partner_profile) }
 
     it { is_expected.to validate_presence_of(:external_id) }
-    it { is_expected.to validate_presence_of(:email) }
     it { is_expected.to validate_uniqueness_of(:external_id).scoped_to(:account_id) }
-
-    it 'validates email uniqueness per account (case-insensitive)' do
-      profile = create(:photographer_partner_profile, email: 'alex@example.com')
-      duplicate = build(:photographer_partner_profile, account: profile.account, email: 'ALEX@example.com')
-
-      expect(duplicate).not_to be_valid
-    end
   end
 
   describe 'partnership_status enum' do

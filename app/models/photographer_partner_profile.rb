@@ -52,6 +52,7 @@
 class PhotographerPartnerProfile < ApplicationRecord
   belongs_to :account
   belongs_to :contact, optional: true
+  has_many :campaign_participants, as: :participatable # rubocop:disable Rails/HasManyOrHasOneDependent
 
   # Tri-state consent — source of truth on the chatwoot side.
   # (photographer-directory still has its own boolean consent, which

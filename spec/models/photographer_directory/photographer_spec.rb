@@ -6,8 +6,8 @@ RSpec.describe PhotographerDirectory::Photographer do
   let(:secondary_db_configured) { ENV['PHOTOGRAPHER_DIRECTORY_DATABASE_URL'].present? }
 
   describe 'writable columns contract' do
-    it 'declares exactly the four consent columns as writable' do
-      expect(described_class::WRITABLE_COLUMNS).to contain_exactly(
+    it 'declares exactly the four consent columns in CONSENT_WRITABLE_COLUMNS' do
+      expect(described_class::CONSENT_WRITABLE_COLUMNS).to contain_exactly(
         'marketing_consent',
         'unsubscribed_from_all_campaigns',
         'unsubscribed_from_all_at',

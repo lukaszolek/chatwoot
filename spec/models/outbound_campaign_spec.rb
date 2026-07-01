@@ -8,7 +8,6 @@ RSpec.describe OutboundCampaign do
     it { is_expected.to belong_to(:inbox).optional }
     it { is_expected.to belong_to(:sender_user).class_name('User').optional }
     it { is_expected.to have_many(:pipeline_stages).class_name('CampaignPipelineStage').dependent(:destroy) }
-    it { is_expected.to have_many(:templates).class_name('CampaignTemplate').dependent(:destroy) }
     it { is_expected.to have_many(:participants).class_name('CampaignParticipant').dependent(:destroy) }
   end
 

@@ -62,7 +62,7 @@ RSpec.describe Outreach::Llm::MessageComposer::Base do
 
     expect(client).to have_received(:ask_json!).twice
     expect(result[:fallback]).to be(false)
-    expect(result[:body]).to eq('Bonjour Pauline,')
+    expect(result[:body]).to eq(valid_intro_body)
   end
 
   it 'falls back when placeholders remain after retry' do

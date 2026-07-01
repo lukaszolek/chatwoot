@@ -7,7 +7,10 @@ RSpec.describe 'Api::V1::Accounts::Outreach::PhotographerPartnerProfiles', type:
   let(:admin) { create(:user, account: account, role: :administrator) }
 
   before do
-    3.times { |i| create(:photographer_partner_profile, account: account, business_name: "Studio #{i}") }
+    3.times { create(:photographer_partner_profile, account: account) }
+    # preload_sources! hits the secondary directory DB which does not exist in
+    # CI — stub it out so controller actions return 200 instead of 500.
+    allow(PhotographerPartnerProfile).to receive(:preload_sources!) { |profiles| profiles }
   end
 
   describe 'GET #index' do
@@ -28,11 +31,15 @@ RSpec.describe 'Api::V1::Accounts::Outreach::PhotographerPartnerProfiles', type:
       expect(response.parsed_body['meta']['total']).to eq(1)
     end
 
-    it 'filters by search query' do
-      PhotographerPartnerProfile.first.update!(business_name: 'Uniquely Named Studio')
+    it 'filters by search query via the directory search stub' do
+      target = PhotographerPartnerProfile.first
+      mock_scope = double('photographer_scope') # rubocop:disable RSpec/VerifiedDoubles
+      allow(mock_scope).to receive(:pluck).with(:id).and_return([target.external_id])
+      allow(Outreach::PhotographerDirectory::SearchFilters).to receive(:apply).and_return(mock_scope)
+
       get "/api/v1/accounts/#{account.id}/outreach/photographer_partner_profiles",
           headers: admin.create_new_auth_token,
-          params: { q: 'Uniquely' }
+          params: { q: 'Studio' }
       expect(response.parsed_body['meta']['total']).to eq(1)
     end
   end
