@@ -1,0 +1,87 @@
+customer_id,category_code,problem,order_no,order_date,age_days
+c2a8ec6df,E1,Filtr nie zapisany,390998,2026-06-04,1
+c5db6e9a5,E1,Filtr nie zapisany,267601,2026-06-07,2
+c43d30f55,E2,Podmiana / dodanie zdjęcia,3255211,2026-04-27,1
+c647d4124,E2,Podmiana / dodanie zdjęcia,5838,2024-11-27,540
+cc4f245aa,E2,Podmiana / dodanie zdjęcia,367350,2026-05-12,1
+ccef15ec4,E2,Podmiana / dodanie zdjęcia,311897,2026-04-19,9
+c10fc4ed2,E3,Inna edycja (układ/rozmiar),163693,2026-05-19,1
+c7fc80c05,E3,Inna edycja (układ/rozmiar),303849,2026-04-11,2
+c4f41ad14,E3,Inna edycja (układ/rozmiar),76251,2025-03-12,414
+cffc627b5,E3,Inna edycja (układ/rozmiar),,,
+ca099c304,M1,Wieszaki spadły / nie trzymają,174066,2026-02-01,93
+c47ee1b80,M1,Wieszaki spadły / nie trzymają,52568,2025-10-05,191
+cbea564a7,M1,Wieszaki spadły / nie trzymają,31901,2025-08-21,257
+ceb843ec7,M1,Wieszaki spadły / nie trzymają,,,
+ca3906bb2,M1,Wieszaki spadły / nie trzymają,198366,2026-02-20,81
+ca674438d,M1,Wieszaki spadły / nie trzymają,150891,2026-01-31,125
+c2f7afd7d,M1,Wieszaki spadły / nie trzymają,144743,2026-01-11,107
+c1feae8fb,M1,Wieszaki spadły / nie trzymają,65662,2025-10-29,166
+ca099c304,M2,Wieszaki brakujące w paczce,174066,2026-02-01,93
+ca1cc28e5,M2,Wieszaki brakujące w paczce,2952811,2026-05-14,0
+c4554cc03,M3,Dozamówienie wieszaków/szablonu,289570,2026-04-05,47
+c88cca31b,M3,Dozamówienie wieszaków/szablonu,379696,2026-05-20,20
+c50939c75,M3,Dozamówienie wieszaków/szablonu,4101,2024-07-10,664
+c287d79f6,M3,Dozamówienie wieszaków/szablonu,,,
+c5faa3f7d,M3,Dozamówienie wieszaków/szablonu,58759,2026-01-10,128
+c293c38b4,M3,Dozamówienie wieszaków/szablonu,7684,2025-03-16,393
+c5013e564,M3,Dozamówienie wieszaków/szablonu,9950,2025-06-14,338
+cb8910fe5,M3,Dozamówienie wieszaków/szablonu,47662,2025-10-05,243
+c37dc16f3,M3,Dozamówienie wieszaków/szablonu,336567,2026-04-29,19
+c10fc4ed2,M4,Instrukcja montażu / szablon,163693,2026-05-19,1
+c1111b851,M4,Instrukcja montażu / szablon,169204,2026-04-23,14
+c37dc16f3,M4,Instrukcja montażu / szablon,336567,2026-04-29,19
+c9e900d24,P1,Pytanie przedsprzedażowe/produktowe,,,
+c7d4b0b28,P1,Pytanie przedsprzedażowe/produktowe,,,
+c5d286477,P1,Pytanie przedsprzedażowe/produktowe,311732,2026-04-15,0
+cb4f7706e,P1,Pytanie przedsprzedażowe/produktowe,251446,2026-04-15,-1
+c35221131,P1,Pytanie przedsprzedażowe/produktowe,366054,2026-05-17,-6
+ce0e9ea19,P1,Pytanie przedsprzedażowe/produktowe,367403,2026-05-12,1
+c105e8775,P1,Pytanie przedsprzedażowe/produktowe,66650,2025-11-01,212
+c5e0470f8,P1,Pytanie przedsprzedażowe/produktowe,326702,2026-04-26,10
+c9955fed9,P2,Inne / podziękowanie / niejasne,272461,2026-03-25,34
+c43d30f55,P2,Inne / podziękowanie / niejasne,3255211,2026-04-27,1
+c5492bc1e,P2,Inne / podziękowanie / niejasne,356119,2026-05-06,0
+c68d47a59,P2,Inne / podziękowanie / niejasne,79512,2026-03-28,24
+c80d57df7,P2,Inne / podziękowanie / niejasne,268937,2026-04-20,21
+cc4f245aa,P2,Inne / podziękowanie / niejasne,367350,2026-05-12,1
+c4f41ad14,P2,Inne / podziękowanie / niejasne,76251,2025-03-12,414
+cd327d6e6,P2,Inne / podziękowanie / niejasne,,,
+cc1895e5c,P2,Inne / podziękowanie / niejasne,295641,2026-04-06,28
+ce3c9cc67,P2,Inne / podziękowanie / niejasne,357557,2026-06-01,-19
+c47429a19,Q1,Uszkodzenie w transporcie,289425,2026-04-02,34
+c18d6d88a,Q2,Defekt druku / kolor / piksele,384070,2026-05-26,7
+c979a6e61,Q2,Defekt druku / kolor / piksele,273472,2026-03-29,15
+c0e4fd4b1,Q2,Defekt druku / kolor / piksele,265434,2026-03-15,59
+c62acd85f,Q2,Defekt druku / kolor / piksele,277279,2026-05-18,15
+cb568098c,Q3,Złe ułożenie / kadr / zła ramka,280331,2026-04-18,16
+cf3a88186,R1,Anulacja zamówienia,391869,2026-06-06,3
+cca1fe40a,R1,Anulacja zamówienia,357269,2026-05-06,1
+cafa94db5,R2,Zwrot towaru,91435,2026-04-05,30
+c47429a19,R2,Zwrot towaru,289425,2026-04-02,34
+c0e4fd4b1,R2,Zwrot towaru,265434,2026-03-15,59
+cf590d022,R2,Zwrot towaru,373795,2026-05-24,8
+c5faa3f7d,R3,Nadpłata / błąd płatności,58759,2026-01-10,128
+c4f41ad14,R3,Nadpłata / błąd płatności,76251,2025-03-12,414
+c0b74b6ae,R3,Nadpłata / błąd płatności,311966,2026-04-15,0
+c43d30f55,S1,Link śledzenia nie działa,3255211,2026-04-27,1
+c979a6e61,S1,Link śledzenia nie działa,273472,2026-03-29,15
+c41645d9e,S1,Link śledzenia nie działa,388246,2026-05-31,9
+c5492bc1e,S2,Paczka zaginiona / opóźniona,356119,2026-05-06,0
+c5ec1e6bb,S2,Paczka zaginiona / opóźniona,302728,2026-04-10,18
+c7fc80c05,S2,Paczka zaginiona / opóźniona,303849,2026-04-11,2
+cfcfb2e99,S2,Paczka zaginiona / opóźniona,305618,2026-04-11,17
+caac0d618,S3,Status / kiedy / gdzie,346835,2026-05-01,5
+ce5a2650b,S3,Status / kiedy / gdzie,270401,2026-03-29,16
+c799f192f,S3,Status / kiedy / gdzie,384963,2026-05-27,13
+ca07161d1,S3,Status / kiedy / gdzie,2306041,2026-03-31,52
+ccf64abf3,S3,Status / kiedy / gdzie,200936,2026-03-24,21
+cb4f7706e,S3,Status / kiedy / gdzie,251446,2026-04-15,-1
+c979a6e61,S3,Status / kiedy / gdzie,273472,2026-03-29,15
+c2460a8fd,S3,Status / kiedy / gdzie,342536,2026-05-01,3
+c0e4fd4b1,S3,Status / kiedy / gdzie,265434,2026-03-15,59
+cc7f37d3e,V1,Voucher: przedłużenie,,,
+c35221131,V1,Voucher: przedłużenie,366054,2026-05-17,-6
+caa7ba526,V2,Voucher: brak/wadliwy kod,353433,2026-05-04,7
+cdb3bcb76,V3,Prośba o rabat,342626,2026-04-29,5
+c2460a8fd,V3,Prośba o rabat,342536,2026-05-01,3
