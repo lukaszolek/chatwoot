@@ -84,10 +84,10 @@ class Conversations::MailboxSyncService
   end
 
   def reconcile_conversation(conversation, inbox_message_ids, archive_targets)
-    source_ids = conversation.messages.where.not(source_id: nil).pluck(:source_id)
+    source_ids = incoming_source_ids(conversation)
     in_inbox_ids = source_ids.select { |sid| inbox_message_ids.include?(sid) }
 
-    if needs_resolve?(conversation, in_inbox_ids)
+    if needs_resolve?(conversation, source_ids, in_inbox_ids)
       conversation.update!(status: :resolved)
       :resolved
     elsif needs_archive?(conversation, in_inbox_ids)
@@ -95,12 +95,36 @@ class Conversations::MailboxSyncService
     end
   end
 
-  def needs_resolve?(conversation, in_inbox_ids)
-    (conversation.open? || conversation.pending?) && in_inbox_ids.empty?
+  def incoming_source_ids(conversation)
+    conversation.messages.incoming.where.not(source_id: nil).pluck(:source_id)
+  end
+
+  def needs_resolve?(conversation, source_ids, in_inbox_ids)
+    return false unless conversation.open? || conversation.pending?
+    return false if source_ids.empty?
+    return false if in_inbox_ids.any?
+
+    !messages_present_in_gmail_inbox?(conversation, source_ids)
   end
 
   def needs_archive?(conversation, in_inbox_ids)
     conversation.resolved? && in_inbox_ids.any?
+  end
+
+  def messages_present_in_gmail_inbox?(conversation, source_ids)
+    channel = channel_for(conversation)
+    return true unless channel
+
+    imap = Conversations::GmailImap.build_client(channel)
+    return true unless imap
+
+    imap.select('INBOX')
+    source_ids.any? { |message_id| imap.uid_search(['HEADER', 'Message-ID', message_id]).any? }
+  rescue StandardError => e
+    Rails.logger.error("[MailboxSync] Precise INBOX check failed for conversation=#{conversation.id}: #{e.message}")
+    true
+  ensure
+    Conversations::GmailImap.safe_logout(imap)
   end
 
   def enqueue_for_archive(conversation, in_inbox_ids, archive_targets)
