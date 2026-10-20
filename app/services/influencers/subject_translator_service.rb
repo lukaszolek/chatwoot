@@ -29,24 +29,9 @@ class Influencers::SubjectTranslatorService
   end
 
   def translate(hook, text)
-    client = build_client(hook)
-    project = "projects/#{hook.settings['project_id']}"
+    result = Integrations::GoogleTranslate::GeminiClient.new(hook: hook).translate(text, @target_locale)
+    return if result['language'] == @target_locale
 
-    source = detect_language(client, project, text)
-    return if source == @target_locale
-
-    response = client.translate_text(contents: [text], target_language_code: @target_locale, parent: project)
-    response.translations&.first&.translated_text
-  end
-
-  def detect_language(client, project, text)
-    detected = client.detect_language(content: text, parent: project)
-    detected&.languages&.first&.language_code
-  end
-
-  def build_client(hook)
-    ::Google::Cloud::Translate::V3::TranslationService::Client.new do |config|
-      config.credentials = hook.settings['credentials']
-    end
+    result['translation']
   end
 end
