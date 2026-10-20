@@ -29,8 +29,9 @@ class Influencers::SubjectTranslatorService
   end
 
   def translate(hook, text)
-    result = Integrations::GoogleTranslate::GeminiClient.new(hook: hook).translate(text, @target_locale)
-    return if result['language'] == @target_locale
+    target = @target_locale.tr('_', '-')
+    result = Integrations::GoogleTranslate::GeminiClient.new(hook: hook).translate(text, target)
+    return if result['language'].to_s.split('-').first == target.split('-').first
 
     result['translation']
   end

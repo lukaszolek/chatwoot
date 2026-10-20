@@ -76,9 +76,9 @@ const textToShow = computed(() => {
 const fullHTML = computed(() => {
   if (hasTranslations.value && !renderOriginal.value) {
     // Backend translates the plain-text reply only. Older messages stored
-    // HTML translations of the full email, so render those as-is; plain
-    // text needs MessageFormatter to gain paragraphs and linkified URLs.
-    const translationIsHtml = /<\/?[a-z][^>]*>/i.test(translationContent.value);
+    // HTML translations of the full email (they start with a tag), so render
+    // those as-is; plain text needs MessageFormatter for paragraphs/links.
+    const translationIsHtml = /^\s*</.test(translationContent.value);
     return translationIsHtml
       ? translationContent.value
       : new MessageFormatter(translationContent.value).formattedMessage;
