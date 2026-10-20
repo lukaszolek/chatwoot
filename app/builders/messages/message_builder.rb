@@ -58,32 +58,21 @@ class Messages::MessageBuilder # rubocop:disable Metrics/ClassLength
              @conversation.additional_attributes&.dig('conversation_language')
     return if target.blank?
 
-    # Detect actual language of the outgoing message instead of relying on agent's UI locale,
-    # which can be wrong (e.g. agent UI set to 'en' but typing in Polish).
-    detected_source = detect_outgoing_language(hook)
-    source = detected_source || @user&.ui_settings&.dig('locale') || 'en'
-    return if target == source
-
-    translated = Integrations::GoogleTranslate::ProcessorService.new(message: @message, target_language: target).perform
-    return if translated.blank?
+    # One call returns both the detected language of what the agent typed and the translation,
+    # so the agent's UI locale (which can differ from what they type) is not trusted.
+    result = Integrations::GoogleTranslate::GeminiClient.new(hook: hook).translate(@message.content, target.tr('_', '-'))
+    source = result['language'].presence || @user&.ui_settings&.dig('locale') || 'en'
+    return if same_language?(source, target) || result['translation'].blank?
 
     original = @message.content
-    @message.content = translated
+    @message.content = result['translation']
     @message.content_attributes = (@message.content_attributes || {}).merge('translations' => { source => original })
   rescue StandardError => e
     Rails.logger.error "Auto-translate outgoing failed for conversation #{@conversation.id}: #{e.message}"
   end
 
-  def detect_outgoing_language(hook)
-    text = @message.content[0...1500]
-    client = ::Google::Cloud::Translate::V3::TranslationService::Client.new do |config|
-      config.credentials = hook.settings['credentials']
-    end
-    response = client.detect_language(content: text, parent: "projects/#{hook.settings['project_id']}")
-    response&.languages&.first&.language_code
-  rescue StandardError => e
-    Rails.logger.error "Outgoing language detection failed: #{e.message}"
-    nil
+  def same_language?(source, target)
+    source.tr('_', '-').split('-').first.casecmp?(target.tr('_', '-').split('-').first)
   end
 
   def process_attachments

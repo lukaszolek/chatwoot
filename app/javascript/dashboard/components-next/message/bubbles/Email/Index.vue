@@ -75,12 +75,11 @@ const textToShow = computed(() => {
 
 const fullHTML = computed(() => {
   if (hasTranslations.value && !renderOriginal.value) {
-    // Mirror backend ProcessorService: HTML emails are translated as HTML
-    // (mime_type: 'text/html'), text-only emails and non-email messages
-    // are translated as plaintext. Only the plaintext path needs
-    // MessageFormatter to gain paragraphs and linkified URLs.
-    const sourceWasHtml = !!contentAttributes?.value?.email?.htmlContent?.full;
-    return sourceWasHtml
+    // Backend translates the plain-text reply only. Older messages stored
+    // HTML translations of the full email (they start with a tag), so render
+    // those as-is; plain text needs MessageFormatter for paragraphs/links.
+    const translationIsHtml = /^\s*</.test(translationContent.value);
+    return translationIsHtml
       ? translationContent.value
       : new MessageFormatter(translationContent.value).formattedMessage;
   }
